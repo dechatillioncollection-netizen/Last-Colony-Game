@@ -213,3 +213,51 @@ One setting replaces the separate HD, High Quality, Painted artwork and GPU swit
 - Changing the preset redraws the ground, the Rootweb and the build-menu icons at once.
 - Settings opens from the main menu as well as during a game.
 
+
+## Painted Vines (v31)
+
+The Vine, Swift Vine and Vine Knot are drawn as living vessels. This is artwork only: speed, throughput, crossing rules, rotation, costs, placement and saves are unchanged, and the tests check that a network moves exactly the same items to the same places with the painted art on or off.
+
+- **What the game does (checked in the code before painting):**
+  - A Vine carries up to 4 items (`b.belt`, each item `{i, p}` with `p` from 0 to 1 along the tile, spaced at least 0.3 apart). The Vine moves them 4.2 tiles a second and the Swift Vine 8.
+  - A vessel turns when it is fed only from one side (`beltCurve`). Lines merging in from the sides are drawn as short stubs.
+  - A Vine Knot has four short queues, one per exit side. An item crosses in 0.08 seconds and always leaves on the side opposite the one it came in by, so the two streams never mix.
+  - The art reads that state and never writes it. Its own memory (when a vessel last moved, and what its ends meet) lives outside the block, so it never reaches a save.
+- **Vine:** a translucent vessel of violet tissue with a dark rim, mottling, patchy wet highlights and small veins rooting into the ground beside it. Green sap fills the lumen. It swells slightly in the middle of each tile, so a run reads as living segments rather than a pipe. A pale venous valve (two soft cusps closing towards the flow) marks the direction.
+- **Swift Vine:** the same vessel, evolved: wider, with turquoise sap, two bright ridges along its length and four pressure chambers on its walls that squeeze in turn while it is moving. Its flow streaks are brighter and closer together, and its pulses come more often.
+- **Vine Knot:** a swollen bulb on supporting roots. The left-right passage runs inside the bulb under a thin veil. The top-bottom passage rises over it as a bridge, with collars where it lifts off and a shadow on the passage below. Both passages narrow inside the bulb so the bulb shows around them. Each passage glows on its own while it carries something, and each item is drawn in its own passage, moving from the side it came in towards the side it leaves by.
+- **Joins:**
+  - Every piece has the same cross-section at its ends, and all texture repeats exactly once per tile, so straight pieces, turns, Knot passages and Vine/Swift joins meet without a seam. The Swift Vine pinches back to the Vine's width at each end.
+  - Where a Swift Vine meets a Vine or a Knot, a short fade of the Vine's tissue is laid over the Swift Vine's end, so the green and turquoise flow into each other.
+  - A vessel with nothing beyond it ends in a sealed, rounded cap. Where it meets a growth that feeds it or that it feeds (Root Tap, Bloom, glands, routers and the rest), it opens into a fleshy collar.
+- **Motion:**
+  - Sap streaks move through the lumen at the same speed the items do. They run only while the vessel's items are actually moving: an empty vessel, or a backed-up one, shows a still frame.
+  - A faint wet film shows along the walls of a moving vessel, and now and then a nutrient pulse runs down a line, at item speed.
+- **Resources stay readable:** every vessel is drawn first, then the film and pulses, then the Knots, then every item. A pale halo (the membrane stretched round the item) sits behind each one, so dark coal and chitin read against the vessel. Items are never covered by an effect or by a neighbouring vessel.
+- **Performance:**
+  - At normal zoom and up to 450 vessels on screen, everything moves.
+  - Zoomed out past 0.75×, or with more than 450 vessels on screen, every vessel shows its still frame, and the film, pulses and Knot glows stop. Items always show. Reduced-motion system settings also stop the film and pulses.
+  - Measured in headless Chromium (software drawing), drawing only the vessels and their items:
+
+| Vessels in the network | Zoom | On screen | Previous vines | Painted vines |
+| --- | --- | --- | --- | --- |
+| 100 | 1.6× | 100 | 3.0 ms | 3.8 ms (full motion) |
+| 100 | 0.8× | 100 | 2.7 ms | 3.0 ms (full motion) |
+| 500 | 1.6× | 462 | 18.0 ms | 7.0 ms (still frames) |
+| 500 | 0.8× | 500 | 10.3 ms | 5.9 ms (still frames) |
+| 1,000 | 0.8× | 871 | 17.1 ms | 9.6 ms (still frames) |
+| 1,000 | 0.5× | 1,000 | 16.1 ms | 10.4 ms (still frames) |
+
+Every vessel carried items, and the times are per frame including the items. `tests/vperf.js` repeats the measurement.
+
+- **Textures (`art/plant/vine/`, painted at 96 px a tile, 4× the game):**
+  - `vine.png`, `swift.png`: strips of 17 frames. Frames 1 to 16 are the sap moving one tile, and frame 17 is the still frame.
+  - `vine_curve.png`, `swift_curve.png`: the same strips bent round a quarter circle, from the middle of the bottom edge to the middle of the right edge. The game rotates and mirrors them for every turn.
+  - `cap.png`, `swift_cap.png`: sealed ends. `mouth.png`: the collar into a growth.
+  - `film.png`, `film_curve.png`, `pulse.png`, `bulge.png`: the wet film, the travelling pulse and the halo behind items.
+  - `knot_base.png`, `knot_bridge.png`, `knot_glow_h.png`, `knot_glow_v.png`: the Knot's bulb with its lower passage, the raised passage, and each passage's glow.
+  - `join_in.png`, `join_out.png` and their `_curve` versions: the fades used where a Swift Vine meets a Vine or a Knot.
+- **Settings and fallback:**
+  - Low quality, or any of these files failing to load, gives the previous vines exactly as before. The rest of the painted art is unaffected.
+  - Build-menu icons and the placement preview use the painted look too.
+- **Painter script:** `game/art-source/paint_vine.js` makes every texture above. The drawing code is `drawVinesPass`, `drawVine`, `drawVineFx`, `drawVineItems` and `drawKnot` in the game.

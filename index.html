@@ -2437,6 +2437,7 @@ const ART={plant:{
       {f:'membrane.png',anim:'pulse',min:.2,max:.42,period:7.5,blend:'lighter',g:'dome',rect:CH},
       {f:'glass.png',g:'dome',rect:CH},{f:'highlight.png',anim:'shimmer',amp:.01,period:8,blend:'screen',g:'dome',far:false,rect:CH},
       {f:'stinger.png',anim:'aim',rect:[.635,.478,.095,.044]}]},
+  vine:{name:'Vines',dir:'plant/vine/',vine:true,layers:['vine','vine_curve','swift','swift_curve','film','film_curve','cap','swift_cap','mouth','bulge','pulse','knot_base','knot_bridge','knot_glow_h','knot_glow_v','join_in','join_out','join_in_curve','join_out_curve'].map(n=>({f:n+'.png'}))},
   rootweb:{name:'Rootweb',dir:'plant/rootweb/',web:true,layers:[{f:'cells.png'},{f:'pulse.png'},{f:'sheen.png'},{f:'bud.png'}]},
   duo:{name:'Thorn Spitter',dir:'plant/thorn-spitter/',pad:.5,dome:[.5,.5,.094],breathe:{amp:.045,period:3.6},hurtShrink:.12,
     weapon:{lat:.0898,tip:.2422,recoil:.03,kick:.012,squeeze:.14,deflate:.14,tight:.07,flinch:.14,fireTight:.04,bend:.5,shear:.148},
@@ -2467,7 +2468,8 @@ function artLoad(){
 function artCrop(im,r){const N=im.width,cv=document.createElement('canvas');cv.width=Math.round(r[2]*N);cv.height=Math.round(r[3]*N);
   cv.getContext('2d').drawImage(im,Math.round(r[0]*N),Math.round(r[1]*N),cv.width,cv.height,0,0,cv.width,cv.height);cv.boxN=N;return cv;}
 function artReady(a){if(a.state==='failed')return;
-  if(a.web){a.state='ready';webArtReady(a);return;}   // the Rootweb textures feed its painter, not a building box
+  if(a.web){a.state='ready';webArtReady(a);return;}
+  if(a.vine){a.state='ready';vineArtReady(a);return;}   // the vessel textures are drawn by the vine pass   // the Rootweb textures feed its painter, not a building box
   // pre-composite everything at rest once: used for menu icons, zoomed-out views and big crowds
   const N=a.img[0].boxN||a.img[0].width;
   const comp=(keep,rect)=>{const cv=document.createElement('canvas');cv.width=cv.height=N;const c=cv.getContext('2d');
@@ -2571,7 +2573,97 @@ function artNestOverlay(c,x,y,S,b,tt,a){if(!b)return;const [dx,dy,dr]=a.dome,cx=
   if(pr>0){c.save();c.globalCompositeOperation='lighter';const g=c.createRadialGradient(cx,cy,0,cx,cy,dr*S*(.4+pr*.6));g.addColorStop(0,`rgba(190,255,170,${.15+pr*.35})`);g.addColorStop(1,'rgba(190,255,170,0)');c.fillStyle=g;c.beginPath();c.arc(cx,cy,dr*S,0,7);c.fill();c.restore();}
   if(pr>.75){c.save();const k=(pr-.75)/.25;c.globalAlpha*=k;const d=c.createRadialGradient(cx,cy,0,cx,cy,dr*S*.6);d.addColorStop(0,'rgba(8,20,14,.7)');d.addColorStop(1,'rgba(8,20,14,0)');c.fillStyle=d;c.beginPath();c.arc(cx,cy,dr*S*.6,0,7);c.fill();drawTank(c,b.unit,cx,cy,-Math.PI/2,-Math.PI/2,0,false);c.restore();}
   if(b.wants){c.strokeStyle=`rgba(166,224,90,${.35+.35*Math.sin(tt*5)})`;c.lineWidth=1.5;c.beginPath();c.arc(cx,cy,dr*S*1.12,0,7);c.stroke();}}
+// ---------- Painted Vines: Vine, Swift Vine and Vine Knot as living vessels ----------
+// Artwork only: everything here reads the belts' real state (direction, curve, items and their positions) and changes none of it.
+// The textures (art/plant/vine/) are painted 4x the tile size. Straight and curved vessels come as strips of 17 frames: 16 frames of
+// nutrient fluid moving one tile along the vessel, then a quiet frame for a vessel that has carried nothing for a moment.
+// All vessels are drawn first and their items after, so a neighbouring vessel never covers an item.
+const VF=16,VP=96;let VA=null;
+// visual state per vine (last time it carried something, its cached end pieces); kept off the block so saves never see it
+const VST=new WeakMap();
+function vineArtOn(){try{return SET.art&&ART.plant.vine.state==='ready';}catch(e){return false;}}
+function vineArtReady(a){const I={};a.layers.forEach((L,i)=>I[L.f.replace('.png','')]=a.img[i]);VA=I;
+  if(typeof G!=='undefined'&&G&&typeof buildMenu==='function'&&$('mgrid'))try{buildMenu();}catch(e){}}
+function vst(b){let s=VST.get(b);if(!s){s={act:-9,k:-1,fe:0,be:0,jf:0,jb:0};VST.set(b,s);}return s;}
+// what each end of a vessel meets: 0 another vessel or a Vine Knot (joined without a seam), 1 a growth (an opening), 2 nothing (a sealed end)
+function vineEnds(b,s){const key=G.blocks.size*7919+Math.floor(G.time*2);if(s.k===key)return;s.k=key;beltCurve(b);
+  const r=b.rot,f=blockAt(b.x+D4X[r],b.y+D4Y[r]);
+  s.fe=!f||f.team!==b.team?2:(B[f.t].belt||f.t==='junction')?0:1;
+  const bk=blockAt(b.x-D4X[r],b.y-D4Y[r]);
+  if(b._cv)s.be=0;
+  else if(bk&&bk.team===b.team&&(bk.t==='junction'||(B[bk.t].belt&&bk.x+D4X[bk.rot]===b.x&&bk.y+D4Y[bk.rot]===b.y)))s.be=0;
+  else s.be=bk&&bk.team===b.team&&BELT_OUT[bk.t]?1:2;
+  // a Swift Vine blends into a Vine or a Vine Knot it joins, front or back
+  const soft=o=>!!o&&o.team===b.team&&(o.t==='conveyor'||o.t==='junction');
+  s.jf=b.t==='tconveyor'&&s.fe===0&&soft(f);const sd=b._cv>0?(r+1)%4:(r+3)%4;s.jb=b.t==='tconveyor'&&s.be===0&&soft(b._cv?blockAt(b.x+D4X[sd],b.y+D4Y[sd]):bk);}
+// the frame a vessel shows now: moving fluid while its items are moving (and briefly after), still when it is empty or backed up
+function vineFrame(t,b,tt,lite){if(!b||lite)return VF;const s=vst(b);let m=0;for(const it of b.belt)m+=it.p;if(m!==s.m){s.m=m;if(b.belt.length)s.act=tt;}if(tt-s.act>.6||tt<s.act)return VF;
+  return Math.floor(((tt*B[t].speed)%1+1)%1*VF)%VF;}
+let vineLite=false;
+// one vessel's body: stubs for lines merging in from the side, the straight or curved vessel, and sealed ends or openings
+function drawVine(c,t,x,y,rot,b,tt){
+  if(t==='junction')return drawKnot(c,x,y,b,tt);
+  const fast=t==='tconveyor',s=b?beltCurve(b):0,cx=x+T/2,cy=y+T/2,fr=vineFrame(t,b,tt,vineLite),sx=fr*VP;
+  const st=b?(b._st||0):0,S=b?vst(b):null;if(b)vineEnds(b,S);
+  const strip=s?(fast?VA.swift_curve:VA.vine_curve):(fast?VA.swift:VA.vine);
+  c.save();c.translate(cx,cy);c.rotate(rot*Math.PI/2);
+  if(!s){
+    for(const sd of [1,-1]){if(!(st&(sd>0?1:2)))continue;c.save();c.rotate(-sd*Math.PI/2);c.drawImage(fast?VA.swift:VA.vine,sx,0,VP/2,VP,-T/2,-T/2,T/2,T);c.restore();}
+    const fc=S&&S.fe===2,bc=S&&S.be===2,a0=bc?40:0,a1=fc?56:VP;
+    c.drawImage(strip,sx+a0,0,a1-a0,VP,-T/2+a0/4,-T/2,(a1-a0)/4,T);
+    if(S&&S.jb)c.drawImage(VA.join_in,-T/2,-T/2,T,T);if(S&&S.jf)c.drawImage(VA.join_out,-T/2,-T/2,T,T);
+    const cap=fast?VA.swift_cap:VA.cap;
+    if(fc)c.drawImage(cap,0,-T/2,T,T);
+    if(bc){c.save();c.scale(-1,1);c.drawImage(cap,0,-T/2,T,T);c.restore();}
+    if(S&&S.be===1)c.drawImage(VA.mouth,-T,-T/2,T,T);
+  }else{if(s<0)c.scale(1,-1);c.drawImage(strip,sx,0,VP,VP,-T/2,-T/2,T,T);
+    if(S&&S.jb)c.drawImage(VA.join_in_curve,-T/2,-T/2,T,T);if(S&&S.jf)c.drawImage(VA.join_out_curve,-T/2,-T/2,T,T);if(s<0)c.scale(1,-1);}
+  if(S&&S.fe===1)c.drawImage(VA.mouth,0,-T/2,T,T);
+  c.restore();}
+// the items inside a vessel, drawn after every vessel and every effect: the membrane stretched round each one, then the item itself
+function drawVineItems(c,t,b){
+  const s=beltCurve(b),cx=b.x*T+T/2,cy=b.y*T+T/2,near=!vineLite;
+  for(const it of b.belt){const [ix,iy]=beltPos(cx,cy,b.rot,s,it.p);if(near)c.drawImage(VA.bulge,ix-5.6,iy-5.6,11.2,11.2);seedHD(c,it.i,ix,iy,6);}}
+// the low-priority motion of a moving vessel: a faint wet film along its walls, and now and then a nutrient pulse running down the line
+function drawVineFx(c,t,b,tt){
+  const fast=t==='tconveyor',s=beltCurve(b),x=b.x*T,y=b.y*T,cx=x+T/2,cy=y+T/2,rot=b.rot;
+  if(tt-vst(b).act>=.6)return;
+  if(b.belt.length){c.save();c.translate(cx,cy);c.rotate(rot*Math.PI/2);if(s<0)c.scale(1,-1);c.globalAlpha=.85;c.drawImage(s?VA.film_curve:VA.film,-T/2,-T/2,T,T);c.restore();}
+  // pulses: one every few tiles along the line, each one only on some lines and some cycles
+  const Lp=fast?5:8,vp=B[t].speed,along=b.x*D4X[rot]+b.y*D4Y[rot],lane=rot&1?b.x:b.y,g=tt*vp-along,n=Math.floor(g/Lp),w=g-n*Lp;
+  if(w<1&&hash(lane,n,rot+(fast?7:3))<(fast?.7:.4)){const [px,py]=beltPos(cx,cy,rot,s,w);const ang=s?rot*Math.PI/2+s*w*Math.PI/2:rot*Math.PI/2;
+    c.save();c.globalCompositeOperation='lighter';c.globalAlpha=fast?.6:.42;c.translate(px,py);c.rotate(ang);c.drawImage(VA.pulse,-7,-3.5,14,7);c.restore();}}
+// Vine Knot: the lower passage runs left-right inside the swelling, the raised one runs top-bottom over it.
+// Each item is shown in its own passage, moving from the side it came in towards the side it leaves by.
+function drawKnot(c,x,y,b,tt){const cx=x+T/2,cy=y+T/2;
+  c.drawImage(VA.knot_base,x,y,T,T);
+  const items=(axis)=>{if(!b)return;for(const k of axis){const q=b.buf[k];if(!q.length)continue;
+    const pr=Math.min(1,q[0].t/.08),o=(-.36+.72*pr)*T;
+    if(!vineLite)c.drawImage(VA.bulge,cx+D4X[k]*o-5,cy+D4Y[k]*o-5,10,10);seedHD(c,q[0].i,cx+D4X[k]*o,cy+D4Y[k]*o,5.4);
+    if(q.length>1&&pr>.35){const o2=-.36*T;seedHD(c,q[1].i,cx+D4X[k]*o2,cy+D4Y[k]*o2,5.4);}}};
+  const live=b&&!vineLite&&!ART_RM,glow=(im,on,ph)=>{if(!on)return;c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.28+.16*Math.sin(tt*9+ph);c.drawImage(im,x,y,T,T);c.restore();};
+  const hOn=!!b&&(b.buf[0].length||b.buf[2].length),vOn=!!b&&(b.buf[1].length||b.buf[3].length);
+  if(live)glow(VA.knot_glow_h,hOn,0);
+  items([0,2]);
+  // the raised passage swells a touch while it carries something
+  if(live&&vOn){const k=1+.035*Math.sin(tt*12);c.save();c.translate(cx,cy);c.scale(k,1);c.drawImage(VA.knot_bridge,-T/2,-T/2,T,T);c.restore();}
+  else c.drawImage(VA.knot_bridge,x,y,T,T);
+  if(live)glow(VA.knot_glow_v,vOn,1.7);
+  items([1,3]);}
+// the render pass: every vessel in view, then every vessel's items (called before the other buildings are drawn)
+function drawVinesPass(c,inView,time,z){const L=[];for(const b of G.blocks.values())if(!b.team&&VINE[b.t]&&inView(b.x,b.y,1))L.push(b);
+  vineLite=z<ART_LOD_ZOOM||L.length>VINE_LOD_MAX;c.imageSmoothingEnabled=true;
+  // vessels first, then their film and pulses, then the Vine Knots (each with its own items, since one passage runs over the other),
+  // then every item in every vessel, so nothing covers a resource
+  const each=(f,k)=>{for(const b of L)if(k(b)){if(b.built<1){c.save();c.globalAlpha=.4+.6*b.built;}f(b);if(b.built<1)c.restore();}};
+  each(b=>drawVine(c,b.t,b.x*T,b.y*T,b.rot,b,time),b=>b.t!=='junction');
+  if(!vineLite&&!ART_RM)each(b=>drawVineFx(c,b.t,b,time),b=>b.t!=='junction'&&b.belt.length);
+  each(b=>drawKnot(c,b.x*T,b.y*T,b,time),b=>b.t==='junction');
+  each(b=>drawVineItems(c,b.t,b),b=>b.t!=='junction'&&b.belt.length);
+  c.imageSmoothingEnabled=SET.hd;return L.length;}
+const VINE_LOD_MAX=450;   // more vessels than this on screen: still frames, no pulses or film (items always show)
 function drawBlock(c,t,x,y,rot,b,time,team){
+  if(!team&&VINE[t]&&vineArtOn()){c.save();c.imageSmoothingEnabled=true;drawVine(c,t,x,y,rot,b,time||0);c.restore();return;}
   if(drawArt(c,t,x,y,rot,b,time,team))return;
   if(SET.hd&&drawBlockHD(c,t,x,y,rot,b,time,team))return;
   if(!team&&drawOrganic(c,t,x,y,rot,b,time))return;
@@ -2687,10 +2779,12 @@ function render(){
    artLite=z<ART_LOD_ZOOM||n>ART_LOD_MAX;artMid=!artLite&&n>ART_MID_MAX;artDrawn=0;
    // roots that reach past a building's own tile go down before any building, so neighbours always sit on top of them
    for(const b of und){if(b.built<1){ctx.save();ctx.globalAlpha=.4+.6*b.built;}drawArtUnder(ctx,b,time);if(b.built<1)ctx.restore();}}
+  // painted vessels: all bodies, then all their items, before any other building
+  const vineP=vineArtOn()?(drawVinesPass(ctx,inView,time,z),1):0;
   for(const b of G.blocks.values()){if(!inView(b.x,b.y,3))continue;if(b.team===1&&!fogSeen(b.x,b.y))continue;
     const S=b.size*T;
     if(b.built<1){ctx.save();ctx.globalAlpha=.4+.6*b.built;}
-    if(SET.hd)ctx.imageSmoothingEnabled=true;drawBlock(ctx,b.t,b.x*T,b.y*T,b.rot,b,time,b.team);if(SET.hd)ctx.imageSmoothingEnabled=false;
+    if(!(vineP&&!b.team&&VINE[b.t])){if(SET.hd)ctx.imageSmoothingEnabled=true;drawBlock(ctx,b.t,b.x*T,b.y*T,b.rot,b,time,b.team);if(SET.hd)ctx.imageSmoothingEnabled=false;}
     if(b.built<1)ctx.restore();
     if(b.hit>0){ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(b.x*T,b.y*T,S,S);}
     if(G.sel===b.id){ctx.strokeStyle=TEAM_COL[b.team];ctx.lineWidth=2;ctx.strokeRect(b.x*T-1,b.y*T-1,S+2,S+2);
