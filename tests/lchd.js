@@ -1,0 +1,21 @@
+const {chromium}=require(process.env.PW||'playwright');
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1400,height:850}});
+ const errs=[];p.on('pageerror',e=>errs.push(e.message+' '+e.stack));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+ await p.goto('file://'+process.cwd()+'/index.html');await p.waitForTimeout(300);
+ await p.click(process.argv[2]==='siege'?'#m-siege':'#m-survival');await p.waitForTimeout(200);
+ await p.click('#setBtn');await p.waitForTimeout(100);await p.screenshot({path:'hd_settings.png'});
+ const t0=Date.now();await p.click('#optHD');await p.waitForTimeout(200);
+ await p.waitForFunction(()=>true);console.log('toggle ms',Date.now()-t0);
+ await p.click('#setClose');
+ await p.evaluate((siege)=>{const G=window.__game();G.items=G.items.map(()=>3000);G.webFree=true;TECH.forEach(n=>G.unlocked.add(n[0]));
+  for(let k=0;k<30*25;k++)step(1/30);
+  const pl=[['duo',4,-4],['hail',5,-4],['scatter',6,-6],['wall',4,-7],['wallL',6,-8],['node',-4,4],['solar',3,4],['combustion',4,4],['bellows',6,3],['factory',-7,-2],['press',-4,-6]];
+  for(const [t,dx,dy] of pl)tryPlace(t,G.core.x+dx,G.core.y+dy,0,true);
+  for(let k=0;k<6;k++)tryPlace('conveyor',G.core.x-6+k,G.core.y+1,0,true);
+  for(let k=0;k<3;k++)spawnUnit(k%2?'htank':'tank',G.core.x+7+k*1.4,G.core.y+1);
+  spawnEnemy('dagger');spawnEnemy('fortress');for(const e of G.enemies){e.x=G.core.x+11+Math.random()*2;e.y=G.core.y+Math.random()*3;}
+  if(siege){centerOn(G.spawn.x-3,G.spawn.y);cam.z=.9;}else{cam.z=1.3;centerOn(G.core.x+3,G.core.y);}G.paused=true;},process.argv[2]==='siege');
+ await p.waitForTimeout(400);await p.screenshot({path:'hd_'+(process.argv[2]||'surv')+'.png'});
+ const ft=await p.evaluate(()=>{const t=performance.now();for(let k=0;k<20;k++)render();return (performance.now()-t)/20;});console.log('render ms',ft.toFixed(1));
+ const bt=await p.evaluate(()=>{const t=performance.now();buildHDTerrain();return performance.now()-t;});console.log('build ms',bt|0);
+ console.log(errs.slice(0,3));await b.close();})();

@@ -1,0 +1,7 @@
+node_modules/
+electron/app/
+electron/out/
+*.zip
+# screenshots and results written by the test scripts when run from the repo root
+/*.png
+/*_result.json

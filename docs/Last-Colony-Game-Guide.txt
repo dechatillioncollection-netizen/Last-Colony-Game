@@ -1,0 +1,157 @@
+Last Colony: Game Guide
+=======================
+
+October 14, 2026
+
+Game overview
+
+Last Colony is a top-down 2D factory-defence strategy game in the spirit of Mindustry. You play the invader for once. The Pl-Ant Hive is a living swarm of aquatic plant life that takes root on the planet Nereth, and the Human Defence Force (HDF) is fighting to stop it.
+
+The factions
+
+- Pl-Ant Hive (the Brood): a single organism spread across many bodies. The Seed Cluster is its distant central intelligence. On each map it plants a Bloom, a giant waterlily-like heart that stores everything the swarm gathers and spits at anything close. If the Bloom dies, you lose the map.
+- Human Defence Force: the military of Nereth's human settlers, led by Supreme General Varrick. It fights with industrial machinery: drills, conveyors, steel walls, turrets, tanks, drones and bombers.
+
+How you play
+
+1. Grow Root Taps on ore veins (copper, lead, coal, sand, titanium) and lay Vines that carry the ore to your Bloom or straight into turrets.
+2. Spread Rootweb, the purple living carpet your growths must stand on. It grows outward from the Bloom and from Rootweb Nodes.
+3. Turn raw ore into better materials. Resin Glands digest coal into resin; Chitin Vats grow coal and sand into chitin.
+4. Make vigor (power) with Sap Burners and Sunleaves to run advanced growths such as the Chitin Vat, Sunlance, Healing Pod and Brood Chamber.
+5. Defend with spitters and bark walls fed by vine, then hatch ants and send them to Defend the Bloom or Attack.
+6. Spend resources in the Evolution tree to unlock new growths.
+
+Resources: Copper, Lead, Sand, Coal and Titanium are mined. Resin and Chitin are processed. Titanium needs a Deep Root.
+
+Modes: a five-mission Campaign across the planet Nereth, plus two standalone modes, Survival and Base Siege. Optional extras are fog of war, the HD Remaster look, painted artwork for the Bloom and Spawning Pod, save slots and save files, and a Test Range save for trying units and turrets.
+
+Pl-Ant Hive structures
+
+The swarm has 26 growths, including the Bloom. All of them except the Bloom, Vines, Swift Vines and Vine Knots must be planted on Rootweb.
+
+- Bloom (Heart, 3×3): The swarm's headquarters on each map. Stores everything gathered, grows Rootweb toward 30% of the map and spits at nearby enemies. Lose it and you lose the map.
+- Thorn Spitter (Spitters, 1×1): Twin thorns at ground and air. Fed copper, resin or chitin.
+- Spore Flak (Spitters, 2×2): Spore bursts against flyers only. Fed lead or chitin.
+- Seed Mortar (Spitters, 1×1): Long-range exploding seed pods against ground targets. Fed resin or chitin.
+- Sunlance (Spitters, 2×2): A piercing beam of light against ground targets. Uses 40 vigor.
+- Root Tap (Roots, 2×2): Mines copper, lead, coal or sand and pushes it into adjacent vines.
+- Deep Root (Roots, 2×2): A faster tap that can also break down titanium.
+- Vine (Vines, 1×1): Carries items in the direction it grows. Units can walk over it.
+- Swift Vine (Vines, 1×1): A vine about twice as fast. Grow it over old vines to upgrade them.
+- Vine Knot (Vines, 1×1): Lets two vines cross without mixing.
+- Splitter Bulb (Vines, 1×1): Splits incoming items evenly between its other sides.
+- Sorting Gland (Vines, 1×1): Passes one chosen item straight through and sends the rest left or right.
+- Resin Gland (Glands, 2×2): Digests 2 coal into 1 resin.
+- Chitin Vat (Glands, 2×2): Grows 1 coal and 2 sand into chitin. Uses 30 vigor.
+- Sap Burner (Vigor, 1×1): Burns coal for 60 vigor.
+- Sunleaf (Vigor, 1×1): A trickle of 5 vigor from sunlight, no fuel.
+- Rootweb Node (Rootweb, 1×1): Grows a new patch of Rootweb. Chain them outward.
+- Spore Bellows (Rootweb, 2×2): Doubles Rootweb spread within 12 tiles. Uses 10 vigor.
+- Bark Wall (Bark, 1×1): Basic wall that soaks up fire.
+- Great Bark (Bark, 2×2): Four bark walls in one.
+- Ironbark (Bark, 1×1): A much tougher wall hardened with titanium.
+- Petal Gate (Bark, 1×1): A wall that opens for your ants. Too narrow for Bulwark Ants.
+- Maw Gate (Bark, 2×2): A wide gate that opens for every ant, Bulwarks included.
+- Healing Pod (Bark, 1×1): Mends your growths within 6 tiles. Uses 12 vigor.
+- Spawning Pod (Brood, 2×2): Grows Mite Ants from copper and lead. No vigor needed.
+- Brood Chamber (Brood, 3×3): Hatches Thornback and Bulwark Ants. Uses 30 vigor.
+
+Evolutions that aren't buildings: Rapid Rooting makes Rootweb spread 60% faster, and Spore Winds adds another 60% and gives Rootweb Nodes 2 more tiles of reach.
+
+HDF structures
+
+The HDF builds 18 kinds of structure. It plays by the same rules as you: its drills and conveyors feed its turrets, factories and generators, and cutting that supply starves its defences.
+
+- Colony Core (Command, 3×3): The colony's headquarters. Stores resources, pays for every unit it sends and fires at anything close. Destroy every core to win a base attack.
+- Duo Turret (Turrets, 1×1): Twin-barrel gun that fires at your ants and growths. The colony's basic defence.
+- Hail Cannon (Turrets, 1×1): Long-range artillery against ground targets.
+- Flak Turret (Turrets, 2×2): Anti-air flak. The swarm has no flyers, so it never fires and works as a tough obstacle.
+- Lancer (Turrets, 2×2): A charged energy beam against ground targets. Needs generator power.
+- Mining Drill (Mining, 2×2): Mines copper, lead, coal or sand onto conveyors.
+- Pneumatic Drill (Mining, 2×2): A faster drill that also mines titanium.
+- Conveyor (Logistics, 1×1): Moves resources along a belt.
+- Junction (Logistics, 1×1): Lets two conveyor lines cross.
+- Router (Logistics, 1×1): Splits a conveyor line between its outputs.
+- Graphite Press (Industry, 2×2): Presses coal into graphite, the colony's heavy ammunition.
+- Silicon Smelter (Industry, 2×2): Smelts coal and sand into silicon. Needs power.
+- Generator (Power, 1×1): Burns coal for power.
+- Steel Wall (Defence, 1×1): Basic armour plating.
+- Large Steel Wall (Defence, 2×2): Four steel walls in one.
+- Titanium Wall (Defence, 1×1): Heavier titanium armour.
+- Blast Door (Defence, 1×1): A door in the wall that opens for HDF units.
+- Heavy Blast Door (Defence, 2×2): A wide door for heavy HDF vehicles.
+
+The Test Range also shows HDF versions of the Titanium Conveyor, Sorter, Solar Panel, Mender and Ground Factory, but the colony never builds them in a match.
+
+Units
+
+Ants hatch from your Spawning Pods and Brood Chambers. HDF machines arrive in waves, or are paid for by a colony core in base attacks.
+
+- Mite Ant (Pl-Ant Hive, hits ground): Small and cheap, grown from copper and lead. Weak alone, dangerous in packs.
+- Thornback Ant (Pl-Ant Hive, hits ground and air): Quick warrior that spits thorns. Grown from chitin and lead.
+- Bulwark Ant (Pl-Ant Hive, hits ground): Huge armoured ant that lobs acid seeds with splash. Grown from chitin, resin and titanium.
+- Scout Tank (HDF, hits ground): Light tank and the backbone of every wave.
+- Rammer Drone (HDF, hits ground): Fast drone that rams a target and explodes.
+- Flame Tank (HDF, hits ground): Slow, tough tank with a short-range flamethrower.
+- Siege Tank (HDF, hits ground): Heavy artillery tank that outranges most defences.
+- Interceptor (HDF, hits ground (flies)): Fast aircraft that circles and strafes.
+- Bomber (HDF, hits ground (flies)): Flies over walls and bombs your growths.
+
+You order your swarm with one button: Defend keeps the ants near the Bloom, and Attack sends them after the enemy. You can also select ants and send them to a spot.
+
+Campaign synopsis
+
+The campaign is five sectors on the planet Nereth, played in order from a spinning globe. It traces first contact through to the fall of the last human colony. In Missions 1 to 3 each side only talks to itself, and the Seed Cluster speaks to the humans directly for the first time in Mission 5.
+
+How the campaign works: each captured sector keeps producing resources into a shared global stock. Evolutions are paid from that stock and kept for every later sector. You can return to a captured sector with your base still running, for example to mine titanium once you have Deep Roots.
+
+1. Landfall: hold 10 waves
+
+A quiet meadow where the swarm first takes root. The Bloom wakes and tells the Seed Cluster what lies beneath it. The Seed Cluster tells it to feed itself and grow defences, though it doesn't yet know what from.
+
+A mandatory tutorial teaches the controls: selecting units, moving the map, using structures, mining and building, then the first Thorn Spitter.
+
+Then comes a scripted first contact with combat switched off. HDF Patrol 7 (Private Kessler and Sergeant Okafor) walks up the track and finds purple growth that wasn't there yesterday. They see a spiked structure turn toward them and back away without firing. Okafor reports to Lieutenant Castell at HDF Command. Castell escalates to Supreme General Varrick, who orders a cordon, samples and burning. The patrol withdraws.
+
+The Bloom tells the Seed Cluster that the hard things watched it, and that it reached back. Waves begin. After victory, the Seed Cluster concludes the humans were trying to remove them, not feed on them, and sends the Bloom north-east to find where they come from.
+
+2. Ember Fields: hold 15 waves
+
+Scorched coal plains, with flame tanks and bombers late on. You learn to digest coal into resin, a stronger thorn ammunition.
+
+At the Ember Depot, Corporal Adeyemi teases Okafor about being chased off by a flower. Okafor admits the stories are true: it grows fast, hates fire and the spiky ones shoot back. Command warns the depot that growth is moving toward the coal fields.
+
+After victory, the Seed Cluster notices the humans' radio pulses change before each attack. Something is directing them, and the Bloom is told to find it.
+
+3. Outpost Kilo: destroy the outpost
+
+The first base attack: an HDF mining outpost guarding the only pass through the Kilo ridge. Its drills feed its guns, so you cut its belts, outrange it with Seed Mortars and send in Mite Ants.
+
+Varrick learns Ember Depot has fallen. Dr. Brandt of the Biohazard Division reports that samples taken at Landfall keep growing in containment and respond to each other across separate containers. Brandt warns that a larger organism may be feeding the visible growth. Colonel Ruiz is ordered to hold the pass. The Bloom follows the ore into the walls, as the Seed Cluster instructed: take away what keeps their weapons working.
+
+After victory, the Bloom finds pieces of the swarm sealed away, cut open and kept alive in the outpost's labs. The Seed Cluster realises the humans are learning about them, too.
+
+4. Frost Canyon: hold 18 waves
+
+A frozen canyon with titanium in its walls. Heavy siege tanks advance along the canyon floor with bomber wings overhead. You need Spore Flak, Sap Burners for vigor, Chitin Vats and Deep Roots.
+
+Brandt shows Varrick that at Kilo the swarm cut the supply belts first, then the ammunition, then went for the command centre. That is planning, not just growth. Varrick broadcasts a warning on every frequency: withdraw from our settlements or be destroyed. The Seed Cluster partly decodes it (boundaries, going away, destruction) and decides not to answer while it understands so little.
+
+After victory, the human signals all come from one place. Their last forces are gathering to survive.
+
+5. The Last Colony: destroy the fortress
+
+A full mirrored fortress with walls, blast doors, Lancers and a working economy. Varrick makes a final stand here, with soldiers and evacuated civilians behind the walls.
+
+The Seed Cluster breaks into the HDF command band, and the two sides speak for the first time. Varrick accuses it of killing HDF soldiers. The Seed Cluster answers that the humans burned and cut the swarm first. Varrick begs it to turn back for the families inside. The Seed Cluster replies that it turned away before and the fire followed, and that the humans chose long ago.
+
+To win you need Bulwark Ants, Thornbacks and Healing Pods.
+
+In the ending, the inner gate falls. Varrick orders the survivors into sealed underground shelters as the command feed breaks up mid-sentence. The Bloom senses lives still beneath the stone and asks whether to follow them. The Seed Cluster says "Not today" and tells it to do what it was made to do: grow.
+
+Survival and Base Siege
+
+Both modes start with every growth already evolved and their own starting stock of 300 copper and 100 lead. Nothing in them touches your campaign stock or evolutions.
+
+- Survival: a random 96×96 map. Hold your Bloom against 25 waves of HDF war machines that enter from a red zone. Waves grow from Scout Tanks to Rammer Drones, Interceptors, Flame Tanks, Bombers and Siege Tanks, with a boss every 10th wave.
+- Base Siege: a large mirrored map with a full HDF colony on the far side. The colony mines, builds and pays for every unit it sends, so cutting its drills and conveyors weakens its attacks. You win by destroying its core.

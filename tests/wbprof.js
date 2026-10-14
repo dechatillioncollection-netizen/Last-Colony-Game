@@ -1,0 +1,13 @@
+const {chromium}=require(process.env.PW||'playwright');
+(async()=>{const br=await chromium.launch();const p=await br.newPage({viewport:{width:1000,height:700}});
+ await p.addInitScript(()=>{try{localStorage.setItem('lc_hd','1');localStorage.setItem('lc_fog','0');localStorage.setItem('lc_art','1')}catch(e){}});
+ await p.goto('http://localhost:8123/index.html');await p.waitForTimeout(900);
+ await p.evaluate(()=>{Math.random=(()=>{let s=11;return()=>(s=(s*16807)%2147483647)/2147483647})();startGame('survival');const G=window.__game();G.countdown=1e9;G.items=G.items.map(v=>v+5000);const cx=G.core.x,cy=G.core.y;
+   const put=(t,x,y)=>tryPlace(t,x,y,0,true);for(let k=0;k<30*25;k++)step(1/30);
+   [put('nest',cx+4,cy-1),put('nest',cx-4,cy+2),put('duo',cx+2,cy-3),put('duo',cx+3,cy+3),put('duo',cx-2,cy-3),put('node',cx+6,cy+4),put('bellows',cx-6,cy-3)];
+   for(let k=0;k<30*30;k++)step(1/30);G.paused=true;});
+ const cdp=await p.context().newCDPSession(p);await cdp.send('Profiler.enable');await cdp.send('Profiler.setSamplingInterval',{interval:100});await cdp.send('Profiler.start');
+ const ms=await p.evaluate(()=>{const t=performance.now();for(let k=0;k<3;k++)repaintAllWeb();const a=(performance.now()-t)/3;SET.art=false;const t2=performance.now();for(let k=0;k<3;k++)repaintAllWeb();const b=(performance.now()-t2)/3;SET.hd=false;const t3=performance.now();for(let k=0;k<3;k++)repaintAllWeb();const c=(performance.now()-t3)/3;SET.art=true;SET.hd=true;return [a,b,c,window.__game().webCount];});
+ const {profile}=await cdp.send('Profiler.stop');const self={};const dt=profile.timeDeltas;const id2n={};for(const n of profile.nodes)id2n[n.id]=n;
+ profile.samples.forEach((id,k)=>{const n=id2n[id];const key=n.callFrame.functionName+':'+n.callFrame.lineNumber;self[key]=(self[key]||0)+(dt[k]||0);});
+ console.log("art,hd,classic ms + tiles",ms);console.log(Object.entries(self).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,v])=>k+' '+(v/1000).toFixed(0)+'ms').join('\n'));await br.close();})();

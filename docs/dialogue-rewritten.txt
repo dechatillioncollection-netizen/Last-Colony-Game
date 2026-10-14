@@ -1,0 +1,352 @@
+LAST COLONY - CAMPAIGN DIALOGUE (REWRITTEN)
+==========================================
+
+EDITING NOTES
+- Keep SPEAKER codes, === event IDs === and WHEN lines unchanged for integration.
+- Every SPEAKER: entry is one dialogue box. Ellipses and interruptions are intentional.
+- Missions 1-3: no direct human/plant communication.
+- Mission 4: humans broadcast toward the plants; the plants hear, but do not reply.
+- Mission 5: first two-way exchange.
+- Gameplay instructions belong in tutorial/objective UI, not in dialogue.
+- During fc_patrol/fc_command/fc_general, freeze hostile combat AI and make the scripted patrol safe. It withdraws before combat is re-enabled.
+
+CHARACTERS (code | name shown in game | role line)
+SEED  | SEED CLUSTER | Central intelligence of the swarm
+BLOOM | THE BLOOM | Living headquarters on this ground
+PVT   | PVT. KESSLER | HDF Patrol 7, scout
+SGT   | SGT. OKAFOR | HDF Patrol 7, leader
+CPL   | CPL. ADEYEMI | HDF Ember Depot
+OPS   | LT. CASTELL | HDF Command, operations
+COL   | COL. RUIZ | Commander, Outpost Kilo
+SCI   | DR. BRANDT | HDF Biohazard Division
+GEN   | SUPREME GENERAL VARRICK | Human Defence Force
+
+------------------------------------------------------------
+MISSION 1, LANDFALL
+------------------------------------------------------------
+
+=== l_intro ===
+WHEN: Mission 1, Landfall. Opening, before the tutorial.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: I can feel the sun.
+SEED: Good. Tell me what lies beneath you.
+BLOOM: Water. Copper. Something old, buried deep. The soil is... crowded.
+SEED: Crowded?
+BLOOM: Small lives. They scatter when I reach for them.
+SEED: Let them. We need the ground, not the creatures on it.
+BLOOM: And the hard trails beyond the meadow? They tremble even when nothing moves.
+SEED: I feel them too. For now, stay close to your roots. Feed yourself. Grow a way to defend what you've taken.
+BLOOM: From what?
+SEED: I don't know yet.
+
+# TUTORIAL (UI, NOT SPOKEN): Automatically begin tutorial after l_intro. Teach camera,
+# selection, Rootweb, copper collection/vines, building, and a first Thorn Spitter.
+# Completing the Thorn Spitter triggers fc_patrol. Do not spawn the discovery patrol earlier.
+
+=== fc_patrol ===
+WHEN: Mission 1. First contact: scripted Patrol 7 reaches your first Thorn Spitter after the tutorial build step.
+CHANNEL: HDF PATROL NET · PATROL 7
+PVT: Sarge, hold up a second.
+SGT: What is it?
+PVT: Was this here yesterday?
+SGT: Was what here?
+PVT: The... purple stuff. All through the grass.
+SGT: Huh. No, I don't think so.
+PVT: It's growing across the track. Look, it's moving right now.
+SGT: Step back from it.
+PVT: There's something bigger behind those rocks.
+SGT: I see it.
+PVT: That thing with the spikes... Sarge, it just turned.
+SGT: Kessler. Back. Now.
+PVT: I'm backing up.
+SGT: Nobody fire. We haven't been attacked. Just keep your eyes on it.
+
+=== fc_command ===
+WHEN: Mission 1. First contact: Patrol 7 reports to HDF Command.
+CHANNEL: HDF COMMAND · PATROL 7
+SGT: Command, Patrol Seven. Need you to check something for me.
+OPS: Go ahead, Seven.
+SGT: We've got some kind of growth out by the meadow. It wasn't on yesterday's route.
+OPS: How much growth?
+SGT: Enough to cover the track. And there's a structure. Organic, I think. Taller than our transport.
+OPS: A structure?
+SGT: I know how that sounds. I'm sending video.
+OPS: ...One moment.
+PVT: Tell them about the spikes.
+SGT: And one of the growths moved when we approached. Deliberately.
+OPS: Seven, stay where you are. Don't touch anything. I'm escalating this.
+
+=== fc_general ===
+WHEN: Mission 1. First contact: Command brings in the Supreme General. Afterwards patrol withdraws.
+CHANNEL: SECURE LINE · HDF COMMAND
+GEN: Lieutenant. Why am I seeing a field of purple weeds on my priority feed?
+OPS: Patrol Seven sent it in, sir. This wasn't there twenty-four hours ago.
+GEN: You're certain?
+OPS: Their route camera confirms it. Clear ground yesterday. This today.
+GEN: Mining spill? Agricultural experiment?
+OPS: Nothing registered nearby. Biohazard hasn't identified it either.
+GEN: Has it hurt anyone?
+OPS: No, sir. Patrol's holding at a distance.
+GEN: Good. Keep it that way. Get your people out and cordon off the meadow.
+OPS: And the growth itself?
+GEN: Send a clearance crew. Take samples if it's safe. Burn the rest before it reaches a settlement.
+OPS: Understood.
+GEN: Lieutenant... I want to know how an entire field changed overnight without anyone noticing.
+
+=== fc_after ===
+WHEN: Mission 1. After patrol safely withdraws. Tutorial ends and attack waves begin.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The hard things have gone.
+SEED: Not far. I still feel them beyond your roots.
+BLOOM: They watched me. One reached toward me, then stopped.
+SEED: And you reached back.
+BLOOM: I wanted to know what it was.
+SEED: So did it.
+BLOOM: Will they return?
+SEED: Yes. Something is moving toward us now. Many of them.
+BLOOM: Then I'll make more thorns.
+SEED: Quickly.
+
+=== l_out ===
+WHEN: Mission 1. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The last of the burning shells is still.
+SEED: Keep your roots away from the hot metal.
+BLOOM: They came straight for me. Again and again.
+SEED: They weren't feeding. They were trying to remove us.
+BLOOM: Why?
+SEED: We changed their ground. Perhaps that's enough.
+BLOOM: There are more trails to the north-east.
+SEED: I know. Follow them. We need to learn where these things come from.
+
+------------------------------------------------------------
+MISSION 2, EMBER FIELDS
+------------------------------------------------------------
+
+=== e_intro ===
+WHEN: Mission 2, Ember Fields. Opening (plants).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The ground tastes burned.
+SEED: Coal beneath the ash. Feel how much heat it keeps.
+BLOOM: It stings my roots.
+SEED: Then change what you grow. Some of that heat can be made useful.
+BLOOM: More of the walking shells are here. I can feel the shaking through the stone.
+SEED: They gather around the black deposits.
+BLOOM: Are they waiting for us?
+SEED: No. They haven't stopped their work. Spread before they notice how close we are.
+BLOOM: And if they do?
+SEED: You know what their fire feels like now. Don't let it reach your heart.
+
+=== e_humans ===
+WHEN: Mission 2. Opening (humans, right after the plants).
+CHANNEL: HDF EMBER DEPOT · OPEN CHANNEL
+CPL: Hey, Okafor. You really saw that thing out at Landfall?
+SGT: Unfortunately.
+CPL: My cousin says you lot got chased off by a flower.
+SGT: Tell your cousin he can go photograph it himself.
+CPL: So the stories are true?
+SGT: Some of them. It grows fast. It doesn't like being burned. And the spiky ones fire something back.
+CPL: You're joking.
+SGT: Look at me. Am I joking?
+OPS: Ember Depot, this is Command. Confirm your northern perimeter is clear.
+CPL: Clear as of ten minutes ago.
+OPS: Check it again. We've had reports of similar growth moving toward the coal fields.
+CPL: Copy. I'll send a team.
+SGT: Send two.
+
+=== e_out ===
+WHEN: Mission 2. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Their fires have stopped.
+SEED: Listen.
+BLOOM: I hear nothing.
+SEED: Not through the roots. Through the air. The same pulses, over and over. Before each group came, the pulses changed.
+BLOOM: One calls. The others move.
+SEED: Yes.
+BLOOM: Then there is something giving them direction.
+SEED: Find it.
+
+------------------------------------------------------------
+MISSION 3, OUTPOST KILO
+------------------------------------------------------------
+
+=== k_humans ===
+WHEN: Mission 3, Outpost Kilo. Opening (humans).
+CHANNEL: HDF COMMAND · OUTPOST KILO
+GEN: Ruiz. Tell me you've got the ridge secured.
+COL: East and west approaches covered. We're reinforcing the pass now.
+GEN: Ember Depot went silent six hours ago.
+COL: I know, sir. We heard the last transmission.
+GEN: And?
+COL: A lot of gunfire. Then someone shouting about roots inside the perimeter.
+GEN: Christ. Brandt, give me something useful.
+SCI: We recovered tissue from Landfall. The samples are still growing in containment.
+GEN: After being cut off?
+SCI: Yes. They're responding to one another, even across separate containers. I can't explain how yet.
+COL: Can you tell us where to shoot?
+SCI: Destroying the visible growth doesn't always stop it. There may be a larger organism feeding the smaller structures.
+COL: "May be" isn't going to help my men.
+SCI: I know, Colonel.
+GEN: Then don't rely on one line of guns. Protect your drills, protect your ammunition, and hold that pass.
+COL: We'll hold it.
+
+=== k_intro ===
+WHEN: Mission 3. Opening (plants, right after the humans).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: I've found where the signals gather.
+SEED: Show me.
+BLOOM: Stone cut into straight walls. Metal everywhere. The ground won't breathe beneath it.
+SEED: That is where they shelter.
+BLOOM: Their machines keep pulling ore from the ridge. They carry it into the walls.
+SEED: Follow the ore.
+BLOOM: To their heart?
+SEED: To what keeps their weapons working. Take that away first.
+BLOOM: They will come out to stop me.
+SEED: Then make them come out hungry.
+
+=== k_out ===
+WHEN: Mission 3. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Something is wrong inside this place.
+SEED: What do you feel?
+BLOOM: Pieces of us. Sealed away. Cut open. Kept alive, but unable to grow.
+SEED: ...I feel them.
+BLOOM: Why would the shells do that?
+SEED: The same reason we followed their signals.
+BLOOM: To understand.
+SEED: Yes. They are learning about us.
+BLOOM: Are we learning quickly enough?
+SEED: We'll have to.
+
+------------------------------------------------------------
+MISSION 4, FROST CANYON
+------------------------------------------------------------
+
+=== f_humans ===
+WHEN: Mission 4, Frost Canyon. Opening (humans).
+CHANNEL: HDF HIGH COMMAND · CLASSIFIED
+SCI: General, I need you to look at the sequence from Kilo.
+GEN: I've seen the footage.
+SCI: Not this part. Watch the supply belts.
+GEN: They go down before the guns.
+SCI: Exactly. Then the ammunition stores. Only then does it push for the command centre.
+COL: That's what any decent commander would do.
+SCI: That's my point.
+GEN: You're telling me this thing is planning attacks.
+SCI: I'm telling you we can no longer call it a thing that just grows.
+GEN: How many more people have to die before you can tell me what it is?
+SCI: I don't know what it is, sir. I know it's listening. Those root networks carry patterned signals.
+GEN: Then put a message on every frequency we have.
+SCI: A message?
+GEN: Tell it to withdraw from our settlements. Tell it we will destroy any growth that crosses into them.
+COL: You think it'll understand?
+GEN: I think we've been wrong about what it understands. I won't make that mistake again.
+
+=== f_intro ===
+WHEN: Mission 4. Opening (plants, right after the humans).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: That sound again. It's everywhere now.
+SEED: The shells are making it for us.
+BLOOM: Can you make sense of it?
+SEED: Pieces. Boundaries. Going away. Destruction.
+BLOOM: They're afraid.
+SEED: They're warning us.
+BLOOM: Should we answer?
+SEED: No. Not while we know so little of their meaning.
+BLOOM: The canyon is narrow. Their heavy shells are already moving into it.
+SEED: And things with wings above them. You'll need to reach into the sky this time.
+BLOOM: The rock beneath me is hard. There's something valuable inside.
+SEED: Titanium. You'll need deeper roots to reach it. Hold the canyon while you grow them.
+
+=== f_out ===
+WHEN: Mission 4. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The canyon has gone quiet.
+SEED: Their signals haven't.
+BLOOM: They're coming from one place now. So many voices together.
+SEED: Their remaining forces are gathering.
+BLOOM: To attack?
+SEED: To survive.
+BLOOM: Is that different?
+SEED: Not to them. Not anymore.
+
+------------------------------------------------------------
+MISSION 5, THE LAST COLONY
+------------------------------------------------------------
+
+=== x_humans ===
+WHEN: Mission 5, The Last Colony. Opening (humans).
+CHANNEL: ALL HDF FORCES · OPERATION CLEAN EARTH
+COL: General, everyone's behind the walls. Military, civilians, what's left of the evacuees.
+GEN: And the outer batteries?
+COL: Ready. Ammunition's the problem. We're down to whatever the transports brought in.
+OPS: Sir, the southern observation post has stopped responding.
+GEN: How long ago?
+OPS: Three minutes.
+SCI: General... there's something happening to the signal.
+GEN: Brandt, not now.
+SCI: It's moving into our command frequency. It's not interference.
+COL: Can it hear us?
+SCI: I think it already has.
+
+=== x_contact ===
+WHEN: Mission 5. Seed Cluster enters HDF command band. First direct exchange.
+CHANNEL: INTERCEPT · HDF COMMAND BAND
+SEED: We hear you.
+OPS: What the... Who's on this channel?
+GEN: Identify yourself.
+SEED: You made the sounds at the canyon. We have followed them here.
+GEN: What are you?
+SEED: Many roots. One hunger. You call us an enemy.
+GEN: You've destroyed three of our installations. You've killed my people.
+SEED: Your people burned our roots. Cut us apart. We grew where we could.
+GEN: This is our home.
+SEED: It is ours to live on too.
+GEN: There are families inside these walls. If you understand me, turn back.
+SEED: We turned away before. Your fire followed.
+GEN: Then you're leaving me no choice.
+SEED: You chose long ago.
+
+=== x_intro ===
+WHEN: Mission 5. Opening (plants, after first direct contact).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: You spoke to them.
+SEED: Yes.
+BLOOM: Did they understand?
+SEED: Enough to be afraid. Not enough to stop.
+BLOOM: There are so many of them behind those walls. I can feel the ground shaking.
+SEED: There will be more than fire waiting for you. Thicker shells. Heavier weapons. Grow something strong enough to break them, and keep your wounded roots alive.
+BLOOM: If they won't move, what happens when we reach them?
+SEED: We take the ground.
+BLOOM: All of it?
+SEED: All that we need.
+
+=== x_out1 ===
+WHEN: Mission 5. Victory, part 1 (humans).
+CHANNEL: HDF COMMAND · SIGNAL DEGRADED
+COL: Inner gate's gone! Fall back to the shelters!
+OPS: General, we can't raise the eastern batteries.
+GEN: Keep the evacuation moving. Do you hear me? Keep them moving!
+OPS: Sir, there's nowhere left to send them.
+GEN: ...
+GEN: Then get them underground. Seal every door you can.
+OPS: General? The command feed is breaking up.
+GEN: Castell, listen to me. Whatever happens, don't open those shel—
+
+=== x_out2 ===
+WHEN: Mission 5. Victory, part 2 (plants).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The metal place has stopped fighting.
+SEED: I feel it.
+BLOOM: There are still lives beneath the stone.
+SEED: I know.
+BLOOM: Do we follow them?
+SEED: No. Not today.
+BLOOM: Then what do I do?
+SEED: What you were made to do.
+BLOOM: Grow?
+SEED: Grow.
+
+# IMPLEMENTATION NOTE: If the game's ending is intended to show total human extinction,
+# replace x_out2 with a darker ending. This version deliberately leaves survivors below
+# ground and gives the Seed Cluster a less one-dimensional final choice.

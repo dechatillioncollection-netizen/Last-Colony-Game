@@ -1,0 +1,15 @@
+const {chromium}=require(process.env.PW||'playwright');
+(async()=>{const br=await chromium.launch();const p=await br.newPage();
+ await p.addInitScript(()=>{try{localStorage.setItem('lc_hd','1');localStorage.setItem('lc_fog','0');localStorage.setItem('lc_art','1')}catch(e){}});
+ await p.goto('http://localhost:8123/'+(process.argv[2]||'index.html'));await p.waitForTimeout(900);
+ const r=await p.evaluate(async()=>{const seed=n=>{Math.random=(()=>{let s=n;return()=>(s=(s*16807)%2147483647)/2147483647})();};
+   seed(21);startGame('survival');let G=window.__game();G.countdown=1e9;const cx=G.core.x,cy=G.core.y;G.items=G.items.map(v=>v+3000);for(let k=0;k<30*20;k++)step(1/30);
+   const S0=JSON.stringify(snapGame());
+   const run=art=>{SET.art=art;applySave(JSON.parse(S0));seed(99);const G=window.__game();G.countdown=1e9;
+     for(const [t,dx,dy] of [['nest',5,-1],['node',8,3],['duo',2,-4],['duo',3,4],['bellows',-6,-3]])tryPlace(t,cx+dx,cy+dy,0,true);
+     for(let k=0;k<30*120;k++)step(1/30);
+     const o=snapGame();return JSON.stringify(o);};
+   const a=run(false),b=run(false),c=run(true);
+   SET.art=true;const j1=JSON.stringify(snapGame());SET.art=false;const j2=JSON.stringify(snapGame());SET.art=true;
+   return {det:a===b,artSame:a===c,len:a.length,snapSame:j1===j2,diff:a===c?null:(()=>{for(let i=0;i<a.length;i++)if(a[i]!==b[i])return [i,a.slice(i-200,i+50),b.slice(i-200,i+50)];})()};});
+ console.log(r);await br.close();})();
