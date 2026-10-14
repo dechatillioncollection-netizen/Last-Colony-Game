@@ -11,10 +11,15 @@ node tests/lcquick.js          # quick gameplay regression
 
 | Script | What it checks |
 | --- | --- |
-| `wbtest.js` | Living Rootweb: coverage, leaks, save and load, HD modes, toggle, fallback, gameplay identity |
+| `wbtest.js` | Living Rootweb: coverage, leaks, save and load, HD modes, quality presets, fallback, gameplay identity. `GL=2` runs it on the GPU renderer, `GL=0` on the 2D painter |
+| `qtest.js` | graphics quality presets: menu access, each preset's effect, persistence, migration from older settings |
+| `glcmp.js`, `glgrow.js` | GPU and 2D Rootweb side by side, and GPU growth frames |
+| `glcpu.js` | processor time per frame for the Rootweb on each path |
 | `wbdet.js` | deterministic no-combat survival run, for comparing builds |
 | `realprof.js`, `wbprof.js`, `crowdprof.js`, `cowtest.js` | frame-time profiling of the real game loop |
 | `wbdeliver.js` | screenshots of the Rootweb used in the art guide |
 | `lcskir`, `lcquick`, `lcstory`, `lcheld`, `lcsave`, `lctest`, `lcart`, `lcbloom`, `lcweb`, `lchd`, `lcspit` | gameplay, story, saves, art and HD regressions |
+
+Headless Chromium only has software WebGL, so frame times measured on the GPU path (case 11 in `wbtest.js` with `GL=2`) are not meaningful there.
 
 `lcspit.js` has a known intermittent failure on some random maps that also happens on older builds.

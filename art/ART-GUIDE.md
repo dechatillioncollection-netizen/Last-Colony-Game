@@ -2,7 +2,7 @@
 
 ## How the current renderer works
 
-- **Engine:** plain HTML5 Canvas 2D in a single `<canvas>`. There is no game engine, no WebGL and no sprite sheets. Everything is drawn with code every frame.
+- **Engine:** HTML5 Canvas 2D in a single `<canvas>`, plus (from v30) a WebGL 2 layer for the ground and the painted Rootweb, described under "GPU renderer" below. There is no game engine and no sprite sheets. Everything else is drawn with code every frame.
 - **Tiles:** one tile is **24×24 world pixels**. A 2×2 building is 48×48, and a 3×3 building is 72×72. Building positions are whole tiles, so drawing always starts at `(tileX*24, tileY*24)`.
 - **Camera:** one transform per frame (`setTransform`) handles pan and zoom (0.5× to 2.5×) and the screen's pixel density. Buildings are drawn in world pixels and the camera scales them.
 - **Frame order:** the terrain comes first. It is painted once into a big offscreen canvas, and HD mode uses a 16 px/tile version. Next come the Rootweb overlay and soft shadows (HD only), then the Bloom. Then every building on screen is drawn, then the enemies and ants, then the bullets and effects. Off-screen buildings are skipped.
@@ -168,8 +168,48 @@ The Rootweb is not a building, so it does not use the layer system above. Its te
   - `sheen.png`: the wet reflection.
   - `bud.png`: a throbbing nodule.
 - **Settings and fallback:**
-  - With "Painted artwork" off, or if `cells.png` fails to load, the previous Rootweb is used: the HD membrane with HD on, or the classic one with HD off.
-  - Switching the setting repaints at once.
+  - On **Low** quality, or if `cells.png` fails to load, the previous Rootweb is used: the classic one on Low, the HD membrane if only the texture is missing.
+  - Changing the quality repaints at once.
 - **Painter scripts:**
   - `game/art-source/paint_rootweb.js` makes the textures.
   - The membrane painter itself is `paintWebArt` in the game.
+
+## GPU renderer (v30)
+
+From v30 the ground and the painted Rootweb are drawn by the graphics card with WebGL 2. Buildings, units, effects and the interface are still drawn by the 2D canvas, unchanged.
+
+- **How a frame is drawn:**
+  1. A hidden WebGL canvas the size of the screen draws the ground from the same terrain image as before (HD or classic). The HD ground uses mipmaps, so it no longer shimmers when zoomed out.
+  2. Feeder spokes and channels are drawn as small quads into a screen-sized buffer.
+  3. One shader works out the Rootweb for every screen pixel, using the coverage map, the ore map, the time each tile was covered, that buffer and `cells.png`.
+  4. The finished picture is copied into the main canvas, and everything else draws on top as before, so glows and blend modes behave exactly as they did.
+- **The shader is a port of `paintWebArt`:** the same coverage field, edges, tendrils, veins, channels, sheen, fungal tissue, nodules, ore fading and cell pattern. Changing the look means changing both, or retiring the 2D painter later.
+- **What changes on screen:**
+  - The Rootweb is drawn at screen resolution, so it is sharp up close. Thin veins are never drawn thinner than the painted art's own pixel, so the look keeps its weight, and zoomed out they fade instead of sparkling.
+  - Growth is continuous. A new tile fills in from the covered ground beside it along a ragged front, instead of in three repaints.
+  - Nothing is painted on the processor any more. Growth, planting and loading cost about the same as with no Rootweb at all.
+- **Fallback:** the 2D painter takes over by itself when:
+  - WebGL 2 is missing, or only a software emulation is available;
+  - a shader fails to compile, or the graphics card resets;
+  - `cells.png` can't be read by WebGL. This happens when the page is opened straight from disk in Chrome. The Windows build is not affected.
+
+  The **Medium** and **Low** quality settings never use it. On **High** and **Epic**, the settings panel says whether the graphics card is drawing, and why not when it isn't.
+- **F3** shows the frame rate and which renderer is drawing the Rootweb.
+- **Gameplay:** the GPU renderer reads the same state as the 2D painter, and gameplay and saves are identical either way. The tests check this.
+
+## Graphics quality (v30)
+
+One setting replaces the separate HD, High Quality, Painted artwork and GPU switches. Fog of war stays on its own, because it changes how the game plays.
+
+| Quality | Ground | Painted art and living Rootweb | Drawn by | Water ripples and dust | Resolution on high-density screens |
+| --- | --- | --- | --- | --- | --- |
+| Low | classic | off (classic look) | processor | off | 1× |
+| Medium | HD | on | processor | off | 1× |
+| High (default) | HD | on | graphics card | off | up to 1.5× |
+| Epic | HD | on | graphics card | on | up to 2× |
+
+- The preset is stored as `lc_quality`. It still writes the old switches (`lc_hd`, `lc_hq`, `lc_art`, `lc_gl`) too.
+- Players coming from v29 get the preset that matches their old switches. New players start on High.
+- Changing the preset redraws the ground, the Rootweb and the build-menu icons at once.
+- Settings opens from the main menu as well as during a game.
+

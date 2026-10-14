@@ -4,7 +4,7 @@ const {chromium}=require(process.env.PW||'playwright');
  await p.goto('file://'+process.cwd()+'/index.html');await p.waitForTimeout(300);
  await p.click(process.argv[2]==='siege'?'#m-siege':'#m-survival');await p.waitForTimeout(200);
  await p.click('#setBtn');await p.waitForTimeout(100);await p.screenshot({path:'hd_settings.png'});
- const t0=Date.now();await p.click('#optHD');await p.waitForTimeout(200);
+ const t0=Date.now();await p.click('.qbar button[data-q="low"]');await p.waitForTimeout(200);await p.click('.qbar button[data-q="high"]');await p.waitForTimeout(200);
  await p.waitForFunction(()=>true);console.log('toggle ms',Date.now()-t0);
  await p.click('#setClose');
  await p.evaluate((siege)=>{const G=window.__game();G.items=G.items.map(()=>3000);G.webFree=true;TECH.forEach(n=>G.unlocked.add(n[0]));

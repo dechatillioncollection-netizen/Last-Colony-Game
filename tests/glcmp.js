@@ -1,0 +1,21 @@
+// GPU vs 2D Rootweb on the same scene
+const {chromium}=require(process.env.PW||'playwright');
+(async()=>{const br=await chromium.launch();const errs=[];
+ const p=await br.newPage({viewport:{width:1200,height:800}});p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='warning'||m.type()==='error')errs.push(m.text());});
+ await p.addInitScript(()=>{try{localStorage.setItem('lc_hd','1');localStorage.setItem('lc_fog','0');localStorage.setItem('lc_art','1');localStorage.setItem('lc_gl','2')}catch(e){}});
+ await p.goto('http://localhost:8123/index.html');await p.waitForTimeout(1200);
+ await p.evaluate(()=>{for(const el of document.querySelectorAll('body > *:not(canvas)'))if(el.tagName!=='SCRIPT'&&el.tagName!=='STYLE')el.style.visibility='hidden';
+   window.__flush=()=>{for(const bn of webBorn.values())bn.t=-99;let g=0;while((webQ.size||webBorn.size)&&g++<5000)webArtTick();};});
+ const sc=await p.evaluate(()=>{startGame('survival');const G=window.__game();G.countdown=1e9;G.items=G.items.map(v=>v+9000);const cx=G.core.x,cy=G.core.y;
+   const put=(t,x,y)=>{for(let r=0;r<4;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;if(tryPlace(t,x+dx,y+dy,0,true))return true;}return false;};
+   for(let k=0;k<30*25;k++)step(1/30);
+   put('nest',cx+8,cy-3);put('nest',cx-6,cy+5);put('nest',cx+2,cy+8);put('duo',cx+3,cy-4);put('duo',cx-3,cy-3);put('duo',cx+6,cy+3);put('node',cx+12,cy+6);put('bellows',cx-8,cy-5);
+   for(let k=0;k<30*30;k++)step(1/30);for(const b of G.blocks.values())b.built=1;G.paused=true;repaintAllWeb();
+   return {cx,cy,gpu:webGPU,why:GLR.why,ren:GLR.renderer,ok:GLR.ok,pat:!!GLR.patTex};});
+ console.log(JSON.stringify(sc));
+ const view=async(z,x,y,f,wait=700)=>{await p.evaluate(([z,x,y])=>{cam.z=z;centerOn(x,y);},[z,x,y]);await p.waitForTimeout(wait);await p.screenshot({path:f});};
+ const shots=[[1.25,2,1.5,'a'],[2.6,5,-1,'c'],[.55,2,1.5,'f']];
+ for(const [z,dx,dy,n] of shots)await view(z,sc.cx+dx,sc.cy+dy,`g_${n}_gpu.png`);
+ await p.evaluate(()=>{SET.gl=false;repaintAllWeb();__flush();});
+ for(const [z,dx,dy,n] of shots)await view(z,sc.cx+dx,sc.cy+dy,`g_${n}_2d.png`);
+ console.log(errs.slice(0,8));await br.close();})();

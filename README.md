@@ -2,7 +2,7 @@
 
 A colony defence and factory game where you play the Pl-Ant Hive, a living plant colony trying to survive the Human Defence Force.
 
-The whole game is a single HTML file with its painted art beside it.
+The whole game is a single HTML file with its painted art beside it. The ground and the living Rootweb are drawn with WebGL 2 on High and Epic quality, with the 2D canvas as an automatic fallback.
 
 ## Play
 
@@ -12,7 +12,9 @@ Open `index.html` in a browser. Chrome, Edge and Firefox all work. Painted art l
 python3 -m http.server 8000
 ```
 
-Then open http://localhost:8000.
+Then open http://localhost:8000. Opened straight from disk, Chrome won't let WebGL read the art, so the game falls back to drawing the Rootweb on the processor. Serving the folder avoids that.
+
+Press F3 in game to see the frame rate and which renderer is drawing the Rootweb.
 
 ## What is here
 

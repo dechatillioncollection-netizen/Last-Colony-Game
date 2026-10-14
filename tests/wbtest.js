@@ -1,16 +1,18 @@
 // Living Rootweb: the 14 test cases plus gameplay invariants. Served over http so the web canvas can be read back.
 const {chromium}=require(process.env.PW||'playwright');
 const URL='http://localhost:8123/index.html';
+// GL=2 runs every case on the GPU Rootweb (forced on, even in software WebGL); GL=0 on the 2D painter
+const GLM=process.env.GL||'0';
 const R={};const ok=(k,pass,info)=>{R[k]={pass:!!pass,info};console.log((pass?'PASS ':'FAIL ')+k+' '+JSON.stringify(info));};
 (async()=>{const br=await chromium.launch();
  const open=async(opts={})=>{const p=await br.newPage({viewport:{width:1000,height:700}});const errs=[];p.on('pageerror',e=>errs.push(e.message+' '+(e.stack||'').split('\n')[1]));
    p.on('console',m=>{if(m.type()==='error'&&!/Failed to load resource/.test(m.text()))errs.push(m.text())});
-   await p.addInitScript(o=>{try{localStorage.setItem('lc_hd',o.hd===false?'0':'1');localStorage.setItem('lc_fog','0');localStorage.setItem('lc_art',o.art===false?'0':'1')}catch(e){}},opts);
+   await p.addInitScript(o=>{try{localStorage.setItem('lc_hd',o.hd===false?'0':'1');localStorage.setItem('lc_fog','0');localStorage.setItem('lc_art',o.art===false?'0':'1');localStorage.setItem('lc_gl',o.gl)}catch(e){}},{...opts,gl:GLM});
    if(opts.block)await p.route(opts.block,r=>r.abort());
    await p.goto(URL);await p.waitForTimeout(900);
    await p.evaluate(()=>{
      window.__seed=n=>{Math.random=(()=>{let s=n;return()=>(s=(s*16807)%2147483647)/2147483647})();};
-     window.__flush=()=>{for(const bn of webBorn.values())bn.t=-99;let g=0;while((webQ.size||webBorn.size)&&g++<5000)webArtTick();};
+     window.__flush=()=>{if(typeof GLR!=='undefined'&&GLR.born){GLR.born.fill(-1e4);GLR.bornDirty=true;}for(const bn of webBorn.values())bn.t=-99;let g=0;while((webQ.size||webBorn.size)&&g++<5000)webArtTick();};
      // every pixel the Rootweb paints must sit on a covered tile; and tile borders must not be visible inside the membrane
      window.__check=()=>{const G=window.__game();let x0=MW,y0=MH,x1=0,y1=0;for(let i=0;i<N;i++)if(G.web[i]){const x=i%MW,y=(i/MW)|0;x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
        x0=Math.max(0,x0-2);y0=Math.max(0,y0-2);x1=Math.min(MW-1,x1+2);y1=Math.min(MH-1,y1+2);const W=(x1-x0+1)*T,H=(y1-y0+1)*T,D=webPeek(x0*T,y0*T,W,H).data;
@@ -157,9 +159,10 @@ print(json.dumps(out))`;require('fs').writeFileSync('cmp.py',py);same=JSON.parse
    modes[(hd?'HD':'noHD')+'/'+(art?'art':'noart')]=m;await p.evaluate(()=>{cam.z=1.4;centerOn(window.__game().core.x+1.5,window.__game().core.y+1.5);});await p.waitForTimeout(250);await p.screenshot({path:`t13_${hd?'hd':'nohd'}_${art?'art':'old'}.png`});}
  ok('13 HD and the older looks still work',modes['HD/art'].path==='painted'&&modes['noHD/art'].path==='painted'&&modes['HD/noart'].path==='hd'&&modes['noHD/noart'].path==='classic'&&Object.values(modes).every(m=>m.alpha>0)&&modes['HD/art'].leak===0&&modes['noHD/art'].leak===0,modes);
  // ---------- 14. the Settings toggle ----------
- r=await p.evaluate(async()=>{SET.hd=true;buildHDTerrain();SET.art=true;repaintAllWeb();$('setBtn').click();const cb=$('optArt');const before=webArtOn();cb.checked=false;cb.dispatchEvent(new Event('change'));const off=webArtOn();
-   await new Promise(r=>setTimeout(r,100));cb.checked=true;cb.dispatchEvent(new Event('change'));__flush();const on=webArtOn();$('settings').hidden=true;return {before,off,on,stored:localStorage.getItem('lc_art')};});
- ok('14a Settings toggle switches the look both ways',r.before&&!r.off&&r.on,r);
+ r=await p.evaluate(async()=>{SET.hd=true;buildHDTerrain();SET.art=true;repaintAllWeb();$('setBtn').click();const before=webArtOn();
+   document.querySelector('.qbar button[data-q="low"]').click();await new Promise(r=>setTimeout(r,200));const off=webArtOn();
+   document.querySelector('.qbar button[data-q="high"]').click();await new Promise(r=>setTimeout(r,300));__flush();const on=webArtOn();$('settings').hidden=true;return {before,off,on,stored:localStorage.getItem('lc_art')+'/'+localStorage.getItem('lc_quality')};});
+ ok('14a Quality presets switch the look both ways (Low, then High)',r.before&&!r.off&&r.on,r);
  console.log('errors so far',p.errs);await p.close();
  // missing textures: the painted Rootweb quietly falls back to the existing look
  p=await open({block:'**/rootweb/cells.png'});
@@ -178,4 +181,4 @@ print(json.dumps(out))`;require('fs').writeFileSync('cmp.py',py);same=JSON.parse
    const a=run(false),b=run(false),c=run(true);SET.art=true;return {deterministic:a===b,same:a===c,snapshotBytes:a.length};});
  ok('15 gameplay identical with the painted Rootweb on or off (2 min growth, full save snapshot)',r.deterministic&&r.same,r);
  console.log('errors',p.errs);await p.close();
- require('fs').writeFileSync('wbtest_result.json',JSON.stringify(R,null,1));console.log(Object.values(R).filter(v=>v.pass).length+'/'+Object.keys(R).length+' passed');await br.close();})();
+ require('fs').writeFileSync(GLM==='0'?'wbtest_result.json':'wbtest_result_gl.json',JSON.stringify(R,null,1));console.log(Object.values(R).filter(v=>v.pass).length+'/'+Object.keys(R).length+' passed');await br.close();})();
