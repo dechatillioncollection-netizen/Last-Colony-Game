@@ -2438,6 +2438,10 @@ const ART={plant:{
       {f:'glass.png',g:'dome',rect:CH},{f:'highlight.png',anim:'shimmer',amp:.01,period:8,blend:'screen',g:'dome',far:false,rect:CH},
       {f:'stinger.png',anim:'aim',rect:[.635,.478,.095,.044]}]},
   vine:{name:'Vines',dir:'plant/vine/',vine:true,layers:['vine','vine_curve','swift','swift_curve','film','film_curve','cap','swift_cap','mouth','bulge','pulse','knot_base','knot_bridge','knot_glow_h','knot_glow_v','join_in','join_out','join_in_curve','join_out_curve'].map(n=>({f:n+'.png'}))},
+  router:{name:'Splitter Bulb',dir:'plant/splitter-bulb/',custom:(...a)=>drawSplitter(...a),box:1,t:'router',layers:[{f:'base.png'},{f:'chan.png'},{f:'chan_glow.png'},{f:'valve.png'},{f:'fluid.png'},{f:'membrane.png'},{f:'shine.png'},{f:'pulse.png'}]},
+  sorter:{name:'Sorting Gland',dir:'plant/sorting-gland/',custom:(...a)=>drawSorter(...a),box:1,t:'sorter',layers:[{f:'base.png'},{f:'main.png'},{f:'main_glow.png'},{f:'side.png'},{f:'side_glow.png'},{f:'body.png'},{f:'filter.png'},{f:'shine.png'},{f:'socket.png'},{f:'pulse.png'}]},
+  press:{name:'Resin Gland',dir:'plant/resin-gland/',custom:(...a)=>drawResin(...a),customUnder:(...a)=>drawResinUnder(...a),box:3,t:'press',layers:[{f:'roots.png'},{f:'base.png'},{f:'sac.png'},{f:'resin.png'},{f:'coal.png'},{f:'membrane.png'},{f:'veins.png'},{f:'shine.png'},{f:'pulse.png'}]},
+  node:{name:'Rootweb Node',dir:'plant/rootweb-node/',custom:(...a)=>drawNode(...a),customUnder:(...a)=>drawNodeUnder(...a),box:1,t:'node',layers:[{f:'root.png'},{f:'base.png'},{f:'petal.png'},{f:'fluid.png'},{f:'nucleus.png'},{f:'membrane.png'},{f:'ring.png'},{f:'pulse.png'}]},
   rootweb:{name:'Rootweb',dir:'plant/rootweb/',web:true,layers:[{f:'cells.png'},{f:'pulse.png'},{f:'sheen.png'},{f:'bud.png'}]},
   duo:{name:'Thorn Spitter',dir:'plant/thorn-spitter/',pad:.5,dome:[.5,.5,.094],breathe:{amp:.045,period:3.6},hurtShrink:.12,
     weapon:{lat:.0898,tip:.2422,recoil:.03,kick:.012,squeeze:.14,deflate:.14,tight:.07,flinch:.14,fireTight:.04,bend:.5,shear:.148},
@@ -2469,7 +2473,8 @@ function artCrop(im,r){const N=im.width,cv=document.createElement('canvas');cv.w
   cv.getContext('2d').drawImage(im,Math.round(r[0]*N),Math.round(r[1]*N),cv.width,cv.height,0,0,cv.width,cv.height);cv.boxN=N;return cv;}
 function artReady(a){if(a.state==='failed')return;
   if(a.web){a.state='ready';webArtReady(a);return;}
-  if(a.vine){a.state='ready';vineArtReady(a);return;}   // the vessel textures are drawn by the vine pass   // the Rootweb textures feed its painter, not a building box
+  if(a.vine){a.state='ready';vineArtReady(a);return;}
+  if(a.custom){organReady(a);a.under=!!a.customUnder;a.state='ready';if(typeof G!=='undefined'&&G&&typeof buildMenu==='function'&&$('mgrid'))try{buildMenu();}catch(e){}return;}   // drawn by their own painters (organs below)   // the vessel textures are drawn by the vine pass   // the Rootweb textures feed its painter, not a building box
   // pre-composite everything at rest once: used for menu icons, zoomed-out views and big crowds
   const N=a.img[0].boxN||a.img[0].width;
   const comp=(keep,rect)=>{const cv=document.createElement('canvas');cv.width=cv.height=N;const c=cv.getContext('2d');
@@ -2563,10 +2568,12 @@ function artDraw(c,a,x,y,S,rot,b,time,under){
   c.restore();c.imageSmoothingEnabled=sm;}
 function drawArt(c,t,x,y,rot,b,time,team){
   const a=artFor(t,team);if(!a)return false;const S=B[t].size*T;
+  if(a.custom){const sm=c.imageSmoothingEnabled;c.imageSmoothingEnabled=true;a.custom(c,a,x,y,b,time||0,!b||organLite(t)?'lite':'full');c.imageSmoothingEnabled=sm;artDrawn++;return true;}
   artDraw(c,a,x,y,S,rot,b,time,false);
   if(a.over)a.over(c,x,y,S,b,time||0,a);artDrawn++;return true;}
 // the layers marked pass:'under' (Bloom petals and roots) are drawn before any building, like the old petals were
 function drawArtUnder(c,b,time){const a=artFor(b.t,b.team);if(!a||!a.under)return false;
+  if(a.custom){const sm=c.imageSmoothingEnabled;c.imageSmoothingEnabled=true;a.customUnder(c,a,b,organLite(b.t));c.imageSmoothingEnabled=sm;return true;}
   artDraw(c,a,b.x*T,b.y*T,B[b.t].size*T,b.rot,b,time,true);return true;}
 // gameplay feedback the painting must keep: the hatching ant and the "ready to hatch" ring
 function artNestOverlay(c,x,y,S,b,tt,a){if(!b)return;const [dx,dy,dr]=a.dome,cx=x+dx*S,cy=y+dy*S,pr=b.prog||0;
@@ -2588,13 +2595,14 @@ function vst(b){let s=VST.get(b);if(!s){s={act:-9,k:-1,fe:0,be:0,jf:0,jb:0};VST.
 // what each end of a vessel meets: 0 another vessel or a Vine Knot (joined without a seam), 1 a growth (an opening), 2 nothing (a sealed end)
 function vineEnds(b,s){const key=G.blocks.size*7919+Math.floor(G.time*2);if(s.k===key)return;s.k=key;beltCurve(b);
   const r=b.rot,f=blockAt(b.x+D4X[r],b.y+D4Y[r]);
-  s.fe=!f||f.team!==b.team?2:(B[f.t].belt||f.t==='junction')?0:1;
+  s.fe=!f||f.team!==b.team?2:(B[f.t].belt||f.t==='junction'||organJoin(f))?0:1;
   const bk=blockAt(b.x-D4X[r],b.y-D4Y[r]);
   if(b._cv)s.be=0;
   else if(bk&&bk.team===b.team&&(bk.t==='junction'||(B[bk.t].belt&&bk.x+D4X[bk.rot]===b.x&&bk.y+D4Y[bk.rot]===b.y)))s.be=0;
+  else if(bk&&bk.team===b.team&&organJoin(bk))s.be=0;
   else s.be=bk&&bk.team===b.team&&BELT_OUT[bk.t]?1:2;
   // a Swift Vine blends into a Vine or a Vine Knot it joins, front or back
-  const soft=o=>!!o&&o.team===b.team&&(o.t==='conveyor'||o.t==='junction');
+  const soft=o=>!!o&&o.team===b.team&&(o.t==='conveyor'||o.t==='junction'||organJoin(o));
   s.jf=b.t==='tconveyor'&&s.fe===0&&soft(f);const sd=b._cv>0?(r+1)%4:(r+3)%4;s.jb=b.t==='tconveyor'&&s.be===0&&soft(b._cv?blockAt(b.x+D4X[sd],b.y+D4Y[sd]):bk);}
 // the frame a vessel shows now: moving fluid while its items are moving (and briefly after), still when it is empty or backed up
 function vineFrame(t,b,tt,lite){if(!b||lite)return VF;const s=vst(b);let m=0;for(const it of b.belt)m+=it.p;if(m!==s.m){s.m=m;if(b.belt.length)s.act=tt;}if(tt-s.act>.6||tt<s.act)return VF;
@@ -2662,6 +2670,190 @@ function drawVinesPass(c,inView,time,z){const L=[];for(const b of G.blocks.value
   each(b=>drawVineItems(c,b.t,b),b=>b.t!=='junction'&&b.belt.length);
   c.imageSmoothingEnabled=SET.hd;return L.length;}
 const VINE_LOD_MAX=450;   // more vessels than this on screen: still frames, no pulses or film (items always show)
+// ---------- Painted organs: Splitter Bulb, Sorting Gland, Resin Gland and Rootweb Node ----------
+// Artwork only. Every animation here is set off by something the game really did: an item entering or leaving a Splitter Bulb,
+// an item leaving a Sorting Gland, the Resin Gland's digestion progress and its stores, a Rootweb Node covering a new tile.
+// The drawing reads that state and never writes it; its own memory lives in OST, outside the block, so it never reaches a save.
+// Textures are painted at 128 px a tile (art/plant/splitter-bulb, sorting-gland, resin-gland, rootweb-node).
+const OST=new WeakMap();
+function ost(b){let s=OST.get(b);if(!s){s={};OST.set(b,s);}return s;}
+// Cheap drawing: every layer also comes at half size for normal zoom (full size only when zoomed right in), the baked look also at
+// a quarter, and each layer remembers the box its visible pixels sit in so the empty margins are never drawn.
+function oScale(im,k){const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(im.width*k));cv.height=Math.max(1,Math.round(im.height*k));
+  const c=cv.getContext('2d');c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(im,0,0,cv.width,cv.height);oBB(cv,c);return cv;}
+function oBB(im,c0){const w=im.width,h=im.height;let D;
+  try{let c=c0;if(!c){const cv=document.createElement('canvas');cv.width=w;cv.height=h;c=cv.getContext('2d');c.drawImage(im,0,0);}D=c.getImageData(0,0,w,h).data;}catch(e){im.bb=null;return;}
+  let x0=w,y0=h,x1=-1,y1=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(D[(y*w+x)*4+3]>1){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  im.bb=x1<0?[0,0,0,0]:[x0,y0,x1-x0+1,y1-y0+1];}
+// drawImage of part of an image (source rect sx,sy,sw,sh to dest rect), clipped to the image's visible box
+function dSub(c,im,sx,sy,sw,sh,dx,dy,dw,dh){const b=im.bb;if(!b){c.drawImage(im,sx,sy,sw,sh,dx,dy,dw,dh);return;}
+  const ax=Math.max(sx,b[0]),ay=Math.max(sy,b[1]),bx=Math.min(sx+sw,b[0]+b[2]),by=Math.min(sy+sh,b[1]+b[3]);if(bx<=ax||by<=ay)return;
+  const kx=dw/sw,ky=dh/sh;c.drawImage(im,ax,ay,bx-ax,by-ay,dx+(ax-sx)*kx,dy+(ay-sy)*ky,(bx-ax)*kx,(by-ay)*ky);}
+const dI=(c,im,dx,dy,dw,dh)=>dSub(c,im,0,0,im.width,im.height,dx,dy,dw,dh);
+// screen pixels per tile right now, and the layer set and baked look to use for it
+const oPx=()=>typeof cam!=='undefined'?cam.z*DPR*T:64;
+const oSet=a=>a.bake||oPx()>66?a.I:a.IH;
+const oFlat=a=>{const px=oPx();return px>66?a.flat:px>34?a.flatH:a.flatQ;};
+// parts that only change when connections change, composited once per layout and shared by every structure of that kind
+function oCache(a,key,fn){const m=a.cache||(a.cache=new Map()),hi=oSet(a)===a.I,k=key+(hi?'h':'l');let cv=m.get(k);
+  if(!cv){const px=hi?128:64;cv=document.createElement('canvas');cv.width=cv.height=px;const cc=cv.getContext('2d');cc.imageSmoothingEnabled=true;cc.scale(px/T,px/T);fn(cc);m.set(k,cv);}return cv;}
+function organReady(a){a.cache=null;const I={},IH={};a.layers.forEach((L,i)=>{const k=L.f.replace('.png',''),im=a.img[i];oBB(im);I[k]=im;IH[k]=oScale(im,.5);});a.I=I;a.IH=IH;
+  // the resting look, baked once: build-menu icons, zoomed-out views and crowds
+  const n=a.box*128,cv=document.createElement('canvas');cv.width=cv.height=n;const c=cv.getContext('2d');c.imageSmoothingEnabled=true;
+  c.scale(n/(a.box*T),n/(a.box*T));const o=(a.box-B[a.t].size)/2*T;a.bake=true;a.custom(c,a,o,o,null,0,'bake');a.bake=false;a.flat=cv;oBB(cv);a.flatH=oScale(cv,.5);a.flatQ=oScale(cv,.25);}
+// which side of block b another block touches (0 right, 1 down, 2 left, 3 up)
+const oSide=(b,o)=>o?relDir(b,o):-1;
+const fade=(tt,t0,k)=>tt>=t0?Math.exp(-(tt-t0)/k):0;
+// one image turned to face side k round the centre of a 1x1 tile, optionally cropped to its inner part (u0..u1 of its width)
+function sideImg(c,im,cx,cy,k,u0=0,u1=1){c.save();c.translate(cx,cy);c.rotate(k*Math.PI/2);const w=im.width;dSub(c,im,w*u0,0,w*(u1-u0),im.height,-T/2+T*u0,-T/2,T*(u1-u0),T);c.restore();}
+const scaled=(c,im,cx,cy,k,x,y,w,h)=>{c.save();c.translate(cx,cy);c.scale(k,k);dI(c,im,x-cx,y-cy,w,h);c.restore();};
+// a neighbour a vessel stub should run to: any growth of ours except walls
+const organLink=o=>!!o&&!B[o.t].wall;
+// Vines and Swift Vines join these two straight into their channels, with no collar
+function organOpen(t){const a=ART.plant[t];return SET.art&&!!a&&a.state==='ready';}
+
+// ===== Splitter Bulb: item in from one side, pressure pulse to the chamber, out along the branch the game picked =====
+function drawSplitter(c,a,x,y,b,tt,mode){const I=oSet(a),cx=x+T/2,cy=y+T/2,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  const sides=[];for(let k=0;k<4;k++){const o=b?blockAt(b.x+D4X[k],b.y+D4Y[k]):null;if(b?(o&&o.team===b.team&&organLink(o)):k!==1)sides.push(k);}
+  let s=null,sw=1;
+  if(b){s=ost(b);const q=b.buf[0]||null;
+    if(q!==s.cur){if(s.cur){const p=b.prox||[];const o=p.length?p[(b.rr-1+p.length)%p.length]:null;s.out=oSide(b,o);s.outT=tt;}
+      if(q){s.inT=tt;const src=(b.prox||[]).find(o=>o.id===q.src);s.inS=oSide(b,src);}s.cur=q;}
+    if(live)sw=1+.06*fade(tt,s.inT??-9,.12)-.03*fade(tt,s.outT??-9,.1);}
+  const mask=sides.reduce((m,k)=>m|1<<k,0),fi=live&&s?fade(tt,s.inT??-9,.1):0,fv=live&&s?fade(tt,s.outT??-9,.12):0;
+  const under=cc=>{dI(cc,I.base,0,0,T,T);for(const k of sides)sideImg(cc,I.chan,T/2,T/2,k);};
+  if(lite&&!b){dI(c,oFlat(a),x,y,T,T);}
+  // at rest (no item just in or out), and in crowds: the whole bulb as one cached picture for this set of connections
+  else if(b&&(lite||fi<.02&&fv<.02))c.drawImage(oCache(a,'r'+mask,cc=>{under(cc);dI(cc,I.fluid,0,0,T,T);dI(cc,I.membrane,0,0,T,T);
+      for(const k of sides){cc.save();cc.translate(T/2,T/2);cc.rotate(k*Math.PI/2);dI(cc,I.valve,-T/2,-T/2,T,T);cc.restore();}dI(cc,I.shine,0,0,T,T);}),x,y,T,T);
+  else{if(b)c.drawImage(oCache(a,'u'+mask,under),x,y,T,T);else{c.save();c.translate(x,y);under(c);c.restore();}
+    scaled(c,I.fluid,cx,cy,sw,x,y,T,T);
+    if(fi>.02){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=fi*.7;dI(c,I.fluid,x,y,T,T);c.restore();}
+    scaled(c,I.membrane,cx,cy,sw,x,y,T,T);
+    for(const k of sides){const open=live&&s&&k===s.out?fade(tt,s.outT,.12):0;c.save();c.translate(cx,cy);c.rotate(k*Math.PI/2);c.scale(1+open*.15,1-open*.55);dI(c,I.valve,-T/2,-T/2,T,T);c.restore();}
+    if(!a.bake)dI(c,I.shine,x,y,T,T);}
+  if(!b)return;
+  // the branch the last item left by lights up, and a pulse runs out along it; a pulse runs in from the side an item came from
+  // (kept in the crowd look too: it is how the player reads where things go)
+  if(live||lite&&!ART_RM){c.save();c.globalCompositeOperation='lighter';
+    const fo=fade(tt,s.outT??-9,.16);if(fo>.03&&s.out>=0){c.globalAlpha=fo;sideImg(c,I.chan_glow,cx,cy,s.out);
+      const u=Math.min(1,(tt-s.outT)/.14);c.globalAlpha=fo*.8;dI(c,I.pulse,cx+D4X[s.out]*u*T*.5-4,cy+D4Y[s.out]*u*T*.5-4,8,8);}
+    const fi=tt-(s.inT??-9);if(fi>=0&&fi<.12&&s.inS>=0){const u=1-fi/.12;c.globalAlpha=.8*(1-fi/.12*.5);dI(c,I.pulse,cx+D4X[s.inS]*u*T*.5-4,cy+D4Y[s.inS]*u*T*.5-4,8,8);}
+    c.restore();}
+  // the item itself, on top: it slides in from the side it came from over the time the bulb holds it, then waits in the middle
+  const q=b.buf[0];if(q){const u=s.inS>=0?Math.max(0,1-q.t/.06):0;seedHD(c,q.i,cx+D4X[Math.max(0,s.inS)]*u*T*.42,cy+D4Y[Math.max(0,s.inS)]*u*T*.42,7);}}
+
+// ===== Sorting Gland: a straight channel through a filter, two thin diversion channels, the chosen item always on top =====
+function drawSorter(c,a,x,y,b,tt,mode){const I=oSet(a),cx=x+T/2,cy=y+T/2,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  let axis=0,nb=[null,null,null,null],s=null;
+  if(b){s=ost(b);for(let k=0;k<4;k++){const o=blockAt(b.x+D4X[k],b.y+D4Y[k]);nb[k]=o&&o.team===b.team&&organLink(o)?o:null;}
+    // the straight channel runs from the side items come in by (the first vine growing into it), else along any vine leaving it
+    let ins=-1;for(let k=0;k<4;k++){const o=nb[k];if(o&&B[o.t].belt&&o.x+D4X[o.rot]===b.x&&o.y+D4Y[o.rot]===b.y){ins=k;break;}}
+    if(ins<0)for(let k=0;k<4;k++){const o=nb[k];if(o&&B[o.t].belt&&o.rot===k){ins=(k+2)%4;break;}}
+    axis=ins>=0?ins&1:0;s.ins=ins;
+    // an item has left when a vessel beside it shows a new item at its very start (the gland passes items on at once)
+    for(let k=0;k<4;k++){const o=nb[k];if(!o||k===ins)continue;let top=null;
+      if(B[o.t].belt){const f=o.belt[0];top=f&&f.p<.35?f:null;}else if(o.t==='junction'){const q=o.buf[k];top=q.length?q[q.length-1]:null;}
+      const key='o'+k;if(top&&top!==s[key]){s['t'+k]=tt;s.lastT=tt;}s[key]=top;}}
+  const rot=axis*Math.PI/2;
+  const k0=live?fade(tt,s.lastT??-9,.12):0,mask=nb.reduce((m,o,k)=>o?m|1<<k:m,0)|axis<<4;
+  // base and channels; where nothing is connected a channel stops inside the chamber
+  const under=cc=>{const h=T/2;cc.save();cc.translate(h,h);cc.rotate(rot);dI(cc,I.base,-h,-h,T,T);cc.restore();
+    for(const [k,u0,u1] of [[axis,.5,1],[axis+2,.5,1]]){const kk=k%4;const on=!b||nb[kk];sideImg(cc,I.main,h,h,kk,on?u0:.5,on?u1:.72);}
+    for(const kk of [(axis+1)%4,(axis+3)%4]){const on=!b||nb[kk];sideImg(cc,I.side,h,h,kk,.5,on?1:.74);}};
+  const core=(cc,h,k)=>{cc.save();cc.translate(h,h);cc.rotate(rot);cc.scale(1-.04*k,1+.02*k);dI(cc,I.body,-T/2,-T/2,T,T);cc.scale(1-.35*k,1);dI(cc,I.filter,-T/2,-T/2,T,T);cc.restore();
+    if(!a.bake){cc.save();cc.translate(h,h);cc.rotate(rot);dI(cc,I.shine,-T/2,-T/2,T,T);cc.restore();}};
+  if(lite&&!b){c.save();c.translate(cx,cy);c.rotate(rot);dI(c,oFlat(a),-T/2,-T/2,T,T);c.restore();}
+  else if(b&&(lite||k0<.02))c.drawImage(oCache(a,'r'+mask,cc=>{under(cc);core(cc,T/2,0);}),x,y,T,T);   // at rest: one cached picture
+  else{if(b)c.drawImage(oCache(a,'u'+mask,under),x,y,T,T);else{c.save();c.translate(x,y);under(c);c.restore();}
+    c.save();c.translate(x,y);core(c,T/2,k0);c.restore();}
+  if(live){c.save();c.globalCompositeOperation='lighter';
+    for(let k=0;k<4;k++){const f=fade(tt,s['t'+k]??-9,.18);if(f<.03)continue;const main=(k&1)===axis;c.globalAlpha=f;sideImg(c,main?I.main_glow:I.side_glow,cx,cy,k,.5,1);
+      const u=Math.min(1,(tt-s['t'+k])/.16);c.globalAlpha=f*.8;dI(c,I.pulse,cx+D4X[k]*u*T*.5-4,cy+D4Y[k]*u*T*.5-4,8,8);}
+    // and a short pulse runs from the inlet into the filter
+    const fi=tt-(s.lastT??-9);if(fi>=0&&fi<.1&&s.ins>=0){const u=1-fi/.1;c.globalAlpha=.7;dI(c,I.pulse,cx+D4X[s.ins]*u*T*.5-4,cy+D4Y[s.ins]*u*T*.5-4,8,8);}
+    c.restore();}
+  // the chosen item: never scaled, never covered
+  if(b){dI(c,I.socket,cx-6.5,cy-6.5,13,13);if(b.cfg>=0)seedHD(c,b.cfg,cx,cy,8.5);else{c.strokeStyle='rgba(226,200,250,.8)';c.lineWidth=1.5;c.beginPath();c.arc(cx,cy,4.5,0,7);c.stroke();}}}
+
+// ===== Resin Gland: coal tumbling in a digestive sac while it works, amber resin collecting below, a resin pulse out =====
+const RG={sx:88/128,sy:82/128,scy:-6/128};   // sac radii and centre offset, in tiles, from the footprint centre
+function drawResin(c,a,x,y,b,tt,mode){const I=oSet(a),S=2*T,cx=x+T,cy=y+T,bx=x-T/2,by=y-T/2,BS=3*T,lite=mode==='lite',live=!!b&&mode!=='bake'&&!ART_RM;
+  let s=null,act=0,br=1,coal=0,out=0;
+  if(b){s=ost(b);coal=b.inv[COAL]||0;out=b.out||0;
+    if(s.prog===undefined){s.prog=b.prog;s.out=out;s.act=-9;s.conv=-9;s.rout=-9;}
+    // a conversion shows as the progress wrapping round; resin shipped = what it held + what it just made - what it holds now
+    // (a gland that ships each piece at once never shows its store rising, so the store alone is not enough)
+    let made=0;if(b.prog!==s.prog){if(b.prog<s.prog-.3){s.conv=tt;made=1;}s.act=tt;s.prog=b.prog;}
+    if(s.out+made-out>0){s.rout=tt;const p=b.prox||[];const o=p.length?p[(b.rr-1+p.length)%p.length]:null;s.rs=oSide(b,o);s.ro=o;}s.out=out;
+    act=live?Math.max(0,1-Math.max(0,tt-s.act)/.6):0;
+    const per=act>.5?1.5:6;br=1+(act>.5?.022:.01)*Math.sin(tt*6.283/per+b.id)-.05*fade(tt,s.conv,.25);
+    br*=1-.1*(1-Math.max(0,b.hp/b.max));}
+  if(lite&&a.flat){dI(c,oFlat(a),bx,by,BS,BS);}
+  else{dI(c,I.base,bx,by,BS,BS);scaled(c,I.sac,cx,cy+RG.scy*T,br,bx,by,BS,BS);}
+  // resin: the lower chamber fills with what the gland is holding; while it digests the fluid above it turns amber too
+  const sx=RG.sx*T,sy=RG.sy*T,sc=cy+RG.scy*T,lv=b?Math.min(1,.14+out/10*.5):.3;
+  {const h=lv*2*sy,top=sc+sy-h,u0=(top-by)/BS;c.save();c.translate(cx,sc);c.scale(br,br);c.translate(-cx,-sc);
+    dSub(c,I.resin,0,u0*I.resin.height,I.resin.width,(1-u0)*I.resin.height,bx,top,BS,by+BS-top);
+    if(b&&!lite&&b.prog>0){c.globalAlpha=.32*b.prog;dI(c,I.resin,bx,by,BS,BS);}c.restore();}
+  // coal: one fragment per piece the gland holds; circling while it digests, settling to the bottom when it stops
+  if(!lite&&coal>0){const n=Math.min(10,coal),settle=1-act;
+    for(let i=0;i<n;i++){const h1=hash(i,b?b.id:1,5),h2=hash(i,b?b.id:1,6),ang=(b?tt:0)*(.5+h1*.4)*act+h1*6.283+i,rr=(.25+h2*.45);
+      const fx=cx+Math.cos(ang)*sx*rr,fy=sc+Math.sin(ang)*sy*rr*.85,rx=cx+(h1*2-1)*sx*.55,ry=sc+sy*(.45-lv*.9)-h2*sy*.25;
+      const px=fx+(rx-fx)*settle,py=fy+(ry-fy)*settle,z=T*(.17+h2*.06);c.save();c.translate(px,py);c.rotate(ang*.7);dI(c,I.coal,-z/2,-z/2,z,z);c.restore();}}
+  if(!lite)scaled(c,I.membrane,cx,sc,br*1.01,bx,by,BS,BS);
+  if(live&&!lite){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.12+.38*act*(.6+.4*Math.sin(tt*5+b.id));dI(c,I.veins,bx,by,BS,BS);c.restore();}
+  if(!lite&&!a.bake)dI(c,I.shine,bx,by,BS,BS);
+  // a thick resin pulse from the lower chamber to the side the resin left by
+  if(live&&s.rs>=0){const f=tt-s.rout;if(f>=0&&f<.4){const u=f/.4,o=s.ro,ex=o?(clamp(cx/T,o.x,o.x+o.size)*T):cx,ey=o?(clamp(cy/T,o.y,o.y+o.size)*T):cy;
+    const px=cx+(ex-cx)*u,py=sc+sy*.5+(ey-sc-sy*.5)*u,z=T*.42*(1-u*.3);c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.85*(1-u*.6);dI(c,I.pulse,px-z/2,py-z/2,z,z);c.restore();}}}
+function drawResinUnder(c,a,b){dI(c,oSet(a).roots,b.x*T-T/2,b.y*T-T/2,3*T,3*T);}
+
+// ===== Rootweb Node: a small heart that pulses outward each time it really covers a new tile =====
+const NODE_ROOTS=7;
+function drawNode(c,a,x,y,b,tt,mode){const I=oSet(a),cx=x+T/2,cy=y+T/2,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  let s=null,br=1;
+  if(b){s=ost(b);const L=b.wlist,wi=b.wi||0;
+    if(s.L!==L||wi<(s.wi||0)){s.L=L;s.wi=wi;s.ev=s.ev||[];}
+    else if(wi>s.wi){for(let k=s.wi;k<wi&&L;k++){const i=L[k];if(!G.web[i])continue;
+        const born=webGPU&&GLR.born?GLR.born[i]:(webBorn.get(i)||{t:-9}).t;if(born<G.time-.3)continue;   // covered just now, by this node
+        if(s.ev.length<6)s.ev.push({x:i%MW,y:(i/MW)|0,t:tt});s.grow=tt;
+        if(live&&webArtOn()&&WFX.length<48){const sp=webSpokes(b),ang=Math.atan2((i/MW|0)+.5-b.y-.5,i%MW+.5-b.x-.5);let best=0,bd=9;sp.forEach((v,j)=>{const d=Math.abs(((v-ang+Math.PI*3)%(Math.PI*2))-Math.PI);if(d<bd){bd=d;best=j;}});
+          WFX.push({k:'k',x:cx/T,y:cy/T,life:.8,max:.8,r:8,b,s:best,out:true,hs:.5});}}
+      s.wi=wi;}
+    s.ev=(s.ev||[]).filter(e=>tt-e.t<.7&&tt>=e.t);
+    br=live?1+.03*Math.sin(tt*1.7+b.id)-.07*fade(tt-.25,s.grow??-9,.2)*(tt-(s.grow??-9)>.25?1:0)+.04*fade(tt,s.grow??-9,.12):1;}
+  if(lite&&a.flat){dI(c,oFlat(a),x,y,T,T);if(b)drawNodeEv(c,a,b,s,tt,cx,cy,false);return;}
+  dI(c,I.base,x-T*.15,y-T*.15,T*1.3,T*1.3);
+  // petals open and close a touch
+  const pw=T*.3,pl=T*.42,ph=b?b.id*1.3:0;
+  for(let k=0;k<6;k++){const g=live?1+.06*Math.sin(tt*.9+k*1.1+ph):1;c.save();c.translate(cx,cy);c.rotate(k/6*6.283+ph);dI(c,I.petal,-pw/2,T*.08,pw,pl*g);c.restore();}
+  scaled(c,I.fluid,cx,cy,br,x,y,T,T);
+  const nb=live?Math.sin(tt*1.3+ph)*T*.035:0,nz=T*.36;dI(c,I.nucleus,cx-nz/2+nb*.6,cy-nz/2+nb,nz,nz);
+  if(live&&s.grow!==undefined){const f=fade(tt,s.grow,.25);if(f>.03){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=f*.8;dI(c,I.nucleus,cx-nz,cy-nz,nz*2,nz*2);c.restore();}}
+  scaled(c,I.membrane,cx,cy,br,x,y,T,T);
+  if(b)drawNodeEv(c,a,b,s,tt,cx,cy,live);}
+// growth pulses: a ring out of the heart, and a pulse running to each tile it has just covered
+function drawNodeEv(c,a,b,s,tt,cx,cy,live){if(!live||!s.ev||!s.ev.length)return;const I=oSet(a);c.save();c.globalCompositeOperation='lighter';
+  const g=tt-s.grow;if(g<.6){const u=g/.6,r=T*(.4+u*1.1);c.globalAlpha=(1-u)*.55;dI(c,I.ring,cx-r,cy-r,r*2,r*2);}
+  for(const e of s.ev){const u=Math.min(1,(tt-e.t)/.5),px=cx+((e.x+.5)*T-cx)*u,py=cy+((e.y+.5)*T-cy)*u;c.globalAlpha=.8*(1-u*.5);dI(c,I.pulse,px-5,py-5,10,10);}
+  c.restore();}
+// tendrils: only towards ground that is already Rootweb, so the node never seems to claim tiles it has not reached
+function drawNodeUnder(c,a,b,lite){if(lite)return;const ph=b.id*2.17,A=[];let mask=0;
+  for(let k=0;k<NODE_ROOTS;k++){const ang=k/NODE_ROOTS*6.283+ph+hash(b.id,k,9)*.5,tx=Math.floor(b.x+.5+Math.cos(ang)*1.25),ty=Math.floor(b.y+.5+Math.sin(ang)*1.25);A.push(ang);if(webAt(tx,ty))mask|=1<<k;}
+  if(!mask)return;
+  // the node's tendrils only change when the Rootweb under them does: kept as one picture per node until then
+  const s=ost(b),hi=oSet(a)===a.I;
+  if(s.tm!==mask||s.th!==hi){const px=hi?128:64,cv=s.tc&&s.th===hi?s.tc:document.createElement('canvas');cv.width=cv.height=3*px;const cc=cv.getContext('2d');cc.imageSmoothingEnabled=true;cc.scale(px/T,px/T);
+    for(let k=0;k<NODE_ROOTS;k++){if(!(mask>>k&1))continue;const sc=.8+hash(b.id,k,11)*.35;cc.save();cc.translate(1.5*T,1.5*T);cc.rotate(A[k]);cc.scale(sc,sc*(hash(b.id,k,12)<.5?1:-1));dI(cc,oSet(a).root,-1.5*T,-1.5*T,3*T,3*T);cc.restore();}
+    s.tc=cv;s.tm=mask;s.th=hi;}
+  c.drawImage(s.tc,(b.x-1)*T,(b.y-1)*T,3*T,3*T);}
+// per-kind crowd limits: past these many on screen (or zoomed out) a kind draws its baked look plus what the player needs
+const ORGAN_MAX={router:60,sorter:60,node:40,press:24},ORGAN_ALL_MAX=90;   // and past this many of all four together (the Resin Gland keeps its detail up to its own limit)
+const ORGAN_N={router:0,sorter:0,node:0,press:0};
+function organLite(t){const N=ORGAN_N;return (typeof cam!=='undefined'&&cam.z<ART_LOD_ZOOM)||N[t]>ORGAN_MAX[t]||(t!=='press'&&N.router+N.sorter+N.node+N.press>ORGAN_ALL_MAX);}
+// a Splitter Bulb or Sorting Gland: vines run straight into its channels
+const organJoin=o=>(o.t==='router'||o.t==='sorter')&&organOpen(o.t);
 function drawBlock(c,t,x,y,rot,b,time,team){
   if(!team&&VINE[t]&&vineArtOn()){c.save();c.imageSmoothingEnabled=true;drawVine(c,t,x,y,rot,b,time||0);c.restore();return;}
   if(drawArt(c,t,x,y,rot,b,time,team))return;
@@ -2775,7 +2967,7 @@ function render(){
     for(const u of G.units)if(inView(u.x,u.y,1)){const r=U[u.t].r*T*2.4;ctx.drawImage(shadowSprite,u.x*T-r/2+3,u.y*T-r/2+4,r,r);}
     for(const e of G.enemies)if(inView(e.x,e.y,1)&&fogVis(e.x,e.y)){const r=E[e.t].r*T*2.6,o=E[e.t].air?10:3;ctx.drawImage(shadowSprite,e.x*T-r/2+o,e.y*T-r/2+o+1,r,r);}ctx.imageSmoothingEnabled=false;}
   if(G.core&&inView(G.core.x,G.core.y,5)&&!drawArtUnder(ctx,G.core,time))drawBloomPetals(ctx,G.core,time);
-  {let n=0;const und=[];if(SET.art)for(const b of G.blocks.values()){const A=!b.team&&ART.plant[b.t];if(A&&inView(b.x,b.y,3)){if(!A.priority)n++;if(A.under&&b!==G.core)und.push(b);}}
+  {let n=0;const und=[];for(const k in ORGAN_N)ORGAN_N[k]=0;if(SET.art)for(const b of G.blocks.values()){const A=!b.team&&ART.plant[b.t];if(A&&inView(b.x,b.y,3)){if(A.custom)ORGAN_N[b.t]++;else if(!A.priority)n++;if(A.under&&b!==G.core)und.push(b);}}
    artLite=z<ART_LOD_ZOOM||n>ART_LOD_MAX;artMid=!artLite&&n>ART_MID_MAX;artDrawn=0;
    // roots that reach past a building's own tile go down before any building, so neighbours always sit on top of them
    for(const b of und){if(b.built<1){ctx.save();ctx.globalAlpha=.4+.6*b.built;}drawArtUnder(ctx,b,time);if(b.built<1)ctx.restore();}}

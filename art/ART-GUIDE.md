@@ -229,7 +229,7 @@ The Vine, Swift Vine and Vine Knot are drawn as living vessels. This is artwork 
 - **Joins:**
   - Every piece has the same cross-section at its ends, and all texture repeats exactly once per tile, so straight pieces, turns, Knot passages and Vine/Swift joins meet without a seam. The Swift Vine pinches back to the Vine's width at each end.
   - Where a Swift Vine meets a Vine or a Knot, a short fade of the Vine's tissue is laid over the Swift Vine's end, so the green and turquoise flow into each other.
-  - A vessel with nothing beyond it ends in a sealed, rounded cap. Where it meets a growth that feeds it or that it feeds (Root Tap, Bloom, glands, routers and the rest), it opens into a fleshy collar.
+  - A vessel with nothing beyond it ends in a sealed, rounded cap. Where it meets a growth that feeds it or that it feeds (Root Tap, Bloom, Resin Gland and the rest), it opens into a fleshy collar. Since v32 a Splitter Bulb or Sorting Gland has no collar: the vessel runs straight into the organ's own channel.
 - **Motion:**
   - Sap streaks move through the lumen at the same speed the items do. They run only while the vessel's items are actually moving: an empty vessel, or a backed-up one, shows a still frame.
   - A faint wet film shows along the walls of a moving vessel, and now and then a nutrient pulse runs down a line, at item speed.
@@ -261,3 +261,56 @@ Every vessel carried items, and the times are per frame including the items. `te
   - Low quality, or any of these files failing to load, gives the previous vines exactly as before. The rest of the painted art is unaffected.
   - Build-menu icons and the placement preview use the painted look too.
 - **Painter script:** `game/art-source/paint_vine.js` makes every texture above. The drawing code is `drawVinesPass`, `drawVine`, `drawVineFx`, `drawVineItems` and `drawKnot` in the game.
+
+## Painted organs (v32): Splitter Bulb, Sorting Gland, Resin Gland, Rootweb Node
+
+Four more growths are painted as wet, translucent organs. This is artwork only: routing, ratios, speeds, footprints, placement, costs, health, Rootweb growth and node reach are unchanged. `tests/otest.js` runs the same colony for 90 seconds in v31, in v32 with the painted art and in v32 without it, and the full save snapshots are byte-identical.
+
+- **What the game does (checked in the code before painting):**
+  - **Splitter Bulb** (`router`): holds one item (`b.buf`) for 0.06 s, then hands it to the next neighbour round the ring (`b.rr`), never back to the side it came from.
+  - **Sorting Gland** (`sorter`): passes each item on at once. The chosen item (`b.cfg`) goes straight through; anything else goes left or right in turn.
+  - **Resin Gland** (`press`, 2x2): holds up to 10 coal; while it has 2 or more and fewer than 10 resin stored, its progress (`b.prog`) climbs over 1.5 s, then 2 coal become 1 resin (`b.out`), which it hands to its neighbours in turn.
+  - **Rootweb Node** (`node`): grows Rootweb out to 6 tiles (8 with the Deep Roots evolution), one tile at a time, nearest first (`b.wlist`, `b.wi`).
+  - The art reads that state and never writes it. What it remembers (when an item last came in or left, the last progress it saw, which tendrils it drew) lives outside the block, in `OST`, so nothing reaches a save.
+- **Splitter Bulb:** a swollen translucent bulb on a fleshy base, with a fluid chamber, fine inner branches and a pale valve at each opening. Each side opens into a channel only when something is connected there, and a Vine runs straight into that channel. When an item arrives the bulb swells and a pulse runs in from the side it came from; the item slides in and waits in the chamber. When the game hands it on, the valve on that side opens, the branch glows turquoise and a pulse runs out along it, and the bulb relaxes. At rest the bulb is still.
+- **Sorting Gland:** an oval, lopsided chamber (a small pouch bulges behind it) with an amber filter membrane across the middle. The straight-through channel lies along the direction items come in from; the two diversion channels are thinner. A channel with nothing connected stops inside the chamber. Each time an item leaves, the chamber and filter contract and that channel glows (amber straight through, turquoise to the sides). **The chosen item is drawn last, on a dark socket, never scaled and never covered.** With nothing chosen, a pale empty ring shows instead.
+- **Resin Gland:** a wet digestive sac on a dark-violet fleshy base with a collar of small lily petals, roots spreading into the Rootweb, and bioluminescent veins under the skin. It is not a tank: the sac breathes, swells and squeezes.
+  - One coal fragment shows for each piece it holds (up to 10). While it is working they tumble round the sac, the veins brighten, the breathing quickens and the fluid turns amber as progress climbs. Each conversion squeezes the sac, and each piece of resin it ships sends a thick amber pulse from the lower chamber to the neighbour that received it.
+  - The amber in the lower chamber rises with the resin stored.
+  - Idle (out of coal, or full), it breathes slowly and the coal settles to the bottom.
+  - Hurt, it sags a little (up to 10% at zero health). The white hit flash and the health bar are unchanged.
+- **Rootweb Node:** a small heart of six lily petals round a translucent chamber with a glowing nucleus, on dark tissue that fades into the Rootweb with no square edge. Up to seven tendrils with buds at their tips reach out, each one only towards a tile that is already Rootweb. At rest it breathes, the nucleus drifts and the petals move slightly. Each time the node really covers a new tile, a pulse runs from the heart to that tile, a ring spreads outward, the nucleus flares and the heart contracts. The same moment also sends a pulse along the Rootweb's own channel from the node.
+- **Readability:** the item in a Splitter Bulb, the Sorting Gland's chosen item, the active output glows and the Resin Gland's coal and resin level are all drawn from game state. They are never hidden by the organ's own layers or by an effect.
+- **Performance:**
+  - Each kind has its own crowd limit on screen: 60 Splitter Bulbs, 60 Sorting Glands, 40 Rootweb Nodes and 24 Resin Glands, plus 90 of the first three together. Past a limit, or zoomed out past 0.75×, that kind draws one cached picture per structure. The Splitter Bulb's item and active outlet glow, and the Sorting Gland's chosen item, still show. The Resin Gland only drops its detail past its own limit.
+  - Layers come at half size for normal zoom, and the full 128 px textures are used only when zoomed right in. Every layer is clipped to its visible pixels. A Splitter Bulb or Sorting Gland at rest is one cached picture per set of connections, and a Node's tendrils are one cached picture per node, rebuilt only when the Rootweb under them changes. Nothing is animated per pixel.
+  - Measured in headless Chromium (software drawing, so a real browser is faster), drawing only these structures. Every Splitter Bulb and Sorting Gland was busy with items, and every Resin Gland was working:
+
+| On screen | Zoom | Previous look | Painted organs |
+| --- | --- | --- | --- |
+| 30 Splitter Bulbs | 1.15× | 0.7 ms | 1.1 ms (full motion) |
+| 60 Splitter Bulbs | 1.15× | 1.6 ms | 3.3 ms (full motion) |
+| 300 Splitter Bulbs | 1.15× | 7.4 ms | 5.3 ms (cached pictures) |
+| 60 Sorting Glands | 1.15× | 0.6 ms | 2.2 ms (full motion) |
+| 300 Sorting Glands | 1.15× | 2.8 ms | 4.8 ms (cached pictures) |
+| 30 Rootweb Nodes | 1.15× | 0.6 ms | 3.8 ms (full motion) |
+| 300 Rootweb Nodes | 1.15× | 3.9 ms | 1.9 ms (cached pictures) |
+| 24 Resin Glands | 1.15× | 4.8 ms | 3.2 ms (full motion) |
+| 120 Resin Glands | 1.15× | 18.4 ms | 6.1 ms (cached pictures) |
+| 300 mixed | 1.15× | 4.5 ms | 3.8 ms |
+| 300 mixed | 0.6× | 3.8 ms | 2.7 ms |
+
+`tests/operf.js` repeats the measurement.
+
+- **Textures (painted at 128 px a tile; layers for 1x1 organs are 128x128 and cover the tile):**
+  - `art/plant/splitter-bulb/`: `base.png` (fleshy base, roots, shadow), `chan.png` (a channel from the right-hand edge into the bulb, with the Vine's cross-section at the edge; turned for each side), `chan_glow.png`, `valve.png` (the valve at the right-hand opening), `fluid.png`, `membrane.png`, `shine.png`, `pulse.png`.
+  - `art/plant/sorting-gland/`: `base.png` (with the pouch), `main.png` (the straight channel, edge to edge), `main_glow.png`, `side.png` (a diversion channel from the right-hand edge), `side_glow.png`, `body.png` (the oval chamber), `filter.png`, `shine.png`, `socket.png` (64x64 dark socket behind the chosen item), `pulse.png`. The game turns `base`, `body`, `filter` and `shine` to line up with the incoming side.
+  - `art/plant/resin-gland/` (384x384; the 2x2 footprint is the middle 256x256): `roots.png` (drawn under neighbours), `base.png` (with petal collar), `sac.png`, `resin.png` (the game shows it from the bottom up, as much as the gland holds), `coal.png` (32x32 fragment), `membrane.png`, `veins.png` (added with a light blend), `shine.png`, `pulse.png`.
+  - `art/plant/rootweb-node/`: `root.png` (384x384, the node's tile in the middle; one tendril running right, ending in a bud), `base.png`, `petal.png` (40x56, base at the top), `fluid.png`, `nucleus.png` (48x48), `membrane.png`, `ring.png`, `pulse.png`.
+  - Any replacement must keep these sizes and the channel cross-section at the tile edge, or Vines will not meet the channels cleanly.
+- **Settings and fallback:**
+  - Low quality gives the previous look for all four.
+  - If any file for one of them fails to load, that structure falls back to its previous look and the others stay painted.
+  - Build-menu icons use the cached resting picture.
+- **Painter script:** `art/source/paint_organs.js` makes every texture above (run with `node art/source/runpaint.js art/source/paint_organs.js art/plant`). The drawing code is `drawSplitter`, `drawSorter`, `drawResin`, `drawResinUnder`, `drawNode`, `drawNodeEv` and `drawNodeUnder` in the game.
+
