@@ -1,0 +1,388 @@
+LAST COLONY - CAMPAIGN DIALOGUE (v33, exported from the game)
+==============================================================
+
+This file is generated from the game's SEQ table, so it matches the build exactly.
+The older scripts dialogue.txt and dialogue-rewritten.txt are kept for history.
+
+NAMING RULES (v33)
+- Nymbri, Nymbria and communis never appear before Mission 2's e_brief.
+- In Mission 1 Castell only mentions that Dr Nymbris wants samples.
+- The Seed Cluster and the Bloom never say "I". They say "we", or use no pronoun.
+- Hive language grows: M1 instinct, M2 recognition, M3 cause and effect,
+  M4 questions, M5 intentional but alien.
+- The hive never says or answers to its human name in the opening campaign.
+- The scientific name is shown in italics in the comm box.
+
+CHARACTERS (code | name shown in game | role line)
+SEED  | SEED CLUSTER | The shared mind of the whole hive
+BLOOM | THE BLOOM | The hive's living heart on this ground
+PVT   | PVT. KESSLER | HDF Patrol 7, scout
+SGT   | SGT. OKAFOR | HDF Patrol 7, leader
+CPL   | CPL. ADEYEMI | HDF Ember Depot
+OPS   | LT. CASTELL | HDF Command, operations
+COL   | COL. RUIZ | Commander, Outpost Kilo
+SCI   | DR. ELENA NYMBRIS | Lead Xenobiological Researcher, HDF Biohazard Division
+GEN   | SUPREME GENERAL VARRICK | Human Defence Force
+
+------------------------------------------------------------
+MISSION 1, LANDFALL
+------------------------------------------------------------
+
+=== l_intro ===
+WHEN: Mission 1, Landfall. Opening, before the tutorial.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Light... warmth.
+SEED: Root.
+BLOOM: Water below. Copper. Something old, deep down.
+SEED: Feed. Grow. Spread.
+BLOOM: Small lives in the soil. They scatter.
+SEED: Let them. Ground. Only ground.
+BLOOM: Hard trails past the meadow. Trembling.
+SEED: Stay near the roots.
+BLOOM: Trembling... closer?
+SEED: Unknown. Grow thorns.
+
+# TUTORIAL (UI, NOT SPOKEN) runs after l_intro. Building the first Thorn Spitter triggers fc_patrol.
+
+=== fc_patrol ===
+WHEN: Mission 1. First contact: scripted Patrol 7 reaches your first Thorn Spitter after the tutorial build step.
+CHANNEL: HDF PATROL NET · PATROL 7
+PVT: Sarge, hold up a second.
+SGT: What is it?
+PVT: Was this here yesterday?
+SGT: Was what here?
+PVT: The... purple stuff. All through the grass.
+SGT: Huh. No, I don't think so.
+PVT: It's growing across the track. Look, it's moving right now.
+SGT: Step back from it.
+PVT: There's something bigger behind those rocks.
+SGT: I see it.
+PVT: That thing with the spikes... Sarge, it just turned.
+SGT: Kessler. Back. Now.
+PVT: I'm backing up.
+SGT: Nobody fire. We haven't been attacked. Just keep your eyes on it.
+
+=== fc_command ===
+WHEN: Mission 1. First contact: Patrol 7 reports to HDF Command.
+CHANNEL: HDF COMMAND · PATROL 7
+SGT: Command, Patrol Seven. Need you to check something for me.
+OPS: Go ahead, Seven.
+SGT: We've got some kind of growth out by the meadow. It wasn't on yesterday's route.
+OPS: How much growth?
+SGT: Enough to cover the track. And there's a structure. Organic, I think. Taller than our transport.
+OPS: A structure?
+SGT: I know how that sounds. I'm sending video.
+OPS: ...One moment.
+PVT: Tell them about the spikes.
+SGT: And one of the growths moved when we approached. Deliberately.
+OPS: Seven, stay where you are. Don't touch anything. I'm escalating this.
+
+=== fc_general ===
+WHEN: Mission 1. First contact: Command brings in the Supreme General. Afterwards patrol withdraws.
+CHANNEL: SECURE LINE · HDF COMMAND
+GEN: Lieutenant. Why am I seeing a field of purple weeds on my priority feed?
+OPS: Patrol Seven sent it in, sir. This wasn't there twenty-four hours ago.
+GEN: You're certain?
+OPS: Their route camera confirms it. Clear ground yesterday. This today.
+GEN: Mining spill? Agricultural experiment?
+OPS: Nothing registered nearby. Biohazard Division has been notified.
+GEN: What did they say?
+OPS: Dr Nymbris wants samples. Says the patrol footage isn't enough to identify it.
+GEN: And the growth rate? Does she have an explanation for that?
+OPS: Not yet, sir.
+GEN: Has it hurt anyone?
+OPS: No, sir. Patrol's holding at a distance.
+GEN: Good. Keep it that way. Get your people out and cordon off the meadow.
+OPS: And the growth itself?
+GEN: Send a clearance crew. Get the doctor her samples if it's safe. Burn the rest before it reaches a settlement.
+OPS: Understood.
+GEN: Lieutenant... I want to know how an entire field changed overnight without anyone noticing.
+
+=== fc_after ===
+WHEN: Mission 1. After patrol safely withdraws. Tutorial ends and attack waves begin.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Hard things. Gone.
+SEED: Not far. Still felt.
+BLOOM: One reached. Then stopped.
+SEED: Reached back.
+BLOOM: Touch... to know.
+SEED: They also.
+BLOOM: Return?
+SEED: Yes. Many. Coming.
+BLOOM: More thorns.
+SEED: Quickly.
+
+=== l_out ===
+WHEN: Mission 1. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Burning shells. Still now.
+SEED: Hot metal. Roots away.
+BLOOM: They came. Again. Again.
+SEED: Not feeding. Tearing roots out.
+BLOOM: Pain.
+SEED: Threat. Defend. Spread.
+BLOOM: More trails. North-east.
+SEED: Follow the trails.
+
+------------------------------------------------------------
+MISSION 2, EMBER FIELDS
+------------------------------------------------------------
+
+=== e_intro ===
+WHEN: Mission 2, Ember Fields. Opening (plants).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Ground tastes burned.
+SEED: Coal under the ash. Heat inside.
+BLOOM: Stings the roots.
+SEED: Digest it. Heat into resin. Resin into thorns.
+BLOOM: Walking shells. Shaking in the stone.
+SEED: Shells... black stone. Always together.
+BLOOM: Waiting for us?
+SEED: No. Working. Spread before they feel us.
+BLOOM: And when they feel us?
+SEED: Fire... follows.
+BLOOM: Growth. Fire. Pain.
+SEED: Thorns stop fire. More roots, more thorns.
+
+=== e_brief ===
+WHEN: Mission 2. Opening, right after the plants and before the Ember Depot. The scientific name is first spoken here.
+CHANNEL: SECURE LINE · HDF COMMAND
+OPS: General, Biohazard Division has finished its preliminary assessment.
+GEN: About time. Put Nymbris through.
+SCI: General.
+GEN: Doctor. Tell me we know what we're dealing with.
+SCI: Not entirely. But we've agreed on a provisional classification.
+GEN: Which is?
+SCI: Nymbria communis. Nymbri, for short.
+GEN: Nymbri?
+SCI: The genus was named after me. It wasn't my idea. 'Communis' is for the way they seem to share... functions. Behaviour. We're not sure yet.
+GEN: And what have we actually learned about them?
+SCI: Their tissue is mostly plant. But some of it works like animal organs.
+GEN: Meaning?
+SCI: Digestion. Movement. Sensory responses. And they appear to coordinate with one another.
+GEN: Coordinate how?
+SCI: That's what we're still trying to establish.
+GEN: Are they dangerous?
+SCI: They're certainly capable of defending themselves.
+GEN: Our clearance team discovered that much.
+SCI: Yes. But we don't yet know whether they're responding to threats or looking for them.
+GEN: Well, until we know, my people aren't taking chances.
+
+=== e_humans ===
+WHEN: Mission 2. Opening (humans, right after the plants).
+CHANNEL: HDF EMBER DEPOT · OPEN CHANNEL
+CPL: Hey, Okafor. You really saw that thing out at Landfall?
+SGT: Unfortunately.
+CPL: My cousin says you lot got chased off by a flower.
+SGT: Tell your cousin he can go photograph it himself.
+CPL: So the stories are true?
+SGT: Some of them. It grows fast. It doesn't like being burned. And the spiky ones fire something back.
+CPL: You're joking.
+SGT: Look at me. Am I joking?
+OPS: Ember Depot, this is Command. Confirm your northern perimeter is clear.
+CPL: Clear as of ten minutes ago.
+OPS: Check it again. We've had reports of Nymbri growth moving toward the coal fields.
+CPL: Nymbri?
+SGT: What the lab's calling them now. Same weeds.
+CPL: Copy. I'll send a team.
+SGT: Send two.
+
+=== e_out ===
+WHEN: Mission 2. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Fire stopped.
+SEED: Listen.
+BLOOM: Nothing in the roots.
+SEED: Not roots. Air. Same pulses. Again, again.
+BLOOM: Pulses... then shells.
+SEED: Pulses change. Shells move.
+BLOOM: One calls. Many come.
+SEED: Yes. Find the caller.
+
+------------------------------------------------------------
+MISSION 3, OUTPOST KILO
+------------------------------------------------------------
+
+=== k_humans ===
+WHEN: Mission 3, Outpost Kilo. Opening (humans).
+CHANNEL: HDF COMMAND · OUTPOST KILO
+GEN: Ruiz. Tell me you've got the ridge secured.
+COL: East and west approaches covered. We're reinforcing the pass now.
+GEN: Ember Depot went silent six hours ago.
+COL: I know, sir. Last we heard was gunfire. Then someone shouting about roots inside the perimeter.
+GEN: Christ. Nymbris, give me something useful.
+SCI: The Landfall samples are still growing in containment. Even the pieces we cut off.
+GEN: Growing how?
+SCI: Responding to one another, across separate containers. I can't explain how yet.
+SCI: And the tissue from their ants matches the growths. I'm not sure they're separate creatures at all.
+COL: Can you tell us where to shoot?
+SCI: Killing the visible growth doesn't always stop it. The Rootweb might be carrying signals between them. Might.
+COL: "Might" isn't going to help my men.
+SCI: I know, Colonel. For what it's worth, Ember had been burning Nymbri growth off its fences for a week before it was hit.
+GEN: Doctor, if you're suggesting we stop defending ourselves...
+SCI: I'm not suggesting anything. I'm telling you what happened first.
+GEN: Then don't rely on one line of guns. Protect your drills, protect your ammunition, and hold that pass.
+COL: We'll hold it.
+
+=== k_intro ===
+WHEN: Mission 3. Opening (plants, right after the humans).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The pulses gather in one place.
+SEED: Show us.
+BLOOM: Straight stone walls. Metal everywhere. The ground cannot breathe there.
+SEED: The shells gather inside.
+BLOOM: Their machines pull ore from the ridge. They carry it into the walls.
+SEED: The ore feeds their fire.
+BLOOM: Follow the ore?
+SEED: Break the paths. Stop the fire.
+BLOOM: They will come out.
+SEED: Let them come out hungry.
+
+=== k_out ===
+WHEN: Mission 3. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: Something is wrong in this place.
+SEED: Share it.
+BLOOM: Pieces of us. Sealed away. Cut open. Alive, but not growing.
+SEED: ...Felt.
+BLOOM: Why do the shells keep pieces of us?
+SEED: We followed their pulses. They take our pieces.
+BLOOM: To know us.
+SEED: Yes. They learn. They return... again.
+BLOOM: Do we learn faster?
+SEED: We must.
+
+------------------------------------------------------------
+MISSION 4, FROST CANYON
+------------------------------------------------------------
+
+=== f_humans ===
+WHEN: Mission 4, Frost Canyon. Opening (humans).
+CHANNEL: HDF HIGH COMMAND · CLASSIFIED
+SCI: General, I need you to look at the sequence from Kilo.
+GEN: I've seen the footage.
+SCI: Not this part. Watch the supply belts.
+GEN: They go down before the guns.
+SCI: Exactly. Then the ammunition stores. Only then does it push for the command centre.
+COL: That's what any decent commander would do.
+SCI: That's my point.
+GEN: You're telling me the Nymbri are planning attacks.
+SCI: I'm telling you I can't call them weeds anymore. They adapt. They learn what hurts us. And every assault we've logged came after one of ours.
+GEN: They learned it by burying my people.
+SCI: Or by being burned. I don't know which came first anymore, General. Neither do you.
+GEN: I know who I'm responsible for. How many more have to die before you can tell me what they are?
+SCI: I can't tell you what they are. I can tell you the root networks carry patterned signals. Something in there is listening.
+GEN: Then put a message on every frequency we have.
+SCI: A message?
+GEN: Tell them to withdraw from our settlements. Tell them we will destroy any growth that crosses into them.
+SCI: If we're the reason they keep escalating, a threat won't...
+GEN: And if we're not, and I wait, people die. Send it.
+COL: You think it'll understand?
+GEN: I think we've been wrong about what it understands. I won't make that mistake again.
+
+=== f_intro ===
+WHEN: Mission 4. Opening (plants, right after the humans).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: That sound again. It is everywhere now.
+SEED: Patterns through the air. The shells send them to us.
+BLOOM: Can we read them?
+SEED: Pieces. Boundary. Go away. Destroy.
+BLOOM: Why do they follow us?
+SEED: Something guides them. They move together, like one root.
+BLOOM: Should we answer?
+SEED: Not yet. We hold too little of their meaning.
+BLOOM: The canyon is narrow. Heavy shells move into it, and winged ones above.
+SEED: Then reach into the sky. Spores for the wings.
+BLOOM: Hard rock below. Something bright inside it.
+SEED: Titanium. Deeper roots can break it. Hold the canyon while they grow.
+
+=== f_out ===
+WHEN: Mission 4. Victory.
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The canyon is quiet.
+SEED: Their patterns are not.
+BLOOM: One place now. So many voices together.
+SEED: The shells gather what is left of them.
+BLOOM: To attack?
+SEED: To survive.
+BLOOM: Is that different?
+SEED: Not for us. Perhaps not for them.
+
+------------------------------------------------------------
+MISSION 5, THE LAST COLONY
+------------------------------------------------------------
+
+=== x_humans ===
+WHEN: Mission 5, The Last Colony. Opening (humans).
+CHANNEL: ALL HDF FORCES · OPERATION CLEAN EARTH
+COL: General, everyone's behind the walls. Military, civilians, what's left of the evacuees.
+GEN: And the outer batteries?
+COL: Ready. Ammunition's the problem. We're down to whatever the transports brought in.
+OPS: Sir, the southern observation post has stopped responding.
+GEN: How long ago?
+OPS: Three minutes.
+SCI: General... there's something happening to the signal.
+GEN: Nymbris, not now.
+SCI: It's moving into our command frequency. It's not interference.
+COL: Can it hear us?
+SCI: I think it already has.
+
+=== x_contact ===
+WHEN: Mission 5. Seed Cluster enters HDF command band. First direct exchange.
+CHANNEL: INTERCEPT · HDF COMMAND BAND
+SEED: We hear you.
+OPS: What the... Who's on this channel?
+GEN: Identify yourself.
+SEED: Your patterns came through the canyon. We followed them here.
+GEN: What are you?
+SEED: Many roots. One hunger. You call us enemy.
+GEN: You've destroyed three of our installations. You've killed my people.
+SEED: Your people burned our roots. Cut us apart. We grew where the ground let us.
+GEN: This is our home.
+SEED: It is ground. We live on it too.
+GEN: There are families inside these walls. If you understand me, turn back.
+SEED: We turned away before. Your fire followed.
+GEN: Then you're leaving me no choice.
+SEED: Your fire chose. Long ago.
+
+=== x_intro ===
+WHEN: Mission 5. Opening (plants, after first direct contact).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: We spoke to them.
+SEED: Yes.
+BLOOM: Did they understand?
+SEED: Enough to fear. Not enough to stop.
+BLOOM: So many of them behind the walls. The ground shakes.
+SEED: More than fire waits there. Thicker shells. Heavier weapons. Grow something strong enough to break them, and keep the wounded roots alive.
+BLOOM: If they will not move, what happens when we reach them?
+SEED: We take the ground.
+BLOOM: All of it?
+SEED: All that we need to live.
+
+=== x_out1 ===
+WHEN: Mission 5. Victory, part 1 (humans).
+CHANNEL: HDF COMMAND · SIGNAL DEGRADED
+COL: Inner gate's gone! Fall back to the shelters!
+OPS: General, we can't raise the eastern batteries.
+GEN: Keep the evacuation moving. Do you hear me? Keep them moving!
+OPS: Sir, there's nowhere left to send them.
+GEN: ...
+GEN: Then get them underground. Seal every door you can.
+OPS: General? The command feed is breaking up.
+GEN: Castell, listen to me. Whatever happens, don't open those shel—
+
+=== x_out2 ===
+WHEN: Mission 5. Victory, part 2 (plants).
+CHANNEL: ROOT-LINK · SEED CLUSTER ⇄ BLOOM
+BLOOM: The metal place has stopped fighting.
+SEED: We feel it.
+BLOOM: Lives still move beneath the stone.
+SEED: We know.
+BLOOM: Do we follow them?
+SEED: No. Not now.
+BLOOM: Then what do we do?
+SEED: What we are for.
+BLOOM: Grow?
+SEED: Grow.
+BLOOM: Why do we grow?
+SEED: ...We do not know yet.

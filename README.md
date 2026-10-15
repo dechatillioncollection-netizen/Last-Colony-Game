@@ -1,6 +1,6 @@
 # Last Colony
 
-A colony defence and factory game where you play the Pl-Ant Hive, a living plant colony trying to survive the Human Defence Force.
+A colony defence and factory game where you play the Nymbri Hive, a living plant colony trying to survive the Human Defence Force.
 
 The whole game is a single HTML file with its painted art beside it. The ground and the living Rootweb are drawn with WebGL 2 on High and Epic quality, with the 2D canvas as an automatic fallback.
 

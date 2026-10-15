@@ -32,7 +32,7 @@ The new art system adds one line at the top of `drawBlock`: "if this structure h
 
 ## Adding art for a structure
 
-Folder: `art/plant/<name>/` for Pl-Ant Hive structures and `art/hdf/<name>/` for HDF structures. Then add an entry to the `ART` table in the game file. This is the Seed Pod's entry:
+Folder: `art/plant/<name>/` for Nymbri Hive structures and `art/hdf/<name>/` for HDF structures. Then add an entry to the `ART` table in the game file. This is the Seed Pod's entry:
 
 ```js
 nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.018,period:4.2},
