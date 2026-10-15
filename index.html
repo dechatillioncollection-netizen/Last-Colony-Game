@@ -667,12 +667,15 @@ function stepWeb(dt){
 // Graphics quality presets. Each one sets the individual switches below, which are also stored on their own so older saves and tools keep working.
 // dpr caps the drawing resolution on high-density screens.
 const QUALITY={low:{hd:0,hq:0,art:0,gl:0,dpr:1},medium:{hd:1,hq:0,art:1,gl:0,dpr:1},high:{hd:1,hq:0,art:1,gl:1,dpr:1.5},epic:{hd:1,hq:1,art:1,gl:1,dpr:2}};
+// the Windows desktop app runs inside Electron: there every preset draws the ground and Rootweb on the graphics card
+const APP=/\bElectron\//.test(navigator.userAgent);if(APP){QUALITY.low.gl=1;QUALITY.medium.gl=1;}
 const SET={hd:true,hq:true,fog:true,art:true,gl:true,q:'high',dpr:1.5};try{SET.art=localStorage.getItem('lc_art')!=='0';SET.gl=localStorage.getItem('lc_gl')!=='0';SET.hd=localStorage.getItem('lc_hd')!=='0';SET.hq=localStorage.getItem('lc_hq')!=='0';SET.fog=localStorage.getItem('lc_fog')!=='0';
   // the stored preset; before presets existed, work it out from the switches; a first-time player starts on High
   const q=localStorage.getItem('lc_quality');
   if(QUALITY[q])SET.q=q;else if(localStorage.getItem('lc_hd')===null){SET.q='high';const Q=QUALITY.high;SET.hd=!!Q.hd;SET.hq=!!Q.hq;SET.art=!!Q.art;if(localStorage.getItem('lc_gl')===null)SET.gl=!!Q.gl;}
   else SET.q=!SET.hd?'low':!SET.art||!SET.gl?'medium':SET.hq?'epic':'high';
   SET.dpr=QUALITY[SET.q].dpr;}catch(e){}
+if(APP){SET.gl=true;try{if(localStorage.getItem('lc_gl')==='0')localStorage.setItem('lc_gl','1');}catch(e){}}
 const HDR=16;const hdCanvas=document.createElement('canvas');hdCanvas.width=MW*HDR;hdCanvas.height=MH*HDR;const hctx=hdCanvas.getContext('2d');
 const NL=new Float32Array(256*256);{let sd=1234567;for(let i=0;i<NL.length;i++){sd=(Math.imul(sd,1103515245)+12345)>>>0;NL[i]=sd/4294967296;}}
 function vn(x,y){const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
@@ -765,6 +768,8 @@ const WEB_SG=.36,WEB_LG=new Float32Array(7*7*7),WEB_C=new Float32Array(25),WEB_O
  for(let k=0;k<T;k++){const fx=(k+.5)/T;for(let ii=0;ii<5;ii++){const a=ii-2;WEB_W[k*5+ii]=P((a+1-fx)/WEB_SG)-P((a-fx)/WEB_SG);}}}let webArtImg=null,webMaskImg=null,webPat=null;
 const WEB_FEED_SKIP={wall:1,wallL:1,twall:1,door:1,doorL:1};
 function webArtOn(){try{return SET.art&&ART.plant.rootweb.state==='ready';}catch(e){return false;}}
+// the Rootweb membrane texture has loaded (the desktop app's GPU path uses it even on Low)
+function webArtLoaded(){try{return ART.plant.rootweb.state==='ready';}catch(e){return false;}}
 function webArtReady(a){webPat=webSel(0,0).x.createPattern(a.img[0],'repeat');if(G&&G.web)repaintAllWeb();}
 function webFeedType(b){return b&&b.team===0&&!B[b.t].belt&&!VINE[b.t]&&!WEB_FEED_SKIP[b.t];}
 // growths close to this tile: their feeder veins and the thicker veins around them
@@ -946,7 +951,7 @@ function repaintAllWeb(){if(!G||!G.web)return;webGPU=glOn();
 let webGPU=false;
 const GLR={tried:false,ok:false,gl:null,cv:null,why:'',lost:false,webDirty:true,bornDirty:true,terrSrc:null,terrDirty:true,born:null,w:0,h:0};
 function glPref(){try{return localStorage.getItem('lc_gl')||'';}catch(e){return '';}}
-function glOn(){if(!SET.gl||!webArtOn())return false;if(!GLR.tried)glInit();return GLR.ok&&!GLR.lost&&!!GLR.patTex;}
+function glOn(){if(!SET.gl||!(APP?webArtLoaded():webArtOn()))return false;if(!GLR.tried)glInit();return GLR.ok&&!GLR.lost&&!!GLR.patTex;}
 const GLSL_HEAD=`#version 300 es
 precision highp float;precision highp int;precision highp sampler2D;
 `;
@@ -4000,6 +4005,9 @@ const QDESC={low:'The classic look: flat ground, the plain Rootweb and simple sh
   medium:'HD ground with lit cliffs, deep water and ore crystals, soft shadows and glow, and the painted artwork and living Rootweb.',
   high:'Medium, with the ground and living Rootweb drawn by your graphics card: sharper up close, smoother growth, less work for the processor.',
   epic:'High, plus shimmering, rippling water, drifting dust and full resolution on high-density screens.'};
+if(APP){QDESC.low='The classic look: flat ground and simple shapes, with the ground and living Rootweb drawn by your graphics card. Fastest.';
+  QDESC.medium='HD ground with lit cliffs, deep water and ore crystals, soft shadows and glow, and the painted artwork, all drawn with your graphics card.';
+  QDESC.high='Medium, at a sharper resolution on high-density screens.';}
 // switches to a preset and redraws everything it touches at once
 function applyQuality(q){const Q=QUALITY[q];if(!Q)return;const hd0=SET.hd,dpr0=SET.dpr;
   SET.q=q;SET.hd=!!Q.hd;SET.hq=!!Q.hq;SET.art=!!Q.art;SET.gl=!!Q.gl;SET.dpr=Q.dpr;
@@ -4013,7 +4021,7 @@ function qualityUI(){for(const b of document.querySelectorAll('.qbar button')){c
   $('qdesc').textContent=QDESC[SET.q]||'';const n=$('qgpu');
   if(!SET.gl)n.textContent='';
   else if(glOn())n.textContent='Your graphics card is drawing the ground and Rootweb.';
-  else if(!webArtOn())n.textContent='The graphics card takes over once the painted artwork has loaded.';
+  else if(!(APP?webArtLoaded():webArtOn()))n.textContent='The graphics card takes over once the painted artwork has loaded.';
   else n.textContent='Your graphics card can\u2019t be used here ('+(GLR.why||'WebGL 2 unavailable')+'), so the processor draws the ground and Rootweb instead.';}
 function openSettings(){$('optFog').checked=SET.fog;qualityUI();$('settings').hidden=false;}
 for(const b of document.querySelectorAll('.qbar button'))b.onclick=()=>{const q=b.dataset.q;if(q===SET.q)return;

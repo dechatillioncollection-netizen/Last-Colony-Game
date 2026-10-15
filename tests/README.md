@@ -21,6 +21,7 @@ OLD=http://localhost:8123/previous/index.html node tests/otest.js   # Painted or
 | `ncheck.js` | v33 naming chronology: the first Nymbri, Nymbria or communis line is in the Mission 2 briefing (`e_brief`), the hive never says "I", the hive never says its human name, no Pl-Ant or Brandt text left in the page, every dialogue sequence is used. Writes `ncheck_result.json` |
 | `nstory.js` | plays every mission's opening and the final ending through the real story player and logs the order the sequences play in |
 | `dlgexport.js` | not a test: `node tests/dlgexport.js index.html docs/dialogue-rewritten.txt docs/dialogue-v33.txt` regenerates the dialogue script from the game |
+| `gpuapp.js` | desktop app GPU presets: with an Electron user agent all four presets draw the ground and Rootweb on the GPU; in a browser Low and Medium stay on the 2D painter |
 | `qtest.js` | graphics quality presets: menu access, each preset's effect, persistence, migration from older settings |
 | `glcmp.js`, `glgrow.js` | GPU and 2D Rootweb side by side, and GPU growth frames |
 | `glcpu.js` | processor time per frame for the Rootweb on each path |
