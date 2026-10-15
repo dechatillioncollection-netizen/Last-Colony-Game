@@ -229,7 +229,7 @@ The Vine, Swift Vine and Vine Knot are drawn as living vessels. This is artwork 
 - **Joins:**
   - Every piece has the same cross-section at its ends, and all texture repeats exactly once per tile, so straight pieces, turns, Knot passages and Vine/Swift joins meet without a seam. The Swift Vine pinches back to the Vine's width at each end.
   - Where a Swift Vine meets a Vine or a Knot, a short fade of the Vine's tissue is laid over the Swift Vine's end, so the green and turquoise flow into each other.
-  - A vessel with nothing beyond it ends in a sealed, rounded cap. Where it meets a growth that feeds it or that it feeds (Root Tap, Bloom, Resin Gland and the rest), it opens into a fleshy collar. Since v32 a Splitter Bulb or Sorting Gland has no collar: the vessel runs straight into the organ's own channel.
+  - A vessel with nothing beyond it ends in a sealed, rounded cap. Where it meets a growth that really feeds it or that it really feeds, it opens into a fleshy collar (since v35 this follows the simulation exactly: see **Connections that follow real transfer (v35)** below). Since v32 a Splitter Bulb or Sorting Gland has no collar: the vessel runs straight into the organ's own channel.
 - **Motion:**
   - Sap streaks move through the lumen at the same speed the items do. They run only while the vessel's items are actually moving: an empty vessel, or a backed-up one, shows a still frame.
   - A faint wet film shows along the walls of a moving vessel, and now and then a nutrient pulse runs down a line, at item speed.
@@ -314,3 +314,49 @@ Four more growths are painted as wet, translucent organs. This is artwork only: 
   - Build-menu icons use the cached resting picture.
 - **Painter script:** `art/source/paint_organs.js` makes every texture above (run with `node art/source/runpaint.js art/source/paint_organs.js art/plant`). The drawing code is `drawSplitter`, `drawSorter`, `drawResin`, `drawResinUnder`, `drawNode`, `drawNodeEv` and `drawNodeUnder` in the game.
 
+## Connections that follow real transfer (v35)
+
+Before v35 a vessel opened into a collar wherever it touched a growth, and a Root Tap beside a vessel's side showed nothing even though it was pushing items in. Now every opening on a Vine, Swift Vine, Splitter Bulb or Sorting Gland is drawn from the same rules the simulation uses to move items, so a collar or channel means items can pass there and a sealed end means they cannot. This is artwork only: `tests/ident35.js` plays the same colony in v34 and v35 and the saves are byte-identical.
+
+- **What the game does (checked in the code before drawing):**
+  - A vessel takes items from anything except the tile it points at (`accepts`), and hands them only to the tile it points at.
+  - Root Taps, Deep Roots, Resin Glands and Chitin Vats push their output into any neighbour that will take it (`offload`). Splitter Bulbs and Sorting Glands pass items to their neighbours in turn. A Vine Knot passes an item straight across to the side opposite the one it came in by.
+  - The Bloom, Sap Burners, Resin Glands, Chitin Vats, the Spawning Pod, Knots, Bulbs, Glands and spitters that take ammo all take items in. The Bloom never pushes items out. Walls, Rootweb Nodes and Spore Bellows neither take nor give.
+- **The rules the art now follows** (`feedsInto` and `takesFrom` in the game):
+  - **Front of a vessel:** it joins seamlessly into a vessel, Knot or organ channel that takes from it, opens into a collar on a growth that takes from it, and otherwise ends in a sealed cap. So a vessel pointing into a Root Tap, a wall, a Node or another vessel head-on is capped.
+  - **Back of a vessel:** a collar only where the growth behind really pushes items into it (a Root Tap, Deep Root, Resin Gland or Chitin Vat). A vessel leading away from the Bloom is capped at the Bloom, because the Bloom gives nothing out.
+  - **Side feeds:** a Root Tap (or any other growth that pushes items) beside a vessel's side now shows a short stub and a collar on that side, the same as a vessel merging in. A vessel fed only from one side by a growth bends out of it, starting in a collar.
+  - **Splitter Bulb and Sorting Gland:** a side opens into a channel only towards a neighbour that really passes items with it: a vessel (either way round), a Knot, another organ, a growth that pushes items in, or one that takes them. A Node, Bellows or wall beside a bulb leaves that side closed.
+- **Splitter Bulb direction:** the bulb has no fixed entrance. It hands each item to the next neighbour that will take it, never back to the side it came from, so when the vessels around it are turned round the old entrance becomes an exit and the art follows at once. `tests/btest.js` checks this with 13 routing cases (every input side, reversal, rotating one neighbour, two inputs, one, two or all exits blocked and reopened, long chains, save and load with items inside, nothing made or lost).
+- **Drawing:** the same textures as before (`cap.png`, `mouth.png` and the organ channels). Side feeds reuse the merge stubs plus a collar. What each end meets is worked out when the network changes and kept outside the block (`_st`, `_cm` are listed in `BLOCK_SKIP`), so nothing reaches a save.
+
+## Dormant Rootweb (v35)
+
+Only the Bloom feeds the Rootweb. Rootweb joined to the Bloom through other Rootweb is fed; a patch with no Rootweb path back to the Bloom (for example after the Node linking it is destroyed and its tissue recedes) goes dormant. This is a look only: buildings on dormant Rootweb keep working, Nodes keep growing it, and nothing is damaged, slowed or switched off. A Node is not a source of nourishment by itself.
+
+- **Working out supply** (`webSupply`):
+  - A flood fill over covered tiles, counting diagonal neighbours as joined, starting from every tile of the Bloom's own Rootweb and the ring round the Bloom.
+  - It runs only after the Rootweb changes (a tile grows or recedes), and at most four times per game second. On the 144×144 Base Siege map it costs well under a millisecond (see the table below).
+  - If several routes join a patch to the Bloom and one is cut, the patch stays fed through the others.
+  - Nothing is saved. After loading, supply is worked out again from the Rootweb in the save and shown at once, with no fade.
+- **Fading** (`webSupTick`): each tile has a dormancy value from 0 (fed) to 1 (dormant). It rises over about 14 seconds after a patch is cut off and falls over about 6 seconds once it is joined again. The painters only repaint a tile when its value crosses one of 8 steps, so a fade costs at most 8 repaints per tile.
+- **How dormant Rootweb looks:**
+  - **Painted Rootweb (Medium, 2D):** each pixel is blended towards a dull grey-violet, darkened a little and made slightly more transparent; the vein and cell detail fades by half. The dormancy is averaged across tile corners, so the colour shifts smoothly across a patch.
+  - **GPU Rootweb (High, Epic and the Windows app):** the same blend in the shader, from a one-byte-per-tile texture filtered smoothly between tiles. Edge strands, veins and channels dim with it.
+  - **Low and the HD membrane:** a grey-violet wash laid only over the tile's own membrane and edge, so the bright outline turns grey.
+  - **Pulses:** no nutrient pulse starts in dormant tissue. Spokes from Nodes and Bellows on a cut-off patch stop, channels that end in one stop, and sheens and buds only appear on tissue less than half dormant. Pulses already running finish their path.
+- **Reconnecting:** when a new Node or regrown tissue joins the patch to fed Rootweb again, it is fed straight away, pulses start again and the colour comes back over about 6 seconds.
+- **Performance** (`tests/perf35.js`, headless Chromium with software drawing, so a real browser is faster). The Last Colony map (144×144) with 33 Rootweb Nodes in twelve chains; the middle Node of every chain is destroyed and the game runs 35 seconds while the 12 outer patches (about 120 tiles) are cut off and fade. Times are per frame, averaged over two runs:
+
+| | v34 | v35 |
+| --- | --- | --- |
+| Supply flood fill (`webSupply`), one call | n/a | 0.28 ms |
+| Supply and fade, per frame (`webSupply` + `webSupTick`) | n/a | 0.2 to 0.35 ms |
+| Fade step with nothing fading | n/a | under 0.01 ms |
+| Whole frame, painted 2D Rootweb (`render`) | 13.9 ms | 14.6 ms |
+| Rootweb repaints, painted 2D (`paintWeb` calls in 35 s) | 3,354 | 3,351 |
+| Whole frame, GPU Rootweb (`render`) | 3.8 ms | 3.9 ms |
+| GPU upload (`glUpload`, now including the dormancy texture) | 0.18 ms | 0.27 ms |
+
+The supply check only runs after the Rootweb changes and at most four times a game second, and the fade step returns at once when nothing is fading. A fade repaints each 2D tile at most 8 times, and the repaint shares the existing per-frame budget, so the number of repaints in the run was the same as v34. Frame-time percentiles were the same in both builds (2D: 66.6 ms median in both, the slow software renderer dominates).
+- `tests/dtest.js` covers all of this (12 checks, on the 2D painter with `GL=0` and the GPU with `GL=2`).

@@ -21,8 +21,8 @@ The species
 
 How you play
 
-1. Grow Root Taps on ore veins (copper, lead, coal, sand, titanium) and lay Vines that carry the ore to your Bloom or straight into turrets.
-2. Spread Rootweb, the purple living carpet your growths must stand on. It grows outward from the Bloom and from Rootweb Nodes.
+1. Grow Root Taps on ore veins (copper, lead, coal, sand, titanium) and lay Vines that carry the ore to your Bloom or straight into turrets. A vine opens into a fleshy collar only where items really pass between it and a growth; a sealed, rounded end means nothing gets through there (for example a vine pointing into a Root Tap or a wall).
+2. Spread Rootweb, the purple living carpet your growths must stand on. It grows outward from the Bloom and from Rootweb Nodes. Only the Bloom feeds it: Rootweb joined to the Bloom through other Rootweb is fed and pulses with nutrients. If a patch is cut off (say the Node linking it is destroyed), it stops pulsing and fades to a dull grey-violet over about 14 seconds. This is only a sign: everything on it keeps working, and its Nodes keep growing it. Join it up again and its colour comes back over about 6 seconds. Two routes are safer than one: while any route to the Bloom remains, the patch stays fed.
 3. Turn raw ore into better materials. Resin Glands digest coal into resin; Chitin Vats grow coal and sand into chitin.
 4. Make vigor (power) with Sap Burners and Sunleaves to run advanced growths such as the Chitin Vat, Sunlance, Healing Pod and Brood Chamber.
 5. Defend with spitters and bark walls fed by vine, then hatch ants and send them to Defend the Bloom or Attack.
@@ -46,7 +46,7 @@ The swarm has 26 growths, including the Bloom. All of them except the Bloom, Vin
 - Vine (Vines, 1×1): Carries items in the direction it grows. Units can walk over it.
 - Swift Vine (Vines, 1×1): A vine about twice as fast. Grow it over old vines to upgrade them.
 - Vine Knot (Vines, 1×1): Lets two vines cross without mixing.
-- Splitter Bulb (Vines, 1×1): Splits incoming items evenly between its other sides.
+- Splitter Bulb (Vines, 1×1): Splits incoming items evenly between its other sides. It has no fixed entrance: any side a vine feeds is an input, and every other side with a vine leading away is an output, so turning the vines round turns the bulb round too.
 - Sorting Gland (Vines, 1×1): Passes one chosen item straight through and sends the rest left or right.
 - Resin Gland (Glands, 2×2): Digests 2 coal into 1 resin.
 - Chitin Vat (Glands, 2×2): Grows 1 coal and 2 sand into chitin. Uses 30 vigor.

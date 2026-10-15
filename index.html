@@ -633,7 +633,7 @@ function webList(b){const R=webRadius(b);if(b.wr===R&&b.wlist)return b.wlist;con
     const d=Math.hypot(x+.5-cx,y+.5-cy)+hash(x,y,G.seed+3)*.9+(core?(vn(x/7+G.seed%97,y/7)-.5)*(G.reach?Math.min(9,R*.3):9):0);if(d<=R)L.push([d,y*MW+x]);}
   L.sort((a,c)=>a[0]-c[0]);if(core)L.length=Math.min(L.length,coreWebCap());b.wlist=L.map(v=>v[1]);b.wr=R;b.wi=0;return b.wlist;}
 function webAt(x,y){return inMap(x,y)&&G.web[y*MW+x]===1;}
-function setWeb(i,v){if(G.web[i]===v)return;G.web[i]=v;G.webCount+=v?1:-1;const x=i%MW,y=(i/MW)|0;
+function setWeb(i,v){if(G.web[i]===v)return;G.web[i]=v;G.webCount+=v?1:-1;WSUP.dirty=true;const x=i%MW,y=(i/MW)|0;
   /* visual only from here */if(!v){webBorn.delete(i);webNod.delete(i);}
   // the painted look paints nothing here: new tiles and their neighbours are painted by webArtTick, within a small budget each frame
   // the GPU Rootweb needs only the new coverage and the time each tile was born
@@ -651,9 +651,41 @@ function paintWeb(x,y){if(webGPU){GLR.webDirty=true;return;}
   wctx.fillStyle='rgba(176,230,104,.3)';for(let k=0;k<1;k++)wctx.fillRect(px+hash(x*3+k,y,7)*(T-3),py+hash(x,y*3+k,8)*(T-3),2,2);
   wctx.fillStyle='rgba(206,126,240,.9)';
   if(!webAt(x-1,y))wctx.fillRect(px,py,3,T);if(!webAt(x+1,y))wctx.fillRect(px+T-3,py,3,T);if(!webAt(x,y-1))wctx.fillRect(px,py,T,3);if(!webAt(x,y+1))wctx.fillRect(px,py+T-3,T,3);
-  mwctx.fillStyle='rgba(150,80,180,.45)';mwctx.fillRect(x,y,1,1);
+  webDormWash(x,y);mwctx.fillStyle='rgba(150,80,180,.45)';mwctx.fillRect(x,y,1,1);
 }
-function initWeb(){G.web=new Uint8Array(N);G.webCount=0;G.webCov=null;G.webSig='';G.recede=[];webClearAll();mwctx.clearRect(0,0,MW,MH);
+// HD and classic Rootweb: a dormant tile gets a grey-violet wash laid only over its own membrane
+function webDormWash(x,y){const d=WSUP.q?webDormAt(y*MW+x):0;if(d<=0)return;wctx.save();wctx.globalCompositeOperation='source-atop';wctx.globalAlpha=(SET.hd?.62:.78)*d;wctx.fillStyle='#4a4352';wctx.fillRect(x*T,y*T,T,T);wctx.restore();}
+// ---- Rootweb supply (looks only): Rootweb joined to the Bloom through other Rootweb is fed. A patch cut off from it (say a Rootweb Node
+// whose link Node was destroyed) stops pulsing and fades to a dormant grey-violet; joined up again, it recovers. Nothing here changes the game:
+// growth, buildings and the save are untouched, and the state is rebuilt from the Rootweb itself after loading (already dormant, no fade).
+const WEB_DORM_T=14,WEB_WAKE_T=6,WEB_DQ=8;
+const WSUP={live:null,dorm:null,d8:null,q:null,dirty:true,t:-9,fading:false,iso:0,snap:true,gpu:true};
+function webSupReset(){WSUP.live=null;WSUP.dirty=true;WSUP.snap=true;WSUP.iso=0;}
+// flood fill from the Bloom over joined Rootweb tiles; anything not reached is cut off
+function webSupply(){const n=N;if(!WSUP.live||WSUP.live.length!==n){WSUP.live=new Uint8Array(n);WSUP.dorm=new Float32Array(n);WSUP.d8=new Uint8Array(n);WSUP.q=new Uint8Array(n);WSUP.snap=true;}
+  const L=WSUP.live,W=G.web;L.fill(0);const st=[],c=G.core;
+  // the Bloom feeds all the Rootweb it grows itself (its noisy edge can leave a few tiles beyond a rock), and from there the flood runs outwards
+  if(c&&c.team===0&&G.blocks.has(c.id)){for(const i of (c.wlist||webList(c)))if(W[i]&&!L[i]){L[i]=1;st.push(i);}
+    for(let y=c.y-1;y<=c.y+c.size;y++)for(let x=c.x-1;x<=c.x+c.size;x++){if(!inMap(x,y))continue;const i=y*MW+x;if(W[i]&&!L[i]){L[i]=1;st.push(i);}}}
+  // the membrane is drawn as a soft field, so tiles touching at a corner read as joined (and are counted as joined)
+  while(st.length){const i=st.pop(),x=i%MW,y=(i/MW)|0;
+    for(let yy=y-1;yy<=y+1;yy++){if(yy<0||yy>=MH)continue;for(let xx=x-1;xx<=x+1;xx++){if(xx<0||xx>=MW)continue;const j=yy*MW+xx;if(W[j]&&!L[j]){L[j]=1;st.push(j);}}}}
+  let iso=0;for(let i=0;i<n;i++)if(W[i]&&!L[i])iso++;WSUP.iso=iso;WSUP.dirty=false;WSUP.fading=true;}
+function webFed(x,y){const i=y*MW+x;return !WSUP.live||!inMap(x,y)||WSUP.live[i]===1||!G.web[i];}
+function webDormAt(i){return WSUP.q?WSUP.q[i]/WEB_DQ:0;}
+// called from the simulation step (so a paused game holds its look): recompute the supply when the Rootweb has changed, and move each
+// tile's dormancy towards its target. Tiles whose painted level changes are repainted through the usual budgeted queue.
+function webSupTick(dt){if(!G||!G.web)return;
+  if(WSUP.dirty&&(G.time-WSUP.t>=.25||!WSUP.live)){webSupply();WSUP.t=G.time;}
+  if(!WSUP.fading)return;const L=WSUP.live,D=WSUP.dorm,D8=WSUP.d8,Q=WSUP.q,W=G.web,snap=WSUP.snap,dn=dt/WEB_DORM_T,up=dt/WEB_WAKE_T;let moving=false,ch=false;
+  const art=!webGPU&&webArtOn();
+  for(let i=0;i<N;i++){const tgt=W[i]&&!L[i]?1:0;let d=D[i];if(d===tgt)continue;
+    d=snap?tgt:tgt?Math.min(1,d+dn):Math.max(0,d-up);D[i]=d;if(d!==tgt)moving=true;
+    const d8=Math.round(d*255);if(d8!==D8[i]){D8[i]=d8;ch=true;}
+    const q=Math.round(d*WEB_DQ);if(q!==Q[i]){Q[i]=q;if(!webGPU&&W[i]){const x=i%MW,y=(i/MW)|0;
+      if(art){for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(inMap(xx,yy)&&W[yy*MW+xx])webQ.add(yy*MW+xx);}else paintWeb(x,y);}}}
+  if(ch)WSUP.gpu=true;WSUP.fading=moving;WSUP.snap=false;}
+function initWeb(){webSupReset();G.web=new Uint8Array(N);G.webCount=0;G.webCov=null;G.webSig='';G.recede=[];webClearAll();mwctx.clearRect(0,0,MW,MH);
   webBorn.clear();webNod.clear();WFX.length=0;webQ.clear();webChan=[];
   const L=webList(G.core);for(let k=0;k<Math.min(L.length,120);k++)setWeb(L[k],1);}
 function stepWeb(dt){
@@ -758,7 +790,7 @@ function paintWebHD(x,y){
     if(e<.17){const t=e/.17,prof=Math.sin(t*Math.PI),lit=side===1?1.2:side===-1?.68:.95,hi=side===1?Math.max(0,1-Math.abs(t-.35)*5):0;
       r+=((150+hi*90)*lit-r)*prof;g+=((80+hi*80)*lit-g)*prof;b+=((178+hi*70)*lit-b)*prof;a+=(.92-a)*prof;}
     D[k]=r;D[k+1]=g;D[k+2]=b;D[k+3]=Math.min(255,a*255);}
-  wctx.putImageData(webImg,x*T-webOX,y*T-webOY);
+  wctx.putImageData(webImg,x*T-webOX,y*T-webOY);webDormWash(x,y);
 }
 // ---------- Painted Rootweb: one living membrane, cached per tile like the older looks ----------
 // The membrane, veins, edges and feeder veins are painted into webCanvas only when something changes: a tile or a neighbour
@@ -889,8 +921,15 @@ function paintWebArt(x,y){
       if(gf<1){a*=Math.min(1,gf/.3)*(.35+.65*g);}
       D[o]=r;D[o+1]=gg;D[o+2]=b;D[o+3]=Math.min(255,a*255);
       if(mk>0){const q=(((j/WEBM)|0)*H+((k/WEBM)|0))*4;M[q]=M[q+1]=M[q+2]=255;M[q+3]=Math.max(M[q+3],Math.min(255,mk*255));}}}
+  if(WSUP.q){const dq=(xx,yy)=>inMap(xx,yy)?WSUP.q[yy*MW+xx]/WEB_DQ:0,d0=dq(x,y);
+    // corners take the mean of the four tiles that share them, so a fading patch blends into its fed neighbour without a seam
+    const cA=(dq(x-1,y-1)+dq(x,y-1)+dq(x-1,y)+d0)/4,cB=(dq(x,y-1)+dq(x+1,y-1)+d0+dq(x+1,y))/4,cC=(dq(x-1,y)+d0+dq(x-1,y+1)+dq(x,y+1))/4,cD=(d0+dq(x+1,y)+dq(x,y+1)+dq(x+1,y+1))/4;
+    if(cA+cB+cC+cD>0)for(let j=0;j<T;j++){const v=(j+.5)/T;for(let k=0;k<T;k++){const o=(j*T+k)*4;if(!D[o+3])continue;const u=(k+.5)/T,d=(cA*(1-u)+cB*u)*(1-v)+(cC*(1-u)+cD*u)*v;if(d<=0)continue;
+      const r=D[o],gg=D[o+1],b=D[o+2],l=r*.32+gg*.42+b*.26,k2=d*.82;
+      D[o]=r+(l*.92+10-r)*k2;D[o+1]=gg+(l*.84+6-gg)*k2;D[o+2]=b+(l*1.02+14-b)*k2;D[o+3]*=1-.12*d;
+      if(j%WEBM===0&&k%WEBM===0){const q=(((j/WEBM)|0)*H+((k/WEBM)|0))*4;M[q+3]*=1-.8*d;}}}}
   wctx.putImageData(webArtImg,px-webOX,py-webOY);
-  if(webPat){wctx.save();wctx.globalCompositeOperation='source-atop';wctx.globalAlpha=.55*g;wctx.fillStyle=webPat;wctx.fillRect(px,py,T,T);wctx.restore();}
+  if(webPat){wctx.save();wctx.globalCompositeOperation='source-atop';wctx.globalAlpha=.55*g*(1-.5*webDormAt(i));wctx.fillStyle=webPat;wctx.fillRect(px,py,T,T);wctx.restore();}
   wmctx.putImageData(webMaskImg,(px-webOX)/WEBM,(py-webOY)/WEBM);
 }
 // a newly grown tile is repainted as it reaches each stage: tendrils, a thin membrane, veins, then its full look
@@ -913,11 +952,11 @@ function webArtFx(c,time,tx0,ty0,tx1,ty1){
     const add=(k,x,y,life,r)=>{if(WFX.length>=48)return null;const f={k,x,y,life,max:life,r};WFX.push(f);return f;};
     // pulses run along the feeder spokes: out of the Bloom, Nodes and Bellows, and into spitters that are fighting
     for(const b of G.blocks.values()){if(b.team)continue;const t=b.t;if(t!=='core'&&t!=='node'&&t!=='bellows'&&t!=='duo')continue;
-      const [cx,cy]=bCenter(b);if(!inV(cx,cy))continue;const rate=t==='core'?1.6:t==='duo'?(b.target&&alive(b.target)?.6:0):.5;if(!(Math.random()<dt*rate))continue;
+      const [cx,cy]=bCenter(b);if(!inV(cx,cy)||!webFed(Math.floor(cx),Math.floor(cy)))continue;const rate=t==='core'?1.6:t==='duo'?(b.target&&alive(b.target)?.6:0):.5;if(!(Math.random()<dt*rate))continue;
       const sp=webSpokes(b),f=add('k',cx,cy,t==='core'?1.2:.8,t==='core'?10:8);if(f){f.b=b;f.s=(Math.random()*sp.length)|0;f.out=t!=='duo';f.hs=b.size/2;}}
     // and out along the channels to the pods (and to the Nodes and Bellows)
-    for(const ch of webChan){if(ch.x1<tx0-1||ch.x0>tx1+2||ch.y1<ty0-1||ch.y0>ty1+2)continue;if(Math.random()<dt*(ch.to==='nest'?.8:.35)){const f=add('c',ch.pts[0],ch.pts[1],ch.len/2.8,ch.to==='nest'?11:9);if(f)f.c=ch;}}
-    const pick=()=>{for(let k=0;k<4;k++){const x=tx0+((Math.random()*(tx1-tx0+1))|0),y=ty0+((Math.random()*(ty1-ty0+1))|0);if(webAt(x,y))return [x,y];}return null;};
+    for(const ch of webChan){if(ch.x1<tx0-1||ch.x0>tx1+2||ch.y1<ty0-1||ch.y0>ty1+2)continue;const P=ch.pts,ex=Math.floor(P[P.length-2]),ey=Math.floor(P[P.length-1]);if(!webFed(ex,ey))continue;if(Math.random()<dt*(ch.to==='nest'?.8:.35)){const f=add('c',ch.pts[0],ch.pts[1],ch.len/2.8,ch.to==='nest'?11:9);if(f)f.c=ch;}}
+    const pick=()=>{for(let k=0;k<4;k++){const x=tx0+((Math.random()*(tx1-tx0+1))|0),y=ty0+((Math.random()*(ty1-ty0+1))|0);if(webAt(x,y)&&webDormAt(y*MW+x)<.5)return [x,y];}return null;};
     let ns=0;for(const f of WFX)if(f.k==='s')ns++;
     // a slow wet sheen, only where the membrane spreads well beyond it on every side
     if(ns<3&&Math.random()<dt*.6){const p=pick();if(p){let full=true;for(let yy=-3;yy<=3&&full;yy++)for(let xx=-3;xx<=3;xx++)if(!webAt(p[0]+xx,p[1]+yy)){full=false;break;}
@@ -937,7 +976,7 @@ function webArtFx(c,time,tx0,ty0,tx1,ty1){
 // the round nodule a tile carries, if any (the painter and the GPU shader both use these values)
 function webNodAt(x,y){const hn=hash(x,y,G.seed+31);return hn<.3?[.22+hash(x,y,G.seed+32)*.56,.22+hash(x,y,G.seed+33)*.56,.07+hn*.12]:null;}
 function webGrowFx(x,y){let n=0;for(const f of WFX)if(f.k==='g')n++;if(n<14&&WFX.length<48&&cam.z>=ART_LOD_ZOOM&&!ART_RM)WFX.push({k:'g',x:x+.5,y:y+.5,life:.9,max:.9,r:11});}
-function repaintAllWeb(){if(!G||!G.web)return;webGPU=glOn();
+function repaintAllWeb(){if(!G||!G.web)return;webGPU=glOn();WSUP.gpu=true;
   if(webGPU){webQ.clear();webBulk=false;webBorn.clear();webClearAll();webChan=webChanBuild();mwctx.clearRect(0,0,MW,MH);mwctx.fillStyle='rgba(150,80,180,.45)';
     for(let i=0;i<N;i++)if(G.web[i])mwctx.fillRect(i%MW,(i/MW)|0,1,1);glWebReset();GLR.terrDirty=true;return;}
   const art=webArtOn();webQ.clear();webChan=art?webChanBuild():[];webClearAll();mwctx.clearRect(0,0,MW,MH);webBorn.clear();
@@ -988,7 +1027,7 @@ void main(){ivec2 t=ivec2(gl_FragCoord.xy);float ed=0.,on=0.;
   for(int j=-2;j<=2;j++)for(int i=-2;i<=2;i++){ivec2 p=t+ivec2(i,j);if(p.x<0||p.y<0||p.x>=int(uMap.x)||p.y>=int(uMap.y)){ed=1.;continue;}vec2 v=texelFetch(uWO,p,0).rg;if(v.r<.002)ed=1.;if(v.g>.002)on=1.;}
   o=vec4(ed,on,0.,1.);}`;
 // the Living Rootweb, a port of the CPU painter (paintWebArt) evaluated per screen pixel
-const GLSL_WEB=GLSL_HEAD+GLSL_COMMON+`uniform sampler2D uWO,uTF,uBorn,uNL,uFX,uPat;uniform float uTime,uSo;uniform int uSeed;uniform int uPeek;out vec4 o;
+const GLSL_WEB=GLSL_HEAD+GLSL_COMMON+`uniform sampler2D uWO,uTF,uBorn,uNL,uFX,uPat,uDorm;uniform float uTime,uSo;uniform int uSeed;uniform int uPeek;out vec4 o;
 float vn(vec2 p){vec2 i=floor(p),f=p-i;return texture(uNL,(i+f*f*(3.-2.*f)+.5)/256.).r;}
 float hs(int x,int y,int s){uint h=uint(x)*374761393u+uint(y)*668265263u+uint(s)*1442695041u;h=(h^(h>>13u))*1274126177u;return float(h^(h>>16u))/4294967296.;}
 float Ph(float z){float u=z*.70710678,t=1./(1.+.3275911*abs(u)),y=1.-((((1.061405429*t-1.453152027)*t+1.421413741)*t-.284496736)*t+.254829592)*t*exp(-u*u);return .5*(1.+(u<0.?-y:y));}
@@ -999,6 +1038,7 @@ vec4 fin(vec3 c,float a,vec2 w,float g){vec4 pt=texture(uPat,w*24./256.);c=clamp
 void main(){vec2 w=worldTile();o=vec4(0.);if(w.x<0.||w.y<0.||w.x>=uMap.x||w.y>=uMap.y)return;
   ivec2 t=ivec2(floor(w));vec2 fr=w-vec2(t);float fx=fr.x,fy=fr.y,wx=w.x,wy=w.y,so=uSo,pw=max(.7/(uCam.z*24.),1.1/24.);
   vec2 wo=texelFetch(uWO,t,0).rg;if(wo.r<.002)return;
+  float dm=texture(uDorm,w/uMap).r;
   vec2 tf=texelFetch(uTF,t,0).rg;bool edge=tf.r>.5,oreN=tf.g>.5;
   float f=1.,of=wo.g>.002?1.:0.,kk=1.;
   if(edge||oreN){float ax[5],ay[5];for(int i=0;i<5;i++){float a=float(i-2);ax[i]=Ph((a+1.-fx)/.36)-Ph((a-fx)/.36);ay[i]=Ph((a+1.-fy)/.36)-Ph((a-fy)/.36);}
@@ -1021,6 +1061,7 @@ void main(){vec2 w=worldTile();o=vec4(0.);if(w.x<0.||w.y<0.||w.x>=uMap.x||w.y>=u
     float reach=e<0.?min(1.,-e/max(.02,wob)):min(1.,-gf/.4),tw=.03*(1.-reach*.6),tv=abs(vn(vec2(wx*4.2+so,wy*4.2+33.))-.5),twe=max(tw,pw*4.2);
     if(f>.18&&reach<1.&&tv<twe){float k=(1.-tv/twe)*sqrt(tw/twe)*(1.-reach);c=vec3(92.,44.,110.);a=.6*k*(g<1.?min(1.,g*4.+.3):1.);}
     if(e>-.06&&e<0.&&edge&&vn(vec2(wx*9.+so,wy*9.+71.))>.8){c=vec3(150.,96.,168.);a=.7;}
+    if(dm>0.){float l=dot(c,vec3(.32,.42,.26));c=mix(c,vec3(l*.92+10.,l*.84+6.,l*1.02+14.),dm*.82);}
     o=fin(c,a,w,pf);return;}
   float m=L4,mg=L5;float r=36.+m*22.+mg*18.,gg=14.+m*9.,b=48.+m*22.;a=.6+m*.12;
   float rim=min(1.,e/.2);a*=.3+.7*rim*rim;r+=26.*(1.-rim);b+=30.*(1.-rim);
@@ -1032,6 +1073,7 @@ void main(){vec2 w=worldTile();o=vec4(0.);if(w.x<0.||w.y<0.||w.x>=uMap.x||w.y>=u
   float w1=.019*(1.+near*1.4)+.003,v1=abs(vn(vec2(qx*1.05+11.,qy*1.05+so))-.5),v2=c2>0.?abs(vn(vec2(qx*2.6+so,qy*2.6+7.))-.5):1.,v3=c3>0.?abs(vn(vec2(qx*6.+3.,qy*6.+so))-.5):1.;
   float e1=max(w1,pw*1.05),e2=max(.012,pw*2.6),e3=max(.007,pw*6.);
   float p1=max(0.,1.-v1/e1)*sqrt(w1/e1),p2=max(0.,1.-v2/e2)*sqrt(.012/e2)*.75*c2,p3=max(0.,1.-v3/e3)*sqrt(.007/e3)*.4*c3,vs=max(max(p1,p2),max(p3,fv)),sh=max(0.,1.-v1/(w1*2.4))*.5;
+  vs*=1.-.55*dm;ch*=1.-.6*dm;fv*=1.-.6*dm;
   r*=1.-sh*.35;gg*=1.-sh*.35;b*=1.-sh*.3;
   if(chh>0.){float k=chh*chh*vg;r*=1.-.45*k;gg*=1.-.5*k;b*=1.-.4*k;a+=.15*k;}
   if(vs>0.){float k=vs*vg;r+=(104.-r)*k;gg+=(44.-gg)*k;b+=(116.-b)*k;a+=.22*k;
@@ -1048,7 +1090,8 @@ void main(){vec2 w=worldTile();o=vec4(0.);if(w.x<0.||w.y<0.||w.x>=uMap.x||w.y>=u
       else{r=26.;gg=8.;b=32.;}a=max(a,.85);}}
   if(of>.01)a*=1.-.6*min(1.,of);
   if(gf<1.)a*=clamp(gf/.35,0.,1.);
-  o=fin(vec3(r,gg,b),a,w,pf);}`;
+  if(dm>0.){float l=r*.32+gg*.42+b*.26,k=dm*.82;r+=(l*.92+10.-r)*k;gg+=(l*.84+6.-gg)*k;b+=(l*1.02+14.-b)*k;a*=1.-.12*dm;}
+  o=fin(vec3(r,gg,b),a,w,pf*(1.-.5*dm));}`;
 function glInit(){GLR.tried=true;
   try{const pref=glPref();if(pref==='0'){GLR.why='off';return;}
     const cv=document.createElement('canvas');cv.width=cv.height=4;
@@ -1069,7 +1112,7 @@ function glInit(){GLR.tried=true;
     const tex=(filt,wrap)=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filt);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filt===gl.LINEAR_MIPMAP_LINEAR?gl.LINEAR:filt);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrap||gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wrap||gl.CLAMP_TO_EDGE);return t;};
     GLR.tex=tex;
-    GLR.tWO=tex(gl.NEAREST);GLR.tBorn=tex(gl.NEAREST);GLR.tTF=tex(gl.NEAREST);GLR.tTer=tex(gl.LINEAR);GLR.tFX=tex(gl.NEAREST);
+    GLR.tWO=tex(gl.NEAREST);GLR.tBorn=tex(gl.NEAREST);GLR.tDorm=tex(gl.LINEAR);GLR.tTF=tex(gl.NEAREST);GLR.tTer=tex(gl.LINEAR);GLR.tFX=tex(gl.NEAREST);
     GLR.tNL=tex(gl.LINEAR,gl.REPEAT);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
     {const h=new Uint16Array(256*256),f32=new Float32Array(1),u32=new Uint32Array(f32.buffer);
       // 32-bit float to half float, for the noise table (half floats can be filtered on every WebGL 2 device)
@@ -1093,6 +1136,7 @@ function glUpload(){const gl=GLR.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER,GLR.fbTile);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,GLR.tTF,0);gl.viewport(0,0,MW,MH);gl.disable(gl.BLEND);
     const P=GLR.pTile;gl.useProgram(P.p);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLR.tWO);gl.uniform1i(P.U.uWO,0);gl.uniform2f(P.U.uMap,MW,MH);glTri();
     gl.bindFramebuffer(gl.FRAMEBUFFER,null);GLR.webDirty=false;}
+  if(WSUP.gpu||GLR.dormW!==MW){const d=WSUP.d8&&WSUP.d8.length===N?WSUP.d8:new Uint8Array(N);gl.bindTexture(gl.TEXTURE_2D,GLR.tDorm);gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,MW,MH,0,gl.RED,gl.UNSIGNED_BYTE,d);GLR.dormW=MW;WSUP.gpu=false;}
   if(GLR.bornDirty){gl.bindTexture(gl.TEXTURE_2D,GLR.tBorn);gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,MW,MH,0,gl.RED,gl.FLOAT,GLR.born);GLR.bornDirty=false;}
   const src=SET.hd?hdCanvas:terrCanvas;
   if(GLR.terrDirty||GLR.terrSrc!==src){gl.bindTexture(gl.TEXTURE_2D,GLR.tTer);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
@@ -1129,7 +1173,7 @@ function glDraw(w,h,cx,cy,sc,peek){const gl=GLR.gl;if(gl.isContextLost()){GLR.lo
   if(!peek){const P=GLR.pTerr;gl.useProgram(P.p);glCamU(P,w,h,cx,cy,sc);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLR.tTer);gl.uniform1i(P.U.uTer,0);glTri();}
   else{gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);}
   const P=GLR.pWeb;gl.useProgram(P.p);glCamU(P,w,h,cx,cy,sc);
-  const tx=[[GLR.tWO,'uWO'],[GLR.tTF,'uTF'],[GLR.tBorn,'uBorn'],[GLR.tNL,'uNL'],[GLR.tFX,'uFX'],[GLR.patTex,'uPat']];
+  const tx=[[GLR.tWO,'uWO'],[GLR.tTF,'uTF'],[GLR.tBorn,'uBorn'],[GLR.tNL,'uNL'],[GLR.tFX,'uFX'],[GLR.patTex,'uPat'],[GLR.tDorm,'uDorm']];
   tx.forEach(([t,u],k)=>{gl.activeTexture(gl.TEXTURE0+k);gl.bindTexture(gl.TEXTURE_2D,t);gl.uniform1i(P.U[u],k);});
   gl.uniform1f(P.U.uTime,G.time);gl.uniform1f(P.U.uSo,G.seed%61);gl.uniform1i(P.U.uSeed,G.seed|0);gl.uniform1i(P.U.uPeek,peek?1:0);
   if(!peek){gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);}
@@ -1729,7 +1773,7 @@ function step(dt){
   if(G.story)storyTick(dt);
   if(G.tick%30===0)evTick();
   if(G.dirty)recompute();
-  if(G.tick%3===0)stepWeb(dt*3);
+  if(G.tick%3===0){stepWeb(dt*3);webSupTick(dt*3);}
   if(G.mode==='siege'&&G.ecores.length&&G.tick%15===0)enemyEconomy(dt*15);
   if(!G.held&&!G.test&&!(G.story&&G.story.hold)&&(G.mode==='siege'||G.wave<G.winWave)){G.countdown-=dt;if(G.countdown<=0)launchWave();}
   while(G.spawnQ.length&&G.spawnQ[0].at<=G.time){const s=G.spawnQ.shift();spawnEnemy(s.t,s.boss);}
@@ -2292,15 +2336,30 @@ function drawColonyHD(c,t,x,y,rot,b,tt,d,S,cx,cy,v){
   return true;
 }
 // ---- belts and vines: direction arrows and corner pieces ----
-const BELT_OUT={drill:1,pdrill:1,press:1,smelter:1,router:1,sorter:1,junction:1,core:1};
 // 0 = straight, +1 / -1 = curves in from the belt's local +y / -y side
+// what the simulation really lets pass between a vessel and its neighbours. Drawing only: these mirror accepts(), offload(),
+// updBelt() and the Splitter Bulb, so the artwork shows a connection exactly where items can cross
+const FEEDER={drill:1,pdrill:1,press:1,smelter:1,router:1,sorter:1};
+const pointsAt=(o,b)=>blockAt(o.x+D4X[o.rot],o.y+D4Y[o.rot])===b;
+// does neighbour o push items into vessel b?
+function feedsInto(o,b){if(!o||o===b||o.team!==b.team||relDir(b,o)===b.rot)return false;const d=B[o.t];
+  if(d.belt)return pointsAt(o,b);if(FEEDER[o.t])return true;
+  // a Vine Knot passes straight across: it feeds b when the block on its far side feeds it
+  if(o.t==='junction'){const k=relDir(o,b);if(k<0)return false;const f=blockAt(o.x-D4X[k],o.y-D4Y[k]);return !!f&&f.team===b.team&&(B[f.t].belt?pointsAt(f,o):!!FEEDER[f.t]||f.t==='junction');}
+  return false;}
+// can neighbour o take items from vessel b's open end?
+function takesFrom(o,b){if(!o||o===b||o.team!==b.team)return false;const d=B[o.t];
+  if(d.belt)return !pointsAt(o,b);
+  return o.t==='core'||o.t==='junction'||o.t==='router'||o.t==='sorter'||o.t==='combustion'||!!d.input||!!d.factory||!!(d.tur&&d.tur.ammo);}
 function beltCurve(b){if(!b||!G||!G.bgrid)return 0;const key=G.blocks.size*7919+Math.floor(G.time*2);if(b._cvk===key)return b._cv;b._cvk=key;return b._cv=beltCurve0(b);}
 function beltCurve0(b){const r=b.rot,bx=b.x-D4X[r],by=b.y-D4Y[r];
   const into=(x,y)=>{const n=blockAt(x,y);return !!(n&&n!==b&&n.team===b.team&&B[n.t].belt&&n.x+D4X[n.rot]===b.x&&n.y+D4Y[n.rot]===b.y);};
-  const sp=(r+1)%4,sm=(r+3)%4,fp=into(b.x+D4X[sp],b.y+D4Y[sp]),fm=into(b.x+D4X[sm],b.y+D4Y[sm]);
-  b._st=(fp?1:0)|(fm?2:0);
-  const back=blockAt(bx,by);if(back&&back!==b&&back.team===b.team&&(B[back.t].belt?into(bx,by):BELT_OUT[back.t]))return 0;
-  if(fp!==fm){b._st=0;return fp?1:-1;}return 0;}
+  // a growth beside the vessel that offloads into it (a Root Tap, a Resin Gland, a Splitter Bulb...) joins it from that side too
+  const feeds=(x,y)=>{const n=blockAt(x,y);return !!(n&&n!==b&&!B[n.t].belt&&feedsInto(n,b));};
+  const sp=(r+1)%4,sm=(r+3)%4,fp=into(b.x+D4X[sp],b.y+D4Y[sp]),fm=into(b.x+D4X[sm],b.y+D4Y[sm]),gp=!fp&&feeds(b.x+D4X[sp],b.y+D4Y[sp]),gm=!fm&&feeds(b.x+D4X[sm],b.y+D4Y[sm]);
+  b._st=(fp?1:0)|(fm?2:0)|(gp?4:0)|(gm?8:0);b._cm=0;
+  const back=blockAt(bx,by);if(back&&back!==b&&back.team===b.team&&(B[back.t].belt?into(bx,by):feedsInto(back,b)))return 0;
+  if((fp||gp)!==(fm||gm)){b._st=0;b._cm=gp||gm?1:0;return fp||gp?1:-1;}return 0;}
 // item position along a straight or curved belt, p in 0..1
 function beltPos(cx,cy,rot,s,p){let lx,ly;if(!s){lx=(p-.5)*T;ly=0;}else{const a=Math.PI+s*p*Math.PI/2;lx=T/2+Math.cos(a)*T/2;ly=s*T/2+Math.sin(a)*T/2;}
   const ca=Math.cos(rot*Math.PI/2),sa=Math.sin(rot*Math.PI/2);return [cx+lx*ca-ly*sa,cy+lx*sa+ly*ca];}
@@ -2314,7 +2373,7 @@ function drawBelt(c,t,x,y,rot,b,tt,org,hd){
   if(!s){ // straight piece
     // side joints: a line merging in from the side gets a short stub so it visibly connects
     const st=b?(b._st||0):0;
-    const stubs=()=>{for(const sd of [1,-1]){if(!(st&(sd>0?1:2)))continue;c.save();c.rotate(sd*Math.PI/2);
+    const stubs=()=>{for(const sd of [1,-1]){if(!(st&(sd>0?5:10)))continue;c.save();c.rotate(sd*Math.PI/2);
       if(org&&hd){const sp=vineSprite(fast);c.drawImage(sp,0,0,sp.width/2,sp.height,0,-T/2,T/2,T);}
       else if(org){c.strokeStyle='#141018';c.lineWidth=11;c.lineCap='butt';c.beginPath();c.moveTo(0,0);c.lineTo(T/2,0);c.stroke();c.strokeStyle=fast?'#3a3848':'#2e2633';c.lineWidth=8;c.beginPath();c.moveTo(0,0);c.lineTo(T/2,0);c.stroke();}
       else if(hd){const sp=beltSprite(fast);c.drawImage(sp,0,0,sp.width/2,sp.height,0,-T/2,T/2,T);}
@@ -2610,12 +2669,13 @@ function vst(b){let s=VST.get(b);if(!s){s={act:-9,k:-1,fe:0,be:0,jf:0,jb:0};VST.
 // what each end of a vessel meets: 0 another vessel or a Vine Knot (joined without a seam), 1 a growth (an opening), 2 nothing (a sealed end)
 function vineEnds(b,s){const key=G.blocks.size*7919+Math.floor(G.time*2);if(s.k===key)return;s.k=key;beltCurve(b);
   const r=b.rot,f=blockAt(b.x+D4X[r],b.y+D4Y[r]);
-  s.fe=!f||f.team!==b.team?2:(B[f.t].belt||f.t==='junction'||organJoin(f))?0:1;
+  // front: joined to a vessel or organ that takes from it, a collar into a growth that takes from it, else sealed (a wall, a Root Tap, a vine head-on)
+  s.fe=!f||f.team!==b.team||!takesFrom(f,b)?2:(B[f.t].belt||f.t==='junction'||organJoin(f))?0:1;
   const bk=blockAt(b.x-D4X[r],b.y-D4Y[r]);
   if(b._cv)s.be=0;
   else if(bk&&bk.team===b.team&&(bk.t==='junction'||(B[bk.t].belt&&bk.x+D4X[bk.rot]===b.x&&bk.y+D4Y[bk.rot]===b.y)))s.be=0;
   else if(bk&&bk.team===b.team&&organJoin(bk))s.be=0;
-  else s.be=bk&&bk.team===b.team&&BELT_OUT[bk.t]?1:2;
+  else s.be=feedsInto(bk,b)?1:2;   // a collar only where a growth really offloads into it (the Bloom never does)
   // a Swift Vine blends into a Vine or a Vine Knot it joins, front or back
   const soft=o=>!!o&&o.team===b.team&&(o.t==='conveyor'||o.t==='junction'||organJoin(o));
   s.jf=b.t==='tconveyor'&&s.fe===0&&soft(f);const sd=b._cv>0?(r+1)%4:(r+3)%4;s.jb=b.t==='tconveyor'&&s.be===0&&soft(b._cv?blockAt(b.x+D4X[sd],b.y+D4Y[sd]):bk);}
@@ -2631,7 +2691,7 @@ function drawVine(c,t,x,y,rot,b,tt){
   const strip=s?(fast?VA.swift_curve:VA.vine_curve):(fast?VA.swift:VA.vine);
   c.save();c.translate(cx,cy);c.rotate(rot*Math.PI/2);
   if(!s){
-    for(const sd of [1,-1]){if(!(st&(sd>0?1:2)))continue;c.save();c.rotate(-sd*Math.PI/2);c.drawImage(fast?VA.swift:VA.vine,sx,0,VP/2,VP,-T/2,-T/2,T/2,T);c.restore();}
+    for(const sd of [1,-1]){if(!(st&(sd>0?5:10)))continue;c.save();c.rotate(-sd*Math.PI/2);c.drawImage(fast?VA.swift:VA.vine,sx,0,VP/2,VP,-T/2,-T/2,T/2,T);if(st&(sd>0?4:8))c.drawImage(VA.mouth,-T,-T/2,T,T);c.restore();}
     const fc=S&&S.fe===2,bc=S&&S.be===2,a0=bc?40:0,a1=fc?56:VP;
     c.drawImage(strip,sx+a0,0,a1-a0,VP,-T/2+a0/4,-T/2,(a1-a0)/4,T);
     if(S&&S.jb)c.drawImage(VA.join_in,-T/2,-T/2,T,T);if(S&&S.jf)c.drawImage(VA.join_out,-T/2,-T/2,T,T);
@@ -2640,7 +2700,8 @@ function drawVine(c,t,x,y,rot,b,tt){
     if(bc){c.save();c.scale(-1,1);c.drawImage(cap,0,-T/2,T,T);c.restore();}
     if(S&&S.be===1)c.drawImage(VA.mouth,-T,-T/2,T,T);
   }else{if(s<0)c.scale(1,-1);c.drawImage(strip,sx,0,VP,VP,-T/2,-T/2,T,T);
-    if(S&&S.jb)c.drawImage(VA.join_in_curve,-T/2,-T/2,T,T);if(S&&S.jf)c.drawImage(VA.join_out_curve,-T/2,-T/2,T,T);if(s<0)c.scale(1,-1);}
+    if(S&&S.jb)c.drawImage(VA.join_in_curve,-T/2,-T/2,T,T);if(S&&S.jf)c.drawImage(VA.join_out_curve,-T/2,-T/2,T,T);
+    if(b&&b._cm){c.save();c.rotate(Math.PI/2);c.drawImage(VA.mouth,0,-T/2,T,T);c.restore();}if(s<0)c.scale(1,-1);}
   if(S&&S.fe===1)c.drawImage(VA.mouth,0,-T/2,T,T);
   c.restore();}
 // the items inside a vessel, drawn after every vessel and every effect: the membrane stretched round each one, then the item itself
@@ -2723,13 +2784,15 @@ const fade=(tt,t0,k)=>tt>=t0?Math.exp(-(tt-t0)/k):0;
 function sideImg(c,im,cx,cy,k,u0=0,u1=1){c.save();c.translate(cx,cy);c.rotate(k*Math.PI/2);const w=im.width;dSub(c,im,w*u0,0,w*(u1-u0),im.height,-T/2+T*u0,-T/2,T*(u1-u0),T);c.restore();}
 const scaled=(c,im,cx,cy,k,x,y,w,h)=>{c.save();c.translate(cx,cy);c.scale(k,k);dI(c,im,x-cx,y-cy,w,h);c.restore();};
 // a neighbour a vessel stub should run to: any growth of ours except walls
-const organLink=o=>!!o&&!B[o.t].wall;
+const organLink=(o,b)=>!!o&&!B[o.t].wall&&(!b||organFlow(o,b));
+// an organ (Splitter Bulb, Sorting Gland) trades with a neighbour if the neighbour can take from it or feeds it: a Rootweb Node or a Spore Bellows next to it does neither
+function organFlow(o,b){const d=B[o.t];if(d.belt)return true;if(FEEDER[o.t]||o.t==='junction')return true;return takesFrom(o,b);}
 // Vines and Swift Vines join these two straight into their channels, with no collar
 function organOpen(t){const a=ART.plant[t];return SET.art&&!!a&&a.state==='ready';}
 
 // ===== Splitter Bulb: item in from one side, pressure pulse to the chamber, out along the branch the game picked =====
 function drawSplitter(c,a,x,y,b,tt,mode){const I=oSet(a),cx=x+T/2,cy=y+T/2,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
-  const sides=[];for(let k=0;k<4;k++){const o=b?blockAt(b.x+D4X[k],b.y+D4Y[k]):null;if(b?(o&&o.team===b.team&&organLink(o)):k!==1)sides.push(k);}
+  const sides=[];for(let k=0;k<4;k++){const o=b?blockAt(b.x+D4X[k],b.y+D4Y[k]):null;if(b?(o&&o.team===b.team&&organLink(o,b)):k!==1)sides.push(k);}
   let s=null,sw=1;
   if(b){s=ost(b);const q=b.buf[0]||null;
     if(q!==s.cur){if(s.cur){const p=b.prox||[];const o=p.length?p[(b.rr-1+p.length)%p.length]:null;s.out=oSide(b,o);s.outT=tt;}
@@ -2761,7 +2824,7 @@ function drawSplitter(c,a,x,y,b,tt,mode){const I=oSet(a),cx=x+T/2,cy=y+T/2,lite=
 // ===== Sorting Gland: a straight channel through a filter, two thin diversion channels, the chosen item always on top =====
 function drawSorter(c,a,x,y,b,tt,mode){const I=oSet(a),cx=x+T/2,cy=y+T/2,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
   let axis=0,nb=[null,null,null,null],s=null;
-  if(b){s=ost(b);for(let k=0;k<4;k++){const o=blockAt(b.x+D4X[k],b.y+D4Y[k]);nb[k]=o&&o.team===b.team&&organLink(o)?o:null;}
+  if(b){s=ost(b);for(let k=0;k<4;k++){const o=blockAt(b.x+D4X[k],b.y+D4Y[k]);nb[k]=o&&o.team===b.team&&organLink(o,b)?o:null;}
     // the straight channel runs from the side items come in by (the first vine growing into it), else along any vine leaving it
     let ins=-1;for(let k=0;k<4;k++){const o=nb[k];if(o&&B[o.t].belt&&o.x+D4X[o.rot]===b.x&&o.y+D4Y[o.rot]===b.y){ins=k;break;}}
     if(ins<0)for(let k=0;k<4;k++){const o=nb[k];if(o&&B[o.t].belt&&o.rot===k){ins=(k+2)%4;break;}}
@@ -3746,7 +3809,7 @@ function missionEndCard(win){
 // ---------- Saving and loading ----------
 // A save is the whole game state as JSON, gzipped and base64'd. The same file loads in the web version and the Windows app.
 const SAVE_SKIP={selU:1,flow:1,flowNext:1,pflow:1,pflowNext:1,vis:1,webCov:1,webSig:1,recede:1,fx:1,sel:1,tool:1,dirty:1,paused:1,over:1,bgrid:1,core:1,ecores:1,blocks:1,enemies:1,units:1,bullets:1};
-const BLOCK_SKIP={prox:1,target:1,wlist:1,wr:1,wi:1,wacc:1,_t:1,_cv:1,_cvk:1,_st:1,_bd:1,_bt:1,_tg:1};
+const BLOCK_SKIP={prox:1,target:1,wlist:1,wr:1,wi:1,wacc:1,_t:1,_cv:1,_cvk:1,_st:1,_cm:1,_bd:1,_bt:1,_tg:1};
 const TA={Uint8Array,Int8Array,Int16Array,Int32Array,Float32Array,Float64Array,Uint32Array};
 function b64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
 function unb64(s){const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u;}
@@ -3762,7 +3825,7 @@ function snapGame(){
 async function gz(str,dir){const s=new Blob([str]).stream().pipeThrough(dir?new CompressionStream('gzip'):new DecompressionStream('gzip'));return new Uint8Array(await new Response(s).arrayBuffer());}
 async function encodeSave(){const j=JSON.stringify(snapGame());return 'LC1:'+b64(await gz(j,true));}
 async function decodeSave(s){if(!s||!s.startsWith('LC1:'))throw new Error('Not a Last Colony save');const u=await gz(unb64(s.slice(4)),false);return JSON.parse(new TextDecoder().decode(u));}
-function applySave(S){
+function applySave(S){webSupReset();
   RADIO.length=0;PINGS.length=0;
   setMapSize(S.MW);
   const g={};for(const k in S.g)g[k]=unpackVal(S.g[k]);

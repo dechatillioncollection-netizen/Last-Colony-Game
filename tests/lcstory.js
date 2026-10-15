@@ -22,7 +22,10 @@ const {chromium}=require(process.env.PW||'playwright');
  const ua=await p.evaluate(()=>{const u=window.__game().units[0];return [(u.x*T-cam.x)*cam.z,(u.y*T-cam.y)*cam.z];});
  await p.mouse.click(ua[0],ua[1]);await p.waitForTimeout(300);console.log('ant',JSON.stringify(await st()));
  // step 4: click ground
- await p.mouse.click(ua[0]+60,ua[1]+70);await p.waitForTimeout(300);console.log('order',JSON.stringify(await st()));
+ // (pick open ground near the ant: a fixed offset can land on the Landfall ridge's rock, which deselects instead)
+ const og=await p.evaluate(([sx,sy])=>{const u=window.__game().units[0];for(let r=2;r<6;r++)for(let a=0;a<16;a++){const x=Math.floor(u.x+r*Math.cos(a*.39)),y=Math.floor(u.y+r*Math.sin(a*.39)),i=y*MW+x;
+   if(inMap(x,y)&&!blockAt(x,y)&&!solidTile(i,0)&&!window.__game().units.some(v=>Math.hypot(v.x-x-.5,v.y-y-.5)<1.2))return [((x+.5)*T-cam.x)*cam.z,((y+.5)*T-cam.y)*cam.z];}return [sx,sy];},[ua[0]+60,ua[1]+70]);
+ await p.mouse.click(og[0],og[1]);await p.waitForTimeout(300);console.log('order',JSON.stringify(await st()));
  await p.waitForTimeout(1500);await p.screenshot({path:'s_tut4.png'});
  await p.keyboard.press('c');await p.keyboard.press('c');await p.waitForTimeout(300);console.log('swarm',JSON.stringify(await st()));
  await p.click('#tutNext');await p.waitForTimeout(200);console.log('web',JSON.stringify(await st()));

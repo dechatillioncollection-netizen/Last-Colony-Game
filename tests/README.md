@@ -32,6 +32,12 @@ OLD=http://localhost:8123/previous/index.html node tests/otest.js   # Painted or
 | `wbdet.js` | deterministic no-combat survival run, for comparing builds |
 | `realprof.js`, `wbprof.js`, `crowdprof.js`, `cowtest.js` | frame-time profiling of the real game loop |
 | `wbdeliver.js` | screenshots of the Rootweb used in the art guide |
+| `btest.js` | v35 Splitter Bulb routing: 13 checks (each input side splits evenly, reversing the vines turns entrance into exit, rotating one neighbour, two inputs, one/two/all exits blocked and reopened, long chains, save and load with items inside, every item accounted for) |
+| `dtest.js` | v35 dormant Rootweb: 12 checks (joined, two routes with one cut, cutting the last link, no pulses in a cut patch, gradual fade, growth while cut off, a lone Node, several patches, save and load while dormant, reconnecting, building on dormant Rootweb). `GL=0` 2D painter, `GL=2` GPU |
+| `ident35.js` | v35 gameplay identity: the same seeded colony (Survival, Base Siege, Ember Fields, with a Rootweb patch cut off) in the previous build and this one gives byte-identical saves. Set `OLD` to the previous build's path under the server |
+| `vscene35.js` | every vessel-to-structure connection side by side in the previous build and this one; writes `shots35/conn_before.png`, `conn_after.png` and what each vessel end meets |
+| `bulbshot.js`, `webshot.js` | v35 screenshots: a Splitter Bulb before and after its vines are turned round, and Rootweb healthy, dormant, recovering and reconnected on Low, Medium and Epic |
+| `perf35.js` | v35 Rootweb supply cost on the 144x144 map, and frame times while patches fade in the previous build and this one |
 | `lcskir`, `lcquick`, `lcstory`, `lcheld`, `lcsave`, `lctest`, `lcart`, `lcbloom`, `lcweb`, `lchd`, `lcspit` | gameplay, story, saves, art and HD regressions |
 
 Headless Chromium only has software WebGL, so frame times measured on the GPU path (case 11 in `wbtest.js` with `GL=2`) are not meaningful there.
