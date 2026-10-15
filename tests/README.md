@@ -18,7 +18,11 @@ OLD=http://localhost:8123/previous/index.html node tests/otest.js   # Painted or
 | `vperf.js` | Painted Vines against the previous vines: drawing cost for networks of 100, 500 and 1,000 vessels at three zooms |
 | `otest.js` | Painted organs (Splitter Bulb, Sorting Gland, Resin Gland, Rootweb Node): 13 checks, including the same colony in the previous build and this one with art on and off giving byte-identical saves. Set `OLD` to the previous build's URL. Writes `otest_result.json` |
 | `operf.js` | Painted organs against the previous look: drawing cost with 12 to 300 of each on screen, at two zooms |
-| `ncheck.js` | v33 naming chronology: the first Nymbri, Nymbria or communis line is in the Mission 2 briefing (`e_brief`), the hive never says "I", the hive never says its human name, no Pl-Ant or Brandt text left in the page, every dialogue sequence is used. Writes `ncheck_result.json` |
+| `mtest.js` | v34 campaign maps and scripted missions: 18 checks across all five sectors (layouts, Bloom reach and Rootweb Nodes, every survival wave reaching the Bloom and the sector being won, Ember Depot, the Kilo pass and laboratory outro, Frost staging and titanium, the colony district, first contact at HDF Command, the shelter ending). Writes `mtest_result.json` |
+| `mapview.js` | draws `map_<sector>.png` overviews with labelled landmarks and resources, and checks for unreachable ore, props on ore, a blocked patrol track and broken colony supply routes |
+| `mshots.js` | in-game screenshots of each sector (writes `shots34/`) |
+| `oldsave.js` | campaign saves made in the previous build load with their old map and Rootweb rules; a v34 save keeps its fired events; restarting a sector clears them. Set `OLD` to the previous build's path under the server |
+| `ncheck.js` | v33 naming chronology (and the v34 radio lines): the first Nymbri, Nymbria or communis line is in the Mission 2 briefing (`e_brief`), the hive never says "I", the hive never says its human name, no Pl-Ant or Brandt text left in the page, every dialogue sequence is used. Writes `ncheck_result.json` |
 | `nstory.js` | plays every mission's opening and the final ending through the real story player and logs the order the sequences play in |
 | `dlgexport.js` | not a test: `node tests/dlgexport.js index.html docs/dialogue-rewritten.txt docs/dialogue-v33.txt` regenerates the dialogue script from the game |
 | `gpuapp.js` | desktop app GPU presets: with an Electron user agent all four presets draw the ground and Rootweb on the GPU; in a browser Low and Medium stay on the 2D painter |
@@ -32,4 +36,4 @@ OLD=http://localhost:8123/previous/index.html node tests/otest.js   # Painted or
 
 Headless Chromium only has software WebGL, so frame times measured on the GPU path (case 11 in `wbtest.js` with `GL=2`) are not meaningful there.
 
-`lcspit.js` has a known intermittent failure on some random maps that also happens on older builds.
+`lcspit.js` has a known intermittent failure on some random maps that also happens on older builds. Case 04 of `wbtest.js` can fail the same way when the random Survival map puts ore or rock along the test's diagonal. `lcstory.js` clicks through the tutorial in real time, so run it on its own rather than alongside other tests.

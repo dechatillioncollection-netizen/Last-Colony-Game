@@ -69,6 +69,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #msgs div{background:#17131be8;border:1px solid var(--edge);padding:4px 12px;font-size:14px;transition:opacity .6s;text-align:center}
 #msgs div.alert{border-color:var(--red);color:#ffd5cc}
 #msgs div.good{border-color:var(--amber)}
+#msgs div.radio{border-color:#8a7440;color:#f0e2bc;font-style:italic;text-align:left}
+#msgs div.hive{border-color:#8d5bb0;color:#e6d4f5;text-align:left}
 /* tech tree */
 #tech{position:fixed;inset:0;z-index:8;background:#0c0a0ef4;display:flex;flex-direction:column}
 #techbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border-bottom:2px solid var(--edge)}
@@ -262,7 +264,7 @@ const TEAM_COL=['#a6e05a','#ee5a44'];
 
 const B={
   core:{name:'Bloom',size:3,hp:4000,cost:[],solid:true,
-    desc:'The swarm\'s living headquarters on this ground. It stores everything your roots gather, keeps growing Rootweb until it covers 30% of the map, and spits at anything close. If it dies, you lose.'},
+    desc:'The swarm\'s living headquarters on this ground. It stores everything your roots gather, keeps growing Rootweb around itself (over 30% of the map in Survival and Base Siege, a set reach in campaign sectors), and spits at anything close. If it dies, you lose.'},
   conveyor:{name:'Vine',size:1,hp:45,cost:[[CU,1]],rot:true,speed:4.2,belt:true,
     desc:'Carries items the way it grows. Drag to lay a line that turns corners. Vines can reach out past the Rootweb, and units walk over them.'},
   tconveyor:{name:'Swift Vine',size:1,hp:65,cost:[[CU,1],[PB,1],[TI,1]],rot:true,speed:8,belt:true,
@@ -391,6 +393,7 @@ function setMapSize(w){if(w===MW&&w===MH)return;MW=MH=w;N=w*w;
   terrCanvas.width=terrCanvas.height=w*T;miniBase.width=miniBase.height=w;webClearAll();miniWeb.width=miniWeb.height=w;hdCanvas.width=hdCanvas.height=w*HDR;webImg=null;
   webArtImg=null;webPat=null;if(webArtOn())webPat=webSel(0,0).x.createPattern(ART.plant.rootweb.img[0],'repeat');}
 function newGame(mode,mis){
+  RADIO.length=0;PINGS.length=0;
   setMapSize(mis?mis.size:mode==='siege'?MAXM:96);
   G={mode,mission:mis?mis.id:null,diff:mis&&mis.diff||1,winWave:mis&&mis.waves||WIN_WAVE,ezone:mis&&mis.ezone||(mode==='siege'?23:7),
      income:new Float64Array(7),incLast:new Float64Array(7),incRate:new Float64Array(7),incT:0,seed:mis?mis.seed:(rnd()*1e9)|0,time:0,terrain:new Uint8Array(N),ore:new Int8Array(N).fill(-1),bgrid:new Int32Array(N),
@@ -617,15 +620,17 @@ function webBlit(c,sx,sy,sw,sh,dx,dy,dw,dh,mask){const kx=dw/sw,ky=dh/sh,cx0=Mat
 function webPeek(px,py,w,h){if(webGPU)return glPeek(px,py,w,h);const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');webBlit(x,px,py,w,h,0,0,w,h);return x.getImageData(0,0,w,h);}
 const miniWeb=document.createElement('canvas');miniWeb.width=MW;miniWeb.height=MH;const mwctx=miniWeb.getContext('2d');
 // the Bloom alone grows Rootweb over 30% of the map (its own half in Base Siege); nodes push past that
-const WEB_SHARE=.3;function coreWebCap(){return Math.floor(WEB_SHARE*N);}
-function webRadius(b){return b.t==='core'?Math.ceil(Math.sqrt(coreWebCap()/Math.PI)*(G.mode==='siege'?1.9:1.6)):(B[b.t].web||0)+(G.unlocked.has('root2')?2:0);}
+// Campaign sectors made since v34 set G.reach instead: the Bloom covers only the ground within that many tiles, and Rootweb Nodes do the rest
+const WEB_SHARE=.3;function coreWebCap(){return G.reach?N:Math.floor(WEB_SHARE*N);}
+function webRadius(b){return b.t==='core'?(G.reach||Math.ceil(Math.sqrt(coreWebCap()/Math.PI)*(G.mode==='siege'?1.9:1.6))):(B[b.t].web||0)+(G.unlocked.has('root2')?2:0);}
+function bloomFull(){const L=G.core&&G.core.wlist;return G.reach?!!L&&G.core.wi>=L.length:G.webCount>=coreWebCap();}
 function webRate(){return 2.5*(G.unlocked.has('root1')?1.6:1)*(G.unlocked.has('root2')?1.6:1);}
 function bellowsNear(b){if(G.powSat<.25)return false;const [x,y]=bCenter(b);for(const o of G.blocks.values())if(o.t==='bellows'&&o.team===0&&Math.hypot(o.x+1-x,o.y+1-y)<=12)return true;return false;}
 function webSources(){const r=[];for(const b of G.blocks.values())if(b.team===0&&(b.t==='core'||B[b.t].web))r.push(b);return r;}
 function webList(b){const R=webRadius(b);if(b.wr===R&&b.wlist)return b.wlist;const [cx,cy]=bCenter(b);const L=[];
   const core=b.t==='core',xmax=core&&G.mode==='siege'?MW/2-2:MW;
   for(let y=Math.floor(cy-R);y<=cy+R;y++)for(let x=Math.floor(cx-R);x<=cx+R;x++){if(!inMap(x,y)||x>=xmax||blockedT(y*MW+x))continue;
-    const d=Math.hypot(x+.5-cx,y+.5-cy)+hash(x,y,G.seed+3)*.9+(core?(vn(x/7+G.seed%97,y/7)-.5)*9:0);if(d<=R)L.push([d,y*MW+x]);}
+    const d=Math.hypot(x+.5-cx,y+.5-cy)+hash(x,y,G.seed+3)*.9+(core?(vn(x/7+G.seed%97,y/7)-.5)*(G.reach?Math.min(9,R*.3):9):0);if(d<=R)L.push([d,y*MW+x]);}
   L.sort((a,c)=>a[0]-c[0]);if(core)L.length=Math.min(L.length,coreWebCap());b.wlist=L.map(v=>v[1]);b.wr=R;b.wi=0;return b.wlist;}
 function webAt(x,y){return inMap(x,y)&&G.web[y*MW+x]===1;}
 function setWeb(i,v){if(G.web[i]===v)return;G.web[i]=v;G.webCount+=v?1:-1;const x=i%MW,y=(i/MW)|0;
@@ -689,6 +694,7 @@ function buildHDTerrain(){
   for(let i=0;i<N;i++){const t=G.terrain[i];rk[i]=t===ROCK?1:0;wt[i]=t===WATER?1:0;sd[i]=t===SANDF?1:0;}
   const R=blurMask(rk),W=blurMask(blurMask(wt)),S=blurMask(sd);
   const w=hdCanvas.width,h=hdCanvas.height,img=hctx.createImageData(w,h),D=img.data;const so=(G.seed%997)*.37;
+  const BI=biome(),PF=BI.h.floor,PR=BI.h.rock,PS=BI.h.sand,PW=BI.h.water,PI=BI.ice?.35:1;
   for(let py=0;py<h;py++){const v=py/HDR;
     for(let px=0;px<w;px++){const u=px/HDR;
       const n1=vn(u*.8+so,v*.8),n2=vn(u*.8+40,v*.8+so),det=vn(u*3+so,v*3)*.6+vn(u*7,v*7+so)*.4,fine=vn(u*16,v*16);
@@ -696,24 +702,24 @@ function buildHDTerrain(){
       const r=bil(R,wu,wv),wa=bil(W,wu,wv),sa=bil(S,wu,wv);
       let cr,cg,cb;
       if(wa>.5){const dep=Math.min(1,(wa-.5)*2.6),rip=(vn(u*5+v*2,v*5)-.5)*14;
-        cr=46-34*dep+rip*.4;cg=96-62*dep+rip;cb=108-50*dep+rip;
+        cr=PW[0]-34*dep*PI+rip*.4;cg=PW[1]-62*dep*PI+rip;cb=PW[2]-50*dep*PI+rip;
         if(vn(u*2.2+so,v*6)>.83){cr+=30;cg+=40;cb+=45;}
         const sh=Math.max(0,.62-wa)*5;cr+=sh*40;cg+=sh*36;cb+=sh*26;}
       else if(r>.5){const gx=bil(R,wu+.3,wv)-bil(R,wu-.3,wv),gy=bil(R,wu,wv+.3)-bil(R,wu,wv-.3);
         let sh=1+(gx+gy)*1.6-(r>.85?0:.0);sh=Math.max(.42,Math.min(1.55,sh));
         const strata=Math.sin(v*5+det*5+u*.6)*.07,top=r>.9?1.06:1;
-        const base=.78+det*.38+strata;cr=104*base*sh*top;cg=98*base*sh*top;cb=92*base*sh*top;
+        const base=.78+det*.38+strata;cr=PR[0]*base*sh*top;cg=PR[1]*base*sh*top;cb=PR[2]*base*sh*top;
         if(fine>.8){cr*=1.12;cg*=1.12;cb*=1.12;}if(r<.58){cr*=.7;cg*=.7;cb*=.72;}}
       else{const sm=Math.max(0,Math.min(1,(sa-.35)*3.3));
         const soil=.8+det*.4,peb=fine>.83?1.25:fine<.12?.8:1;
-        const fr=62*soil*peb,fg=55*soil*peb,fb=52*soil*peb;
+        const fr=PF[0]*soil*peb,fg=PF[1]*soil*peb,fb=PF[2]*soil*peb;
         const rip=Math.sin((u*.8+v*.5)*8+det*4)*.08,sb=.88+det*.24+rip;
-        const sr=158*sb,sg=124*sb,sbb=84*sb;
+        const sr=PS[0]*sb,sg=PS[1]*sb,sbb=PS[2]*sb;
         cr=fr+(sr-fr)*sm;cg=fg+(sg-fg)*sm;cb=fb+(sbb-fb)*sm;
         const ao=1-Math.min(.55,r*1.25)-Math.min(.35,wa*.7);cr*=ao;cg*=ao;cb*=ao;
         if(vn(u*1.3+70,v*1.3)>.78){cr*=.9;cg*=.92;cb*=.9;}}
       const k=(py*w+px)*4;D[k]=cr;D[k+1]=cg;D[k+2]=cb;D[k+3]=255;}}
-  hctx.putImageData(img,0,0);
+  hctx.putImageData(img,0,0);drawDecor(hctx,HDR);
   // ore: faceted crystal clusters (coal as glossy lumps)
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const o=G.ore[y*MW+x];if(o<0)continue;
     const n=5+(hash(x,y,G.seed+5)*4|0);hctx.fillStyle='rgba(0,0,0,.28)';hctx.beginPath();hctx.ellipse((x+.5)*HDR,(y+.55)*HDR,HDR*.48,HDR*.38,0,0,7);hctx.fill();
@@ -1142,15 +1148,15 @@ function setHD(on){SET.hd=on;try{localStorage.setItem('lc_hd',on?'1':'0');}catch
 
 // ---------- terrain drawing ----------
 function drawTile(c,x,y){
-  const i=y*MW+x,t=G.terrain[i],px=x*T,py=y*T,h=hash(x,y,G.seed),h2=hash(y,x,G.seed+9);
-  if(t===WATER){c.fillStyle=`hsl(212,40%,${15+h*3}%)`;c.fillRect(px,py,T,T);
+  const i=y*MW+x,t=G.terrain[i],px=x*T,py=y*T,h=hash(x,y,G.seed),h2=hash(y,x,G.seed+9),P=biome().c;
+  if(t===WATER){c.fillStyle=`hsl(${P.water[0]},${P.water[1]}%,${P.water[2]+h*3}%)`;c.fillRect(px,py,T,T);
     c.fillStyle='rgba(120,170,220,.08)';c.fillRect(px+2+h*12,py+6+h2*10,8,1.5);return;}
-  if(t===ROCK){c.fillStyle=`hsl(222,7%,${30+h*5}%)`;c.fillRect(px,py,T,T);
+  if(t===ROCK){c.fillStyle=`hsl(${P.rock[0]},${P.rock[1]}%,${P.rock[2]+h*5}%)`;c.fillRect(px,py,T,T);
     c.fillStyle='rgba(255,255,255,.06)';c.fillRect(px,py,T,3);c.fillStyle='rgba(0,0,0,.25)';c.fillRect(px,py+T-3,T,3);
     c.fillStyle='rgba(0,0,0,.18)';c.fillRect(px+4+h*10,py+6+h2*8,5,4);return;}
-  if(t===SANDF){c.fillStyle=`hsl(34,${26+h*6}%,${33+h*4}%)`;c.fillRect(px,py,T,T);
+  if(t===SANDF){c.fillStyle=`hsl(${P.sand[0]},${P.sand[1]+h*6}%,${P.sand[2]+h*4}%)`;c.fillRect(px,py,T,T);
     c.fillStyle='rgba(255,230,190,.12)';for(let k=0;k<4;k++)c.fillRect(px+hash(x*5+k,y,1)*22,py+hash(x,y*5+k,2)*22,2,2);}
-  else{c.fillStyle=`hsl(220,6%,${18+h*3}%)`;c.fillRect(px,py,T,T);
+  else{c.fillStyle=`hsl(${P.floor[0]},${P.floor[1]}%,${P.floor[2]+h*3}%)`;c.fillRect(px,py,T,T);
     c.strokeStyle='rgba(0,0,0,.18)';c.lineWidth=1;c.strokeRect(px+.5,py+.5,T-1,T-1);
     c.fillStyle='rgba(255,255,255,.035)';c.fillRect(px+h*18,py+h2*18,4,3);}
   const o=G.ore[i];
@@ -1162,12 +1168,13 @@ function drawTile(c,x,y){
 }
 function drawTerrainAll(){
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)drawTile(tctx,x,y);
+  drawDecor(tctx,T);
   const m=miniBase.getContext('2d'),img=m.createImageData(MW,MH);
-  const col=[[46,48,54],[110,92,64],[80,84,94],[26,40,62]];
+  const col=biome().mini;
   const hex=s=>[parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)];
   for(let i=0;i<N;i++){let c=col[G.terrain[i]];if(G.ore[i]>=0){const oc=hex(IT[G.ore[i]].c);c=[(c[0]+oc[0])/2,(c[1]+oc[1])/2,(c[2]+oc[2])/2];}
     img.data[i*4]=c[0];img.data[i*4+1]=c[1];img.data[i*4+2]=c[2];img.data[i*4+3]=255;}
-  m.putImageData(img,0,0);
+  m.putImageData(img,0,0);drawDecorMini(m);
   if(SET.hd)buildHDTerrain();
   GLR.terrDirty=true;
 }
@@ -1720,6 +1727,7 @@ function step(dt){
   if(G.over)return;
   G.time+=dt;G.tick++;
   if(G.story)storyTick(dt);
+  if(G.tick%30===0)evTick();
   if(G.dirty)recompute();
   if(G.tick%3===0)stepWeb(dt*3);
   if(G.mode==='siege'&&G.ecores.length&&G.tick%15===0)enemyEconomy(dt*15);
@@ -2349,7 +2357,7 @@ function drawBelt(c,t,x,y,rot,b,tt,org,hd){
 const dustSprite=(()=>{const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');const g=x.createRadialGradient(16,16,0,16,16,16);g.addColorStop(0,'rgba(235,225,210,1)');g.addColorStop(.35,'rgba(235,225,210,.45)');g.addColorStop(1,'rgba(235,225,210,0)');x.fillStyle=g;x.fillRect(0,0,32,32);return c;})();
 const glintSprite=(()=>{const c=document.createElement('canvas');c.width=32;c.height=12;const x=c.getContext('2d');const g=x.createRadialGradient(16,6,0,16,6,14);g.addColorStop(0,'rgba(230,250,255,1)');g.addColorStop(.3,'rgba(170,220,240,.5)');g.addColorStop(1,'rgba(150,210,235,0)');x.fillStyle=g;x.scale(1,.4);x.fillRect(0,0,32,30);return c;})();
 let dust=null,dustT=0;
-function drawHQWorld(tx0,ty0,tx1,ty1){const rt=performance.now()/1000,c=ctx;
+function drawHQWorld(tx0,ty0,tx1,ty1){const rt=performance.now()/1000,c=ctx;if(biome().ice)return;
   c.save();c.globalCompositeOperation='lighter';c.imageSmoothingEnabled=true;
   for(let y=Math.max(1,ty0);y<=Math.min(MH-2,ty1);y++)for(let x=Math.max(1,tx0);x<=Math.min(MW-2,tx1);x++){const i=y*MW+x;if(G.terrain[i]!==WATER)continue;
     const deep=G.terrain[i-1]===WATER&&G.terrain[i+1]===WATER&&G.terrain[i-MW]===WATER&&G.terrain[i+MW]===WATER;
@@ -2400,6 +2408,8 @@ function updateFog(){if(!G.vis||G.vis.length!==N)G.vis=new Uint8Array(N);const v
     for(let yy=y0;yy<=y1;yy++){const dy=yy+.5-y;for(let xx=x0;xx<=x1;xx++){const dx=xx+.5-x;if(dx*dx+dy*dy<=r2)vis[yy*MW+xx]=1;}}};
   for(const b of G.blocks.values()){if(b.team!==0)continue;const d=B[b.t],[cx,cy]=bCenter(b);stamp(cx,cy,b.t==='core'?17:d.tur?d.tur.range+2.5:d.web?9:d.belt?2.5:3+d.size);}
   for(const u of G.units)stamp(u.x,u.y,8.5);
+  // during first contact the hive feels the patrol through the soil, so it shows through the fog as it walks the track
+  if(G.story&&/^fc_/.test(G.story.s))for(const e of G.enemies)if(e.script)stamp(e.x,e.y,3.5);
   const w=G.web;if(w)for(let i=0;i<N;i++)if(w[i])vis[i]=1;
   if(fogCanvas.width!==MW||!fctx){fogCanvas.width=MW;fogCanvas.height=MH;fctx=fogCanvas.getContext('2d');fogImg=fctx.createImageData(MW,MH);}
   const D=fogImg.data;for(let i=0;i<N;i++){if(vis[i])seen[i]=1;const k=i*4;D[k]=6;D[k+1]=5;D[k+2]=10;D[k+3]=vis[i]?0:seen[i]?130:250;}fctx.putImageData(fogImg,0,0);}
@@ -2993,6 +3003,7 @@ function render(){
   for(const u of G.units)if(inView(u.x,u.y,1)){drawTank(ctx,u.t,u.x*T,u.y*T,u.ang,u.tang,0,u.hit>0);
     if(u.hp<u.max){const r=U[u.t].r*T;ctx.fillStyle='#000';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2,3);ctx.fillStyle='#7fd06a';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2*u.hp/u.max,3);}}
   if(G.story)storyDrawWorld(ctx,time);
+  if(PINGS.length)drawPings(ctx);
   if(G.test)testDrawWorld(ctx,time);
   {const su=G.selU&&G.units.find(u=>u.id===G.selU);if(su){ctx.strokeStyle='#a6e05a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(su.x*T,su.y*T,U[su.t].r*T+5,0,7);ctx.stroke();
     if(su.hold){ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(su.x*T,su.y*T);ctx.lineTo(su.hold[0]*T,su.hold[1]*T);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(su.hold[0]*T,su.hold[1]*T,4,0,7);ctx.stroke();}}}
@@ -3020,6 +3031,7 @@ function render(){
     else if(f.k==='heal'){ctx.strokeStyle=`rgba(127,208,106,${a*.6})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(f.x*T,f.y*T,f.r*T*(1-a)+4,0,7);ctx.stroke();}}
   if(SET.hd&&SET.hq)drawHQWorld(tx0,ty0,tx1,ty1);
   drawFog();
+  if(G.tool&&G.tool!=='remove')drawReach(ctx);
   if(G.tool&&G.tool!=='remove'&&mouse.in){
     const t=G.tool,d=B[t],[wx,wy]=s2w(mouse.x,mouse.y),md=mouse.down;
     const b=placeOrigin(t,wx,wy);
@@ -3054,6 +3066,7 @@ function renderMini(){
   if(fogOn())mctx.drawImage(fogCanvas,0,0,mini.width,mini.height);
   mctx.fillStyle='#ff5a40';for(const e of G.enemies)if(fogVis(e.x,e.y))mctx.fillRect(e.x*s-1.5,e.y*s-1.5,3,3);
   mctx.fillStyle='#a6e05a';for(const u of G.units)mctx.fillRect(u.x*s-2,u.y*s-2,4,4);
+  if(PINGS.length)drawPingsMini(mctx,s);
   mctx.strokeStyle='#e6e8ec';mctx.lineWidth=1;mctx.strokeRect(cam.x/T*s+.5,cam.y/T*s+.5,VW/cam.z/T*s,VH/cam.z/T*s);
 }
 
@@ -3175,7 +3188,7 @@ function updatePanel(){
   if(!b&&G.selU){const su=G.units.find(u=>u.id===G.selU);if(!su){G.selU=0;renderPanel(true);return;}
     const hp=$('p-hp');if(hp)hp.style.width=(100*su.hp/su.max)+'%';const ht=$('p-hpt');if(ht)ht.textContent=`${Math.ceil(su.hp)} / ${su.max}`;
     const o=$('p-ord');if(o)o.textContent=su.hold?'Holding a spot':G.command==='attack'?'Attack':'Defend the Bloom';return;}
-  if(!b){const t=$('p-time');if(t)t.textContent=fmtTime(G.time);const k=$('p-k');if(k)k.textContent=G.kills;const u=$('p-u');if(u)u.textContent=`${G.units.length} / ${UNIT_CAP}`;const ec=$('p-ec');if(ec)ec.textContent=G.ecores.length;const pw=$('p-web');if(pw)pw.textContent=`${(100*G.webCount/N).toFixed(0)}% of map${G.webCount>=coreWebCap()?' (Bloom limit, plant nodes)':''}`;const es=$('p-es');if(es)es.innerHTML=stockRows();return;}
+  if(!b){const t=$('p-time');if(t)t.textContent=fmtTime(G.time);const k=$('p-k');if(k)k.textContent=G.kills;const u=$('p-u');if(u)u.textContent=`${G.units.length} / ${UNIT_CAP}`;const ec=$('p-ec');if(ec)ec.textContent=G.ecores.length;const pw=$('p-web');if(pw)pw.textContent=`${(100*G.webCount/N).toFixed(0)}% of map${G.reach?` (Bloom reach ${G.reach} tiles${bloomFull()?', plant nodes':''})`:bloomFull()?' (Bloom limit, plant nodes)':''}`;const es=$('p-es');if(es)es.innerHTML=stockRows();return;}
   const d=B[b.t];const hp=$('p-hp');if(hp){hp.style.width=(100*b.hp/b.max)+'%';hp.style.background=b.team?'var(--red)':'';}const ht=$('p-hpt');if(ht)ht.textContent=`${Math.ceil(b.hp)} / ${b.max}`;
   const dyn=$('p-dyn');if(!dyn)return;let h='';
   if(b.team===1){let eh='';if(d.tur&&d.tur.ammo){const am=Object.keys(b.ammo).filter(k=>b.ammo[k]>0).map(k=>`${b.ammo[k]} ${IT[k].n.toLowerCase()}`);eh+=`<div class="row">Ammo <b>${am.length?am.join(', '):'empty'}</b></div>`;}
@@ -3202,7 +3215,7 @@ function msg(text,kind){
   const now=performance.now();if(text===lastMsg&&now-lastMsgT<1500)return;lastMsg=text;lastMsgT=now;
   const d=document.createElement('div');d.textContent=text;if(kind)d.className=kind;msgEl.appendChild(d);
   while(msgEl.children.length>4)msgEl.firstChild.remove();
-  setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),700);},kind==='alert'?6000:3500);
+  setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),700);},kind==='alert'?6000:kind==='radio'||kind==='hive'?7500:3500);
 }
 
 // ---------- Campaign: five hand-made sectors on the planet Nereth ----------
@@ -3210,61 +3223,276 @@ function msg(text,kind){
 // roughens the edges of the shapes, so each visit looks and plays exactly the same.
 function seeded(seed){let a=seed>>>0;return ()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
 const MISSIONS=[
-  {id:'landfall',name:'Landfall',kind:'survival',waves:10,diff:.8,size:72,seed:1101,lat:8,lon:-24,first:150,
+  {id:'landfall',name:'Landfall',kind:'survival',waves:10,diff:.8,size:72,seed:1101,lat:8,lon:-24,first:150,biome:'meadow',reach:11,
    need:[],start:[260,80,0,0,0,0,0],yield:{[CU]:30,[PB]:12,[SAND]:8},
-   desc:'A quiet meadow where the hive first takes root. Nothing on this ground knows it exists yet. Learn to grow, then hold the Bloom for 10 waves.',
-   tip:'Everything you need is already evolved: Root Taps, Vines, Thorn Spitters, Bark Walls and the Spawning Pod.',
-   core:[12,36],spawn:[65,36],ops:[
-    ['rock',40,36,5,8],['ridge',[[24,6],[27,15],[25,22]],2],['ridge',[[25,50],[27,58],[24,66]],2],
-    ['water',38,13,7,5],['water',39,59,6,4],['ridge',[[51,4],[53,17]],2],['ridge',[[53,55],[51,68]],2],
-    ['sand',8,57,6,5],['sand',58,26,4,3],['rock',62,52,3,4],['rock',60,18,3,3],
-    ['ore',CU,19,31,3.4],['ore',CU,18,42,3.2],['ore',PB,9,27,3.1],['ore',SAND,7,46,3.3],
-    ['ore',CU,31,25,2.8],['ore',PB,31,47,2.9],['ore',CU,46,27,2.4],['ore',COAL,46,48,2.4],['ore',TI,13,15,2.9],['ore',TI,36,67,2.5]]},
-  {id:'ember',name:'Ember Fields',kind:'survival',waves:15,diff:.85,size:84,seed:2207,lat:30,lon:18,first:150,
+   desc:'A quiet meadow where the hive first takes root, in a hollow sheltered by rocks. A survey track runs in from the east. Nothing on this ground knows the hive exists yet. Learn to grow, then hold the Bloom for 10 waves.',
+   tip:'The Bloom spreads Rootweb about 11 tiles around itself here. Plant Rootweb Nodes to reach the copper, lead and coal further out.',
+   core:[12,40],spawn:[66,32],
+   // HDF Patrol 7 walks this survey track in from the east edge and stops where it can see the growth
+   patrol:[[69,32],[62,32],[55,29],[47,31],[40,35],[33,37],[29,38]],
+   ops:[
+    ['ridge',[[4,26],[12,24],[19,27]],1.6],['rock',22,52,3,2.2],
+    ['ridge',[[30,10],[42,8],[56,13]],2],['ridge',[[40,64],[52,60],[63,64]],2],['rock',64,8,4,3],['rock',8,64,4,3],
+    ['water',42,52,6,3.4],['water',30,59,4,2.4],['water',51,48,2.5,2],
+    ['sand',8,52,4,3],['sand',57,56,4,3],
+    ['ore',CU,19,35,3],['ore',CU,17,46,2.8],['ore',PB,6,34,2.6],['ore',SAND,6,46,2.6],
+    ['ore',CU,34,20,2.8],['ore',PB,35,54,2.6],['ore',COAL,52,40,2.4],['ore',CU,48,20,2.4],['ore',TI,13,14,2.8],['ore',TI,28,66,2.4],
+    ['track',[[71,32],[62,32],[55,29],[47,31],[40,35],[33,37],[29,38]],1],
+    ['boulder',26,45,1.6],['boulder',24,30,1.4],['boulder',33,47,1.3],['boulder',39,27,1.5],['boulder',45,42,1.2],['boulder',53,24,1.4],['boulder',58,44,1.3],['boulder',18,58,1.4],
+    ['prop','marker',58,30],['prop','marker',51,28],['prop','marker',44,32],['prop','marker',37,35],['prop','tripod',30,40],
+    ['prop','truck',58,35,2,1],['prop','crates',56,35],['prop','mast',64,26]]},
+  {id:'ember',name:'Ember Fields',kind:'survival',waves:15,diff:.85,size:84,seed:2207,lat:30,lon:18,first:150,biome:'ash',reach:13,
    need:['junction','router','press'],start:[320,140,0,0,0,0,0],yield:{[CU]:34,[PB]:16,[COAL]:18,[GRAPH]:6},
-   desc:'Scorched coal plains cut by black ridges. Human Defence Force columns march in from the north east, with flame tanks and bombers late on. Digest coal into resin for stronger thorns and survive 15 waves.',
-   tip:'Resin doubles a Thorn Spitter\'s damage. Split one coal line with a Splitter Bulb and cross vines with Vine Knots.',
-   core:[13,71],spawn:[74,11],ops:[
-    ['ridge',[[18,38],[30,46],[38,58],[42,66]],2],['ridge',[[42,18],[52,28],[58,40],[60,46]],2],
-    ['rock',30,29,6,5],['rock',58,62,6,6],['rock',72,62,4,7],['rock',12,14,7,6],
-    ['water',70,38,4,7],['water',15,30,4,5],['water',44,79,6,3],
-    ['clear',[[34,52],[38,54]],2],['clear',[[50,30],[54,28]],2],
-    ['ore',CU,19,63,3.4],['ore',CU,23,76,3.1],['ore',PB,8,59,3.1],['ore',COAL,27,65,3.4],['ore',COAL,31,75,3.1],
-    ['ore',SAND,9,47,3.5],['ore',COAL,45,45,3.1],['ore',CU,48,52,3],['ore',PB,36,57,2.8],['ore',TI,62,20,2.4],['ore',COAL,24,52,2.6],['ore',TI,10,76,2.6]]},
-  {id:'kilo',name:'Outpost Kilo',kind:'attack',size:96,seed:3313,lat:-8,lon:52,first:240,ezone:12,base:'lite',
+   desc:'Scorched coal plains below the HDF Ember Depot. Clearance crews have already burned this ground once. Their columns come down the haul road from the depot in the north east, with flame tanks and bombers late on. Digest coal into resin for stronger thorns and survive 15 waves.',
+   tip:'The coal fields lie just past the Bloom\'s reach: push Rootweb Nodes toward them and digest coal into resin, which doubles a Thorn Spitter\'s damage.',
+   core:[13,71],spawn:[74,13],
+   ops:[
+    ['ridge',[[40,14],[48,22],[52,30]],1.6],['ridge',[[58,40],[62,48],[60,56]],1.6],['ridge',[[20,40],[30,46],[35,53]],1.6],['ridge',[[46,64],[50,72],[48,80]],1.6],
+    ['rock',12,14,6,5],['rock',30,30,5,4],['rock',72,66,5,6],['rock',58,76,4,4],
+    ['water',70,42,3,5],['water',14,32,4,3],['water',38,80,5,2.5],
+    ['ore',CU,19,64,3.2],['ore',CU,22,78,3],['ore',PB,7,62,2.8],['ore',COAL,24,70,2.6],['ore',SAND,9,52,3],['ore',TI,9,79,2.4],
+    ['ore',COAL,30,61,3.6],['ore',COAL,33,75,3.2],['ore',COAL,46,46,3.4],['ore',COAL,26,51,2.8],['ore',COAL,64,62,3],
+    ['ore',CU,52,54,2.8],['ore',PB,40,70,2.6],['ore',TI,62,22,2.4],
+    ['road',[[76,1],[76,9],[72,16],[64,24],[57,33],[51,41],[44,50],[39,56],[35,60]],1],
+    ['burn',24,57,5,3.5],['burn',31,68,3.5,3],['burn',41,52,4,3],['burn',53,38,4,3],['burn',38,64,3,2.5],
+    ['prop','rig',35,57,2,2],['prop','excavator',42,41,2,2],['prop','crates',38,56],['prop','crates',44,44],
+    ['prop','depot',66,2,6,4],['prop','tanks',78,2,2,2],['prop','tanks',79,5,2,2],['prop','mast',64,3],['prop','fence',63,7,10,1],['prop','fence',79,8,3,1]]},
+  {id:'kilo',name:'Outpost Kilo',kind:'attack',size:96,seed:3313,lat:-8,lon:52,first:240,ezone:12,base:'lite',biome:'pass',reach:14,pass:[48,49],
    need:['hail','wallL'],start:[420,200,0,0,0,40,0],yield:{[CU]:40,[PB]:20,[COAL]:14,[GRAPH]:10},
-   desc:'A Human Defence Force mining outpost guards the only pass through the Kilo ridge. Its drills feed its turrets and pay for its patrols. Cut its belts, outrange its guns and destroy its core.',
-   tip:'Seed Mortars outrange colony Duo turrets. Raise a pack of Mite Ants in a Spawning Pod and send them in (C) once its guns are down.',
-   core:[14,48],spawn:[80,48],ops:[
-    ['ridge',[[47,3],[46,16],[47,31]],3],['ridge',[[47,40],[46,48],[47,56]],3],['ridge',[[47,65],[46,80],[47,93]],3],
-    ['rock',28,14,6,5],['rock',28,82,6,5],['rock',64,20,5,6],['rock',64,76,5,6],['water',22,30,4,3],['water',22,66,4,3],
-    ['sand',8,62,5,5],['sand',88,32,4,4],
-    ['ore',CU,20,42,3.4],['ore',CU,20,55,3.3],['ore',PB,10,39,3.1],['ore',COAL,25,62,3.2],['ore',SAND,7,57,3.2],['ore',CU,34,30,2.8],['ore',PB,34,66,2.8],
-    ['ore',CU,73,41,3],['ore',PB,86,56,3],['ore',COAL,73,58,2.8],['ore',CU,62,34,2.6],['ore',SAND,88,40,2.6],['ore',TI,11,22,2.8],['ore',TI,11,74,2.8]]},
-  {id:'frost',name:'Frost Canyon',kind:'survival',waves:18,diff:.8,size:96,seed:4421,lat:52,lon:74,first:180,
+   desc:'The Kilo ridge splits these mountains, and an HDF mining outpost sits behind its only pass. Its drills feed its turrets and pay for its patrols, and a containment laboratory stands behind its core. Cut its belts, outrange its guns and destroy its core.',
+   tip:'Seed Mortars outrange colony Duo turrets. Its drills and belts sit outside the walls. Raise a pack of Mite Ants and send them through the pass (C) once its guns are down.',
+   core:[14,48],spawn:[80,48],
+   ops:[
+    ['rock',30,8,11,6],['rock',66,8,12,6],['rock',30,88,11,6],['rock',66,88,12,6],
+    ['ridge',[[47,3],[46,22],[47,41]],3],['ridge',[[47,57],[46,74],[47,93]],3],
+    ['rock',28,24,4,3],['rock',28,72,4,3],['rock',62,28,3,3],['rock',62,68,3,3],['rock',37,38,2,2],['rock',37,60,2,2],
+    ['water',20,30,4,3],['water',20,66,4,3],['sand',8,62,5,5],['sand',90,26,3,3],
+    ['ore',CU,20,42,3.4],['ore',CU,20,55,3.3],['ore',PB,10,39,3.1],['ore',COAL,26,62,3.2],['ore',SAND,7,57,3.2],['ore',CU,34,30,2.8],['ore',PB,34,66,2.8],['ore',TI,11,22,2.8],['ore',TI,11,74,2.8],
+    ['ore',CU,73,41,3],['ore',PB,86,58,3],['ore',COAL,73,58,2.8],['ore',CU,64,37,2.6],['ore',SAND,90,36,2.6],
+    ['road',[[30,49],[44,49],[52,49],[66,49],[76,49]],1],
+    ['prop','lab',85,41,4,3],['prop','silo',88,51,2,2],['prop','mast',84,37],['prop','crates',90,45],['prop','crates',90,46]]},
+  {id:'frost',name:'Frost Canyon',kind:'survival',waves:18,diff:.8,size:96,seed:4421,lat:52,lon:74,first:180,biome:'frost',reach:14,
    need:['combustion','smelter','pdrill','scatter'],start:[500,300,0,0,0,80,0],yield:{[CU]:40,[PB]:24,[TI]:12,[SI]:6},
-   desc:'A frozen canyon with titanium in its walls. The Human Defence Force sends its heaviest war machines and bomber wings down the canyon. Burn sap for vigor, grow chitin and hold for 18 waves.',
-   tip:'Spore Flak shreds bomber wings. Sap Burners power the Chitin Vat, and Deep Roots break down titanium for Ironbark.',
-   core:[48,86],spawn:[48,7],ops:[
-    ['rock',12,40,11,30],['rock',84,44,11,28],['water',48,46,9,4],['water',30,20,4,3],['water',68,24,4,3],
+   desc:'A frozen canyon with titanium in its cliffs and a frozen lake on its floor. The HDF holds barricades across the canyon road and stages artillery in the north. Its heaviest war machines come down the road with bomber wings overhead. Burn sap for vigor, grow chitin and hold for 18 waves.',
+   tip:'Spore Flak shreds bomber wings. Titanium lies at the foot of the cliffs: Deep Roots break it down for Ironbark.',
+   core:[48,86],spawn:[48,7],
+   ops:[
+    ['rock',12,40,11,30],['rock',84,44,11,28],['rock',20,88,5,5],['rock',78,86,5,6],
+    ['water',48,46,9,4],['water',30,20,4,3],['water',68,24,4,3],
     ['ridge',[[28,62],[40,67]],2],['ridge',[[68,62],[56,67]],2],['rock',48,28,4,3],
-    ['sand',66,90,6,4],['sand',20,80,4,4],
-    ['ore',CU,40,81,3.4],['ore',CU,57,80,3.2],['ore',PB,33,90,3.1],['ore',SAND,64,89,3.4],['ore',COAL,30,74,3.2],
-    ['ore',COAL,66,73,3.1],['ore',TI,48,71,3],['ore',TI,28,54,2.7],['ore',PB,70,56,2.9],['ore',CU,48,56,2.8],['ore',TI,70,40,2.6]]},
-  {id:'last',name:'The Last Colony',kind:'attack',size:144,diff:.7,seed:5531,lat:-28,lon:104,first:300,ezone:23,base:'full',mirror:true,
+    ['sand',66,91,5,3],['sand',22,78,4,4],
+    ['ore',CU,40,81,3.4],['ore',CU,57,80,3.2],['ore',PB,33,90,3.1],['ore',SAND,64,90,3],['ore',COAL,30,74,3.2],
+    ['ore',COAL,66,73,3.1],['ore',TI,48,71,3],['ore',TI,25,54,2.7],['ore',PB,70,56,2.9],['ore',CU,48,56,2.8],['ore',TI,72,40,2.6],
+    ['road',[[48,1],[48,12],[44,22],[39,34],[36,46],[40,58],[46,64]],1],
+    ['prop','barricade',31,30,5,1],['prop','barricade',59,30,5,1],['prop','barricade',29,58,1,3],['prop','barricade',65,58,1,3],
+    ['prop','artillery',36,9,2,2],['prop','artillery',39,13,2,2],['prop','artillery',57,9,2,2],['prop','artillery',58,13,2,2],
+    ['prop','tent',32,4,2,2],['prop','tent',62,4,2,2],['prop','crates',35,13],['prop','crates',62,12],['prop','mast',55,4]]},
+  {id:'last',name:'The Last Colony',kind:'attack',size:144,diff:.7,seed:5531,lat:-28,lon:104,first:300,ezone:23,base:'full',mirror:true,biome:'colony',reach:18,
    need:['factory','htank','mender'],start:[1500,900,0,0,0,200,120],yield:{[CU]:50,[PB]:30,[GRAPH]:12,[SI]:10,[TI]:10},
-   desc:'The last human colony on Nereth, where the Supreme General makes a final stand. A full fortress with walls, blast doors, lancers and a working economy, mirrored across the valley from your Bloom. Starve it and overrun its core.',
+   desc:'The last human colony on Nereth, where the Supreme General makes a final stand. Behind its walls, blast doors, lancers and working factories are streets of homes, a command centre and the shelters its people will run to. It sits across the valley from your Bloom. Starve it and overrun its core.',
    tip:'Hold your line first, then hatch a mixed swarm: Bulwark Ants (chitin, resin, titanium) soak the colony guns while Thornbacks follow. Healing Pods keep your front alive.',
-   core:[26,72],spawn:[117,72],ops:[
+   core:[26,72],spawn:[117,72],
+   ops:[
     ['ridge',[[52,8],[56,26],[54,40]],3],['ridge',[[54,104],[56,118],[52,136]],3],['rock',46,72,4,9],
     ['rock',16,20,8,7],['rock',16,124,8,7],['water',36,40,6,4],['water',36,104,6,4],['rock',66,52,4,5],['rock',66,92,4,5],
     ['sand',10,94,5,6],['sand',40,128,5,4],
     ['ore',CU,33,66,3.4],['ore',CU,32,79,3.3],['ore',PB,20,63,3.2],['ore',COAL,37,86,3.2],['ore',SAND,18,85,3.4],['ore',TI,44,56,3],
-    ['ore',CU,48,30,3],['ore',PB,48,114,3],['ore',COAL,30,46,3],['ore',SAND,28,104,3.2],['ore',TI,60,72,2.6],['ore',CU,62,40,2.6],['ore',PB,62,104,2.6]]},
+    ['ore',CU,48,30,3],['ore',PB,48,114,3],['ore',COAL,30,46,3],['ore',SAND,28,104,3.2],['ore',TI,60,72,2.6],['ore',CU,62,40,2.6],['ore',PB,62,104,2.6]],
+   // the colony's own district, east of its core: laid after the valley is mirrored, so it exists on the human side only
+   post:[
+    ['road',[[103,72],[113,72]],1],['road',[[121,72],[141,72]],1],['road',[[131,46],[131,98]],1],
+    ['road',[[131,52],[141,52]],1],['road',[[131,62],[141,62]],1],['road',[[131,84],[141,84]],1],['road',[[131,93],[141,93]],1],
+    ['prop','command',124,76,3,3],['prop','shelter',128,67,2,2],['prop','shelter',135,77,2,2],['prop','shelter',127,90,2,2],
+    ['prop','tower',138,56,2,2],['prop','pad',137,87,3,3],
+    ['prop','lamp',134,70],['prop','lamp',138,70],['prop','lamp',129,57],['prop','lamp',129,80],
+    ['estate',126,44,141,100]]},
 ];
 const MIS=Object.fromEntries(MISSIONS.map(m=>[m.id,m]));
+// ---------- campaign map dressing (v34): biome colours, tracks and roads, landmark props ----------
+// Campaign sectors made since v34 carry G.mapv=2 and G.biome. Older saves keep their own terrain and draw exactly as before.
+// Everything here is painted once into the terrain pictures (classic, HD, and through them the GPU path), so it costs nothing per frame.
+// Solid props stand on rock tiles laid by buildMissionMap, so nothing can be built on them or walk through them.
+const BIOMES={
+  base:{c:{floor:[220,6,18],rock:[222,7,30],sand:[34,26,33],water:[212,40,15]},h:{floor:[62,55,52],rock:[104,98,92],sand:[158,124,84],water:[46,96,108]},mini:[[46,48,54],[110,92,64],[80,84,94],[26,40,62]]},
+  meadow:{c:{floor:[95,17,20],rock:[60,6,32],sand:[40,26,34],water:[195,40,17]},h:{floor:[54,68,44],rock:[108,104,94],sand:[150,132,92],water:[44,98,104]},mini:[[50,64,44],[112,98,68],[88,88,84],[28,50,62]]},
+  ash:{c:{floor:[20,6,13],rock:[15,5,22],sand:[30,6,30],water:[205,25,13]},h:{floor:[40,36,34],rock:[76,70,66],sand:[106,100,96],water:[38,70,80]},mini:[[38,35,34],[92,88,84],[70,66,64],[24,36,48]]},
+  pass:{c:{floor:[30,14,21],rock:[28,10,33],sand:[36,28,36],water:[205,35,16]},h:{floor:[78,66,54],rock:[118,106,92],sand:[162,132,92],water:[44,90,104]},mini:[[72,62,52],[130,108,76],[104,96,86],[28,48,64]]},
+  frost:{c:{floor:[205,18,70],rock:[212,12,46],sand:[200,25,84],water:[195,40,60]},h:{floor:[176,188,200],rock:[118,128,142],sand:[214,224,232],water:[150,192,208]},ice:true,mini:[[170,182,194],[210,220,228],[110,120,134],[140,184,200]]},
+  colony:{c:{floor:[220,4,24],rock:[222,6,32],sand:[34,18,36],water:[212,40,16]},h:{floor:[72,72,74],rock:[100,99,98],sand:[150,128,96],water:[46,96,108]},mini:[[66,66,70],[120,104,80],[88,88,92],[26,40,62]]},
+};
+function biome(){return BIOMES[G&&G.mapv>=2&&G.biome]||BIOMES.base;}
+// the dressing list of the sector being played (null for Survival, Base Siege, the Test Range and pre-v34 saves)
+function mapDecor(){const m=G&&G.mapv>=2&&G.mission&&MIS[G.mission];return m?m.ops.concat(m.post||[],(G.estate||[]).map(([x,y])=>['prop','house',x,y,2,2])):null;}
+// roads, tracks and buildings on the minimap (one pixel per tile)
+function drawDecorMini(m){const L=mapDecor();if(!L)return;m.save();m.lineCap='round';m.lineJoin='round';
+  for(const o of L){if(o[0]==='track'||o[0]==='road'){m.strokeStyle=o[0]==='road'?'rgba(205,205,195,.6)':'rgba(176,144,104,.7)';m.lineWidth=o[0]==='road'?1.6:1.2;m.beginPath();o[1].forEach(([x,y],k)=>k?m.lineTo(x+.5,y+.5):m.moveTo(x+.5,y+.5));m.stroke();}
+    else if(o[0]==='prop'&&PROP_SOLID[o[1]]){m.fillStyle=o[1]==='house'?'#b9a98e':o[1]==='lab'||o[1]==='command'||o[1]==='shelter'||o[1]==='depot'?'#e0b23c':'#9aa2ac';m.fillRect(o[2],o[3],o[4]||1,o[5]||1);}}
+  m.restore();}
+const PROP_SOLID={truck:1,mast:1,tripod:1,crates:1,excavator:1,rig:1,depot:1,tanks:1,fence:1,lab:1,silo:1,barricade:1,artillery:1,tent:1,house:1,shelter:1,command:1,tower:1};
+// landmark props of a kind in the current sector, as tile rectangles [x,y,w,h]
+function propsOf(kind){const L=mapDecor()||[];return L.filter(o=>o[0]==='prop'&&o[1]===kind).map(o=>[o[2],o[3],o[4]||1,o[5]||1]);}
+function drawDecor(c,s){const L=mapDecor();if(!L)return;const bio=G.biome;c.save();
+  decSpeck(c,s,bio);
+  for(const o of L)if(o[0]==='burn')decBurn(c,s,o[1],o[2],o[3],o[4]);
+  for(const o of L)if(o[0]==='track')decPath(c,s,o[1],o[2],0);
+  for(const o of L)if(o[0]==='road')decPath(c,s,o[1],o[2],1);
+  for(const o of L)if(o[0]==='boulder')decBoulder(c,s,o[1],o[2],o[3]);
+  for(const o of L)if(o[0]==='prop'){c.save();c.translate(o[2]*s,o[3]*s);c.scale(s/24,s/24);try{PROP_DRAW[o[1]](c,(o[4]||1)*24,(o[5]||1)*24,hash(o[2],o[3],7));}catch(e){}c.restore();}
+  c.restore();}
+// small ground detail that sets each biome apart: grass and flowers, ash and embers, frost glints, pebbles
+function decSpeck(c,s,bio){const k=s/24;
+  for(let y=2;y<MH-2;y++)for(let x=2;x<MW-2;x++){const i=y*MW+x;if(G.terrain[i]!==FLOOR||G.ore[i]>=0)continue;const h=hash(x,y,G.seed+71);if(h>.42)continue;
+    const px=x*s,py=y*s;
+    if(bio==='meadow'){const n=2+(h*9|0)%3;for(let q=0;q<n;q++){const gx=px+hash(x*5+q,y,3)*s,gy=py+hash(x,y*5+q,4)*s;c.strokeStyle=q%2?'rgba(120,160,80,.55)':'rgba(84,124,60,.6)';c.lineWidth=1.2*k;
+        c.beginPath();c.moveTo(gx,gy);c.lineTo(gx-1.5*k,gy-4*k);c.moveTo(gx,gy);c.lineTo(gx+1.5*k,gy-3.5*k);c.stroke();}
+      if(h<.05){c.fillStyle=h<.025?'rgba(236,226,150,.8)':'rgba(214,186,230,.75)';c.beginPath();c.arc(px+s*.5,py+s*.5,1.6*k,0,7);c.fill();}}
+    else if(bio==='ash'){c.fillStyle='rgba(150,140,130,.18)';c.fillRect(px+hash(x,y,5)*s,py+hash(y,x,6)*s,3*k,2*k);if(h<.03){c.fillStyle='rgba(255,120,50,.55)';c.fillRect(px+s*.4,py+s*.6,2*k,2*k);}}
+    else if(bio==='frost'){c.fillStyle='rgba(255,255,255,.35)';c.fillRect(px+hash(x,y,5)*s,py+hash(y,x,6)*s,2*k,2*k);if(h<.08){c.strokeStyle='rgba(120,150,180,.25)';c.lineWidth=1*k;c.beginPath();c.moveTo(px+s*.2,py+s*.7);c.lineTo(px+s*.8,py+s*.6);c.stroke();}}
+    else if(bio==='pass'){c.fillStyle='rgba(40,30,20,.3)';c.beginPath();c.arc(px+hash(x,y,5)*s,py+hash(y,x,6)*s,1.6*k,0,7);c.fill();}}}
+function decBurn(c,s,x,y,rx,ry){c.save();c.translate((x+.5)*s,(y+.5)*s);
+  const g=c.createRadialGradient(0,0,0,0,0,Math.max(rx,ry)*s);g.addColorStop(0,'rgba(10,8,8,.7)');g.addColorStop(.7,'rgba(20,14,12,.45)');g.addColorStop(1,'rgba(20,14,12,0)');
+  c.scale(1,ry/rx);c.fillStyle=g;c.beginPath();c.arc(0,0,rx*s,0,7);c.fill();c.restore();
+  // charred stumps and a few embers
+  for(let k=0;k<Math.round(rx*ry*.7);k++){const a=hash(x+k,y,11)*6.28,r=Math.sqrt(hash(x,y+k,12))*.85,sx=(x+.5+Math.cos(a)*rx*r)*s,sy=(y+.5+Math.sin(a)*ry*r)*s,z=s/24;
+    if(k%3===0){c.fillStyle='rgba(255,110,40,.5)';c.fillRect(sx,sy,2*z,2*z);continue;}
+    c.fillStyle='#1a1412';c.beginPath();c.ellipse(sx,sy+2*z,3.5*z,1.6*z,0,0,7);c.fill();c.fillStyle='#2b201b';c.fillRect(sx-1.5*z,sy-5*z,3*z,7*z);c.fillStyle='rgba(255,140,60,.35)';c.fillRect(sx-1*z,sy-5*z,2*z,1.2*z);}}
+// a dirt track (type 0) or a paved HDF road (type 1) through tile centres
+function decPath(c,s,pts,w,type){const P=pts.map(([x,y])=>[(x+.5)*s,(y+.5)*s]),wid=(w*2+1)*s*(type?.92:.7),line=(lw,col,dash)=>{c.strokeStyle=col;c.lineWidth=lw;c.setLineDash(dash||[]);c.beginPath();P.forEach(([x,y],k)=>k?c.lineTo(x,y):c.moveTo(x,y));c.stroke();};
+  c.lineJoin='round';c.lineCap='round';
+  if(type){line(wid+s*.3,'rgba(0,0,0,.35)');line(wid,'#585c63');line(wid*.86,'#34373c');line(s*.08,'rgba(230,190,80,.75)',[s*.6,s*.5]);}
+  else{line(wid,'rgba(92,72,50,.75)');line(wid*.7,'rgba(120,96,66,.6)');const o=wid*.22;
+    for(const sgn of [-1,1]){c.strokeStyle='rgba(64,48,34,.55)';c.lineWidth=s*.09;c.setLineDash([s*.35,s*.18]);c.beginPath();
+      P.forEach(([x,y],k)=>{const [ax,ay]=P[Math.max(0,k-1)],[bx,by]=P[Math.min(P.length-1,k+1)],dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1;const qx=x-dy/L*o*sgn,qy=y+dx/L*o*sgn;k?c.lineTo(qx,qy):c.moveTo(qx,qy);});c.stroke();}}
+  c.setLineDash([]);}
+function decBoulder(c,s,x,y,r){const cx=(x+.5)*s,cy=(y+.5)*s,R=r*s;c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(cx+R*.15,cy+R*.25,R*1.05,R*.85,0,0,7);c.fill();
+  const g=c.createRadialGradient(cx-R*.35,cy-R*.4,R*.1,cx,cy,R*1.1);const sh=G.biome==='frost'?[200,210,222]:G.biome==='ash'?[96,88,84]:[150,146,134];
+  g.addColorStop(0,`rgb(${sh[0]},${sh[1]},${sh[2]})`);g.addColorStop(.6,`rgb(${sh[0]*.7|0},${sh[1]*.7|0},${sh[2]*.7|0})`);g.addColorStop(1,`rgb(${sh[0]*.4|0},${sh[1]*.4|0},${sh[2]*.4|0})`);
+  c.fillStyle=g;c.beginPath();for(let k=0;k<9;k++){const a=k/9*6.283,rr=R*(.86+hash(x+k,y,5)*.2);c.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*.9);}c.closePath();c.fill();
+  c.strokeStyle='rgba(0,0,0,.3)';c.lineWidth=s*.05;c.beginPath();c.moveTo(cx-R*.3,cy-R*.1);c.lineTo(cx+R*.1,cy+R*.3);c.stroke();
+  if(G.biome==='meadow'){c.fillStyle='rgba(110,150,80,.45)';c.beginPath();c.ellipse(cx-R*.2,cy+R*.5,R*.4,R*.18,0,0,7);c.fill();}
+  if(G.biome==='frost'){c.fillStyle='rgba(255,255,255,.7)';c.beginPath();c.ellipse(cx-R*.15,cy-R*.45,R*.5,R*.25,0,0,7);c.fill();}}
+// props are drawn in a 24-pixels-per-tile space; w and h are their size in that space, v a stable random value
+const PCOL={steel:'#5b6470',dark:'#2c3138',olive:'#4d5a3c',hdf:'#c9a14a',red:'#d2493a',white:'#d9dde2',glass:'rgba(150,220,200,.55)'};
+function pShadow(c,w,h){c.fillStyle='rgba(0,0,0,.38)';c.fillRect(3,4,w,h);}
+function pBox(c,x,y,w,h,top,side){c.fillStyle=side||'#23272d';c.fillRect(x,y+h*.78,w,h*.22);c.fillStyle=top;c.fillRect(x,y,w,h*.8);c.fillStyle='rgba(255,255,255,.12)';c.fillRect(x,y,w,1.5);}
+function pStripe(c,x,y,w,h){c.save();c.beginPath();c.rect(x,y,w,h);c.clip();for(let k=-h;k<w;k+=6){c.fillStyle='#e0b23c';c.beginPath();c.moveTo(x+k,y+h);c.lineTo(x+k+3,y+h);c.lineTo(x+k+3+h,y);c.lineTo(x+k+h,y);c.fill();}c.restore();}
+function pLabel(c,t,x,y,sz,col){c.fillStyle=col||'rgba(230,232,236,.85)';c.font=`bold ${sz}px monospace`;c.textAlign='center';c.textBaseline='middle';c.fillText(t,x,y);}
+const PROP_DRAW={
+  marker:(c,w,h)=>{c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(13,20,4,1.6,0,0,7);c.fill();c.fillStyle='#d9d2c0';c.fillRect(11,6,2,15);c.fillStyle='#ff7a2a';c.beginPath();c.moveTo(13,6);c.lineTo(20,8.5);c.lineTo(13,11);c.fill();c.fillStyle='#ff7a2a';c.fillRect(10,18,4,2);},
+  tripod:(c,w,h)=>{c.strokeStyle='#2a2d33';c.lineWidth=1.6;c.beginPath();c.moveTo(12,9);c.lineTo(5,21);c.moveTo(12,9);c.lineTo(19,21);c.moveTo(12,9);c.lineTo(13,22);c.stroke();c.fillStyle=PCOL.hdf;c.fillRect(8,5,8,5);c.fillStyle='#9fd0ff';c.fillRect(15,6,3,2);},
+  truck:(c,w,h)=>{pShadow(c,w-4,h-6);pBox(c,2,3,w-14,h-7,PCOL.olive,'#2f3826');pBox(c,w-13,5,10,h-10,'#59684a','#2f3826');c.fillStyle='#9fc4d8';c.fillRect(w-7,7,3,h-15);c.fillStyle='#14171b';for(const x of [6,16,w-9])c.fillRect(x,h-5,5,3);pLabel(c,'HDF',w*.35,h*.42,6,PCOL.hdf);},
+  mast:(c,w,h)=>{c.fillStyle='rgba(0,0,0,.35)';c.fillRect(8,14,14,8);c.strokeStyle='#8a929c';c.lineWidth=1.2;c.beginPath();c.moveTo(6,22);c.lineTo(12,1);c.lineTo(18,22);for(let y=4;y<22;y+=4){c.moveTo(12-(y/22)*6,y);c.lineTo(12+(y/22)*6,y);}c.stroke();c.fillStyle='#ff4a3a';c.beginPath();c.arc(12,2,2,0,7);c.fill();},
+  crates:(c,w,h)=>{pShadow(c,w-6,h-6);pBox(c,2,8,11,11,'#7a6440','#4a3c26');pBox(c,11,4,11,11,'#86704a','#4a3c26');c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1;c.strokeRect(3,8,9,9);c.strokeRect(12,4,9,9);},
+  excavator:(c,w,h)=>{pShadow(c,w-6,h-8);c.fillStyle='#1b1e22';c.fillRect(3,h-14,w-8,9);c.fillRect(3,7,w-8,6);pBox(c,8,10,w-18,h-22,'#a8792e','#5c4320');c.fillStyle='#6c4e22';c.save();c.translate(w-12,14);c.rotate(-.6);c.fillRect(0,-3,22,5);c.restore();c.fillStyle='#7d8a94';c.fillRect(12,13,8,6);c.fillStyle='rgba(60,30,10,.45)';c.fillRect(8,18,w-18,6);},
+  rig:(c,w,h)=>{pShadow(c,w-6,h-6);c.fillStyle='#3a3e44';c.fillRect(4,h-12,w-8,8);c.strokeStyle='#8f8a7e';c.lineWidth=1.6;c.beginPath();c.moveTo(8,h-8);c.lineTo(w/2,3);c.lineTo(w-8,h-8);for(let k=1;k<5;k++){const y=3+k*(h-11)/5,d=(y-3)/(h-11)*(w/2-8);c.moveTo(w/2-d,y);c.lineTo(w/2+d,y);}c.stroke();c.fillStyle=PCOL.hdf;c.fillRect(w/2-4,h-14,8,5);},
+  depot:(c,w,h)=>{pShadow(c,w-4,h-4);pBox(c,1,1,w-4,h-6,'#69717b','#2b3036');c.strokeStyle='rgba(0,0,0,.28)';c.lineWidth=1;for(let x=6;x<w-4;x+=6){c.beginPath();c.moveTo(x,2);c.lineTo(x,h-10);c.stroke();}
+    c.fillStyle='#2b3036';c.fillRect(w/2-10,h-12,20,7);pStripe(c,w/2-10,h-14,20,2);pLabel(c,'EMBER DEPOT',w/2,h*.36,8,'#f0d58a');pLabel(c,'HDF',w/2,h*.36+9,6);},
+  tanks:(c,w,h)=>{pShadow(c,w-4,h-4);for(const [x,y] of [[w*.3,h*.32],[w*.68,h*.62]]){c.fillStyle='#2b3036';c.beginPath();c.arc(x+1,y+2,w*.24,0,7);c.fill();const g=c.createRadialGradient(x-3,y-3,1,x,y,w*.24);g.addColorStop(0,'#b9c0c8');g.addColorStop(1,'#5f6871');c.fillStyle=g;c.beginPath();c.arc(x,y,w*.23,0,7);c.fill();c.fillStyle=PCOL.red;c.fillRect(x-4,y-1,8,2);}},
+  fence:(c,w,h)=>{c.strokeStyle='rgba(170,176,184,.8)';c.lineWidth=1;const vert=h>w;for(let k=0;k<(vert?h:w);k+=6){c.fillStyle='#6b727b';vert?c.fillRect(11,k,2,4):c.fillRect(k,10,2,4);}
+    c.save();c.globalAlpha=.6;for(let k=0;k<(vert?h:w);k+=3){c.beginPath();vert?(c.moveTo(9,k),c.lineTo(15,k+3)):(c.moveTo(k,9),c.lineTo(k+3,15));c.stroke();}c.restore();},
+  lab:(c,w,h)=>{pShadow(c,w-4,h-4);pBox(c,1,1,w-4,h-6,'#c9ced5','#5a6068');c.fillStyle='#8c939c';c.fillRect(1,1,w-4,4);
+    // containment tanks: glass cylinders with pieces of the hive floating inside
+    for(let k=0;k<3;k++){const x=10+k*((w-24)/2),y=h*.48;c.fillStyle='#3c4148';c.fillRect(x-6,y-9,12,18);c.fillStyle=PCOL.glass;c.fillRect(x-5,y-8,10,16);
+      c.fillStyle='rgba(170,100,210,.85)';c.beginPath();c.arc(x,y+1,3.2,0,7);c.fill();c.fillStyle='rgba(166,224,90,.8)';c.beginPath();c.arc(x+1.5,y-3,1.5,0,7);c.fill();c.fillStyle='rgba(255,255,255,.45)';c.fillRect(x-4,y-7,1.5,14);}
+    c.fillStyle='#e0b23c';c.beginPath();c.arc(w-10,8,4.5,0,7);c.fill();c.fillStyle='#1b1e22';c.beginPath();c.arc(w-10,8,1.6,0,7);c.fill();pLabel(c,'BIOHAZARD',w/2,h-9,6,'#2b3036');},
+  silo:(c,w,h)=>{PROP_DRAW.tanks(c,w,h);},
+  barricade:(c,w,h)=>{const vert=h>w;c.fillStyle='rgba(0,0,0,.35)';vert?c.fillRect(8,2,12,h):c.fillRect(2,9,w,10);for(let k=0;k<(vert?h:w);k+=12){const x=vert?6:k+1,y=vert?k+1:6;
+    c.fillStyle='#8f969e';c.fillRect(x,y,vert?12:10,vert?10:12);c.fillStyle='#b8bec5';c.fillRect(x,y,vert?12:10,3);pStripe(c,x,y+(vert?7:9),vert?12:10,2);if(G.biome==='frost'){c.fillStyle='rgba(255,255,255,.8)';c.fillRect(x,y,vert?12:10,2);}}},
+  artillery:(c,w,h,v)=>{pShadow(c,w-8,h-10);c.fillStyle='#1b1e22';c.fillRect(6,h-14,w-12,8);pBox(c,9,12,w-18,h-26,'#56604a','#2f3826');c.fillStyle='#3d4537';c.save();c.translate(w/2,h/2);c.rotate(Math.PI/2+.3*(v-.5));c.fillRect(-2.5,0,5,h*.62);c.restore();
+    c.fillStyle='#7c6a40';c.fillRect(3,4,8,6);c.fillRect(w-11,4,8,6);if(G.biome==='frost'){c.fillStyle='rgba(255,255,255,.7)';c.fillRect(9,12,w-18,3);}},
+  tent:(c,w,h)=>{pShadow(c,w-6,h-8);c.fillStyle='#5a6448';c.beginPath();c.moveTo(3,h-6);c.lineTo(w/2,4);c.lineTo(w-3,h-6);c.closePath();c.fill();c.fillStyle='#3e4632';c.beginPath();c.moveTo(w/2,4);c.lineTo(w-3,h-6);c.lineTo(w/2,h-6);c.closePath();c.fill();c.fillStyle='#1c2016';c.fillRect(w/2-3,h-13,6,7);if(G.biome==='frost'){c.fillStyle='rgba(255,255,255,.65)';c.beginPath();c.moveTo(w/2-6,10);c.lineTo(w/2,4);c.lineTo(w/2+6,10);c.fill();}},
+  house:(c,w,h,v)=>{pShadow(c,w-5,h-5);const roof=['#7c4a3a','#5d6a78','#6e6250','#4f5b4a'][(v*4)|0];pBox(c,2,2,w-6,h-8,'#b9b2a4','#5a554c');c.fillStyle=roof;c.fillRect(2,2,w-6,(h-8)*.45);c.fillStyle='rgba(0,0,0,.2)';c.fillRect(2,2+(h-8)*.45,w-6,1.5);
+    for(let k=0;k<2;k++){c.fillStyle=v>.35?'#ffd987':'#3a4048';c.fillRect(8+k*(w-22),h*.58,6,5);}c.fillStyle='#4a3a2a';c.fillRect(w/2-3,h-13,6,7);},
+  shelter:(c,w,h)=>{pShadow(c,w-4,h-4);c.fillStyle='#6f757c';c.fillRect(2,2,w-6,h-6);pStripe(c,2,2,w-6,4);pStripe(c,2,h-8,w-6,4);c.fillStyle='#2a2e33';c.fillRect(8,10,w-18,h-22);
+    c.fillStyle='#454b52';for(let k=0;k<4;k++)c.fillRect(9,11+k*((h-24)/4),w-20,((h-24)/4)-1.5);c.fillStyle='#8cf08c';c.fillRect(w-12,8,3,3);pLabel(c,'SHELTER',w/2,h/2,6,'#e0b23c');},
+  command:(c,w,h)=>{pShadow(c,w-4,h-4);pBox(c,2,2,w-6,h-8,'#4b535d','#22262c');c.fillStyle='#39414b';c.fillRect(6,6,w-14,h-18);c.fillStyle='#9fd0ff';for(let k=0;k<5;k++)c.fillRect(8+k*((w-20)/5),h-16,((w-20)/5)-2,3);
+    c.strokeStyle='#a7b0ba';c.lineWidth=1.5;c.beginPath();c.moveTo(w*.7,h*.5);c.lineTo(w*.7,4);c.stroke();c.fillStyle='#d8dde3';c.beginPath();c.ellipse(w*.3,h*.38,9,6,-.4,0,7);c.fill();c.fillStyle='#8a929c';c.beginPath();c.ellipse(w*.3,h*.38,5,3,-.4,0,7);c.fill();
+    c.fillStyle='#ff4a3a';c.beginPath();c.arc(w*.7,4,2.2,0,7);c.fill();pLabel(c,'HDF COMMAND',w/2,h*.62,7,'#f0d58a');},
+  tower:(c,w,h)=>{pShadow(c,w-6,h-6);c.strokeStyle='#5f6871';c.lineWidth=2;c.beginPath();c.moveTo(10,h-4);c.lineTo(14,h*.5);c.moveTo(w-10,h-4);c.lineTo(w-14,h*.5);c.stroke();const g=c.createRadialGradient(w/2-4,h*.32,2,w/2,h*.38,w*.32);g.addColorStop(0,'#c3cad2');g.addColorStop(1,'#6b747e');c.fillStyle=g;c.beginPath();c.arc(w/2,h*.38,w*.3,0,7);c.fill();pLabel(c,'H2O',w/2,h*.38,6,'#2b3036');},
+  pad:(c,w,h)=>{c.fillStyle='rgba(60,64,70,.9)';c.beginPath();c.arc(w/2,h/2,w*.45,0,7);c.fill();c.strokeStyle='#e0b23c';c.lineWidth=2;c.beginPath();c.arc(w/2,h/2,w*.38,0,7);c.stroke();pLabel(c,'H',w/2,h/2+1,w*.36,'#e6e8ec');},
+  lamp:(c,w,h)=>{c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(13,20,3,1.4,0,0,7);c.fill();c.fillStyle='#5b6470';c.fillRect(11,6,2,15);c.fillStyle='rgba(255,220,140,.9)';c.beginPath();c.arc(12,6,2.4,0,7);c.fill();c.fillStyle='rgba(255,220,140,.18)';c.beginPath();c.arc(12,8,7,0,7);c.fill();},
+};
+// ---------- mission events (v34): one-shot triggers for each campaign sector ----------
+// Each event fires once, when its condition is met, never on a timer. Fired ids live in G.evf (saved with the game, fresh on
+// every new attempt). Radio chatter scrolls in the message strip without pausing; pings mark a place on the map and minimap.
+// Events wait while the tutorial, first contact or any dialogue is running, so nothing overlaps.
+const RADIO=[];let radioT=0;
+function radio(lines){for(const l of lines)RADIO.push(l);}
+function radioTick(dt){radioT-=dt;if(radioT>0||!RADIO.length||DLG.open)return;const [sp,text]=RADIO.shift(),ch=CHARS[sp];
+  msg(ch.side==='p'?`${ch.name}: ${text}`:`${ch.name} (radio): ${text}`,ch.side==='p'?'hive':'radio');radioT=3.6;}
+const PINGS=[];
+function ping(x,y,label,col){PINGS.push({x,y,label,col:col||'230,190,80',t0:performance.now()});if(PINGS.length>6)PINGS.shift();}
+function propCentre(kind){const r=propsOf(kind)[0];return r?[r[0]+r[2]/2,r[1]+r[3]/2]:null;}
+function pingProp(kind,label){const p=propCentre(kind);if(p)ping(p[0],p[1],label);return p;}
+function drawPings(c){const now=performance.now();for(let k=PINGS.length-1;k>=0;k--){const p=PINGS[k],a=(now-p.t0)/1000;if(a>9){PINGS.splice(k,1);continue;}
+  const f=Math.max(0,1-a/9),ph=(a*.9)%1;c.strokeStyle=`rgba(${p.col},${(1-ph)*.8*f})`;c.lineWidth=3;c.beginPath();c.arc(p.x*T,p.y*T,(1+ph*3)*T,0,7);c.stroke();
+  c.strokeStyle=`rgba(${p.col},${.7*f})`;c.lineWidth=2;c.beginPath();c.arc(p.x*T,p.y*T,.8*T,0,7);c.stroke();
+  if(p.label){c.font='bold 13px system-ui,sans-serif';c.textAlign='center';c.textBaseline='bottom';const w=c.measureText(p.label).width+12;
+    c.fillStyle=`rgba(16,14,20,${.8*f})`;c.fillRect(p.x*T-w/2,p.y*T-1.9*T-18,w,18);c.fillStyle=`rgba(${p.col},${f})`;c.fillText(p.label,p.x*T,p.y*T-1.9*T-3);}}}
+function drawPingsMini(c,s){const now=performance.now();for(const p of PINGS){const a=(now-p.t0)/1000;if(a>9)continue;c.strokeStyle=`rgba(${p.col},${1-a/9})`;c.lineWidth=2;c.beginPath();c.arc(p.x*s,p.y*s,3+((a*1.5)%1)*6,0,7);c.stroke();}}
+// the camera looks at a landmark while a dialogue sequence plays, so the voices come from somewhere real
+const SEQ_FOCUS={e_humans:'depot',k_out:'lab',x_contact:'command',x_intro:'core',x_out1:'shelter',x_out2:'shelter'};
+function seqFocus(k){const f=SEQ_FOCUS[k];if(!f||!G||G.mapv<2)return;
+  if(f==='core'){if(G.core)centerOn(G.core.x+1.5,G.core.y+1.5);return;}
+  const p=propCentre(f);if(!p)return;centerOn(p[0],p[1]);ping(p[0],p[1],{depot:'Ember Depot',lab:'Containment laboratory',command:'HDF Command',shelter:'Shelters'}[f]);
+  if(f==='shelter')for(const r of propsOf('shelter').slice(1))ping(r[0]+r[2]/2,r[1]+r[3]/2);}
+// helpers for conditions
+function evLive(){return !!G&&G.mapv>=2&&!G.over&&!G.held&&(!G.story||G.story.s==='main');}
+function webNear(x,y,r){for(let yy=Math.floor(y-r);yy<=y+r;yy++)for(let xx=Math.floor(x-r);xx<=x+r;xx++)if(inMap(xx,yy)&&G.web[yy*MW+xx]&&Math.hypot(xx+.5-x,yy+.5-y)<=r)return true;return false;}
+function webOnPath(pts){for(let k=0;k<pts.length-1;k++){const [ax,ay]=pts[k],[bx,by]=pts[k+1],L=Math.hypot(bx-ax,by-ay);for(let q=0;q<=L;q+=.5){const x=Math.round(ax+(bx-ax)*q/L),y=Math.round(ay+(by-ay)*q/L);if(inMap(x,y)&&G.web[y*MW+x])return true;}}return false;}
+function opOf(kind){const L=mapDecor()||[];return L.filter(o=>o[0]===kind);}
+function eCount(t){let n=0;for(const b of G.blocks.values())if(b.team===1&&(Array.isArray(t)?t.includes(b.t):b.t===t))n++;return n;}
+function eCoreHP(){let h=0,m=0;for(const c of G.ecores){h+=Math.max(0,c.hp);m+=c.max||B.core.hp;}return m?h/m:1;}
+const MEV={
+  landfall:[
+    {id:'l_w1',when:()=>evLive()&&G.wave>=1,lines:[['ops','Clearance team, you are cleared into the meadow. Burn the growth and bring Biohazard its samples.'],['sgt','Copy, Command. Patrol Seven will lead you in along the survey track.']],
+     do:()=>{const tr=opOf('track')[0];if(tr)ping(tr[1][0][0],tr[1][0][1],'Survey track');}},
+    {id:'l_track',when:()=>evLive()&&opOf('track').some(o=>webOnPath(o[1])),lines:[['bloom','Hard trail. Their smell.'],['seed','They walk here. Again.']]},
+    {id:'l_w3',when:()=>evLive()&&G.wave>=3,lines:[['ops','General, the clearance team has lost two vehicles. The growth is shooting back.'],['gen','Then send armour. Contain it, Lieutenant.']]},
+    {id:'l_w6',when:()=>evLive()&&G.wave>=6,lines:[['ops','Biohazard reports the samples are still alive in containment. Still growing.']]},
+    {id:'l_w9',when:()=>evLive()&&G.wave>=9,lines:[['gen','No more half measures. Everything we have in this sector goes to that meadow.']]},
+  ],
+  ember:[
+    {id:'e_depot',when:()=>evLive(),lines:[],do:()=>pingProp('depot','Ember Depot')},
+    {id:'e_w1',when:()=>evLive()&&G.wave>=1,lines:[['ops','Clearance crews, roll out along the haul road. Flamers at the front.'],['cpl','Copy, Command. Burning everything purple.']],
+     do:()=>{const r=opOf('road')[0];if(r)ping(r[1][1][0],r[1][1][1],'Haul road');}},
+    {id:'e_burn',when:()=>evLive()&&opOf('burn').some(o=>webNear(o[1]+.5,o[2]+.5,Math.min(o[3],o[4]))),lines:[['bloom','Ash. Old fire here.'],['seed','They burned this ground. Before us.']]},
+    {id:'e_w4',when:()=>evLive()&&G.wave>=4,lines:[['cpl','Command, the fire isn\'t stopping it. It grows straight back through the ash.'],['ops','Keep it off the road, Corporal. That\'s all I need.']]},
+    {id:'e_w8',when:()=>evLive()&&G.wave>=8,lines:[['ops','All units, Nymbri growth has spread past Dr Nymbris\'s containment estimates. Flame tanks are being committed.'],['sgt','Past them? It\'s doubled.']]},
+    {id:'e_w12',when:()=>evLive()&&G.wave>=12,lines:[['ops','Bombers lifting off from the depot airstrip. Ember Fields, keep your heads down.']],do:()=>pingProp('depot','Bombers from Ember Depot')},
+  ],
+  kilo:[
+    {id:'k_start',when:()=>evLive(),lines:[],do:()=>{G.ek0={drill:eCount(['drill','pdrill']),belt:eCount(['conveyor','junction'])};const c=G.ecores[0];if(c)ping(c.x+1.5,c.y+1.5,'Outpost Kilo');const p=MIS.kilo.pass;if(p)ping(p[0],p[1],'Kilo pass');}},
+    {id:'k_hive',need:'k_start',when:()=>evLive()&&MIS.kilo.pass&&webNear(MIS.kilo.pass[0],MIS.kilo.pass[1],12),lines:[['bloom','The stone opens here. One path.'],['seed','Their fire comes through it. Hold it.']]},
+    {id:'k_drill',need:'k_start',when:()=>evLive()&&G.ek0&&eCount(['drill','pdrill'])<G.ek0.drill,lines:[['col','We\'ve lost a drill on the vein! Ammunition feed is dropping.']]},
+    {id:'k_belt',need:'k_start',when:()=>evLive()&&G.ek0&&eCount(['conveyor','junction'])<G.ek0.belt,lines:[['col','Supply line is cut. Get a crew out there!'],['ops','Negative, Colonel. Nobody goes outside the walls.']]},
+    {id:'k_core',need:'k_start',when:()=>evLive()&&eCoreHP()<.55,lines:[['col','The core is taking hits. Seal the laboratory. Nobody touches those samples.']],do:()=>pingProp('lab','Containment laboratory')},
+  ],
+  frost:[
+    {id:'f_w1',when:()=>evLive()&&G.wave>=1,lines:[['ops','Column moving down the canyon road. Heavy armour leading.']],do:()=>{const r=opOf('road')[0];if(r)ping(r[1][1][0],r[1][1][1],'Canyon road');}},
+    {id:'f_art',when:()=>evLive()&&G.wave>=5,lines:[['ops','Artillery is in position at the northern staging area.'],['gen','Fire when ready. Keep them off the canyon floor.']],do:()=>pingProp('artillery','Artillery staging')},
+    {id:'f_hive',when:()=>evLive()&&propsOf('barricade').some(r=>webNear(r[0]+r[2]/2,r[1]+r[3]/2,8)),lines:[['bloom','Hard walls across the canyon.'],['seed','They close the paths. Why?']]},
+    {id:'f_air',when:()=>evLive()&&G.wave>=7,lines:[['ops','Interceptors coming in over the rim. Bomber wings behind them.']]},
+    {id:'f_w10',when:()=>evLive()&&G.wave>=10,lines:[['ops','General, containment has failed at three more sites.'],['gen','Then we hold this canyon. Whatever it costs.']]},
+    {id:'f_w16',when:()=>evLive()&&G.wave>=16,lines:[['gen','Commit the siege tanks. Everything that can still move.']]},
+  ],
+  last:[
+    {id:'x_hive',when:()=>evLive()&&(()=>{const p=propCentre('command');return p&&webNear(p[0],p[1],34);})(),lines:[['bloom','Many small lives. Behind the walls.'],['seed','They gather where their fire is born.']]},
+    {id:'x_wall',when:()=>evLive()&&G.ex0!=null&&eCount(['wall','wallL','twall','door','doorL'])<G.ex0,lines:[['ops','Outer wall breached! Civilians to the inner ring!']]},
+    {id:'x_start',when:()=>evLive(),lines:[],do:()=>{G.ex0=eCount(['wall','wallL','twall','door','doorL']);}},
+    {id:'x_core',when:()=>evLive()&&eCoreHP()<.6,lines:[['ops','General, the core is failing.'],['gen','Start moving people to the shelters. Now.']],do:()=>{for(const r of propsOf('shelter'))ping(r[0]+r[2]/2,r[1]+r[3]/2,'Shelter');}},
+  ],
+};
+function evTick(){if(!G||!G.mission||G.mapv<2||G.test||DLG.open)return;const L=MEV[G.mission];if(!L)return;G.evf=G.evf||{};
+  for(const ev of L){if(G.evf[ev.id]||(ev.need&&!G.evf[ev.need]))continue;let ok=false;try{ok=ev.when();}catch(e){}
+    if(!ok)continue;G.evf[ev.id]=1;if(ev.lines&&ev.lines.length)radio(ev.lines);if(ev.do)try{ev.do();}catch(e){console.warn('event '+ev.id,e);}}}
+// while placing a growth, dashed rings show how far the Bloom and each Rootweb Node can spread Rootweb
+function drawReach(c){if(!G.tool||G.tool==='remove'||VINE[G.tool])return;const src=webSources();c.save();c.setLineDash([6,6]);c.lineWidth=2;
+  for(const b of src){const [x,y]=bCenter(b),R=webRadius(b);if(b.t==='core'&&!G.reach)continue;c.strokeStyle=b.t==='core'?'rgba(206,140,250,.55)':'rgba(206,140,250,.35)';c.beginPath();c.arc(x*T,y*T,(R+.3)*T,0,7);c.stroke();}
+  c.restore();}
 function buildMissionMap(m){
-  const t=G.terrain,o=G.ore,s=m.seed,W=m.mirror?MW/2:MW;t.fill(FLOOR);o.fill(-1);
+  const t=G.terrain,o=G.ore,s=m.seed,W0=m.mirror?MW/2:MW;let W=W0;t.fill(FLOOR);o.fill(-1);
+  G.mapv=2;G.biome=m.biome||'';G.reach=m.reach||0;G.evf={};G.estate=[];
   const [cx,cy]=m.core;G.coreX=cx-1;G.coreY=cy-1;G.spawn={x:m.spawn[0]+.5,y:m.spawn[1]+.5};
   // fine ground texture: a few sand patches and pebble clumps, fixed by the sector seed
   for(let y=0;y<MH;y++)for(let x=0;x<W;x++){const i=y*MW+x;if(fbm(x/7,y/7,s+200)>.74)t[i]=SANDF;if(fbm(x/4,y/4,s+50)>.8)t[i]=ROCK;if(x<2||y<2||x>=MW-2||y>=MH-2)t[i]=ROCK;}
@@ -3275,20 +3503,29 @@ function buildMissionMap(m){
     for(let q=0;q<=L;q+=.5){const px=ax+(bx-ax)*q/L,py=ay+(by-ay)*q/L;ell(px,py,w,w,f);}}};
   const set=v=>i=>{if(x2(i)>=2&&x2(i)<MW-2&&y2(i)>=2&&y2(i)<MH-2){t[i]=v;if(v!==FLOOR&&v!==SANDF)o[i]=-1;}};
   const x2=i=>i%MW,y2=i=>(i/MW)|0;
-  const veins=[];
-  for(const op of m.ops){const k=op[0];
+  const veins=[],road=new Uint8Array(N);
+  const apply=op=>{const k=op[0];
     if(k==='rock')ell(op[1],op[2],op[3],op[4],set(ROCK));
+    else if(k==='boulder')ell(op[1]+.5,op[2]+.5,op[3],op[3],set(ROCK));
+    else if(k==='track'||k==='road')line(op[1].map(([x,y])=>[x+.5,y+.5]),op[2]+.15,i=>{set(FLOOR)(i);road[i]=1;});
+    else if(k==='prop'){if(PROP_SOLID[op[1]])for(let y=op[3];y<op[3]+(op[5]||1);y++)for(let x=op[2];x<op[2]+(op[4]||1);x++)if(inMap(x,y))set(ROCK)(y*MW+x);}
+    else if(k==='estate'){const [,x0,y0,x1,y1]=op;for(let y=y0;y+1<=y1;y+=3)for(let x=x0;x+1<=x1;x+=3){let ok=true;
+      for(let yy=y-1;yy<=y+2&&ok;yy++)for(let xx=x;xx<=x+1&&ok;xx++){if(!inMap(xx,yy))ok=false;else{const i=yy*MW+xx,inside=yy>=y&&yy<=y+1;if(inside&&(t[i]===ROCK||t[i]===WATER||o[i]>=0||road[i]))ok=false;if(!inside&&o[i]>=0)ok=false;}}
+      if(!ok)continue;for(let yy=y;yy<=y+1;yy++)for(let xx=x;xx<=x+1;xx++)set(ROCK)(yy*MW+xx);G.estate.push([x,y]);}}
     else if(k==='water')ell(op[1],op[2],op[3],op[4],set(WATER));
     else if(k==='sand')ell(op[1],op[2],op[3],op[4],set(SANDF));
     else if(k==='ridge')line(op[1],op[2],set(ROCK));
     else if(k==='clear')line(op[1],op[2],set(FLOOR));
     else if(k==='ore'){const [,it,ox,oy,r]=op;veins.push([ox+.5,oy+.5,it]);
-      ell(ox+.5,oy+.5,r,r,i=>{if(it===SAND){t[i]=SANDF;o[i]=-1;}else{t[i]=FLOOR;o[i]=it;}});}}
+      ell(ox+.5,oy+.5,r,r,i=>{if(it===SAND){t[i]=SANDF;o[i]=-1;}else{t[i]=FLOOR;o[i]=it;}});}};
+  for(const op of m.ops)apply(op);
   // the Bloom and the drop zone always sit on open ground
   const clr=(px,py,R)=>{for(let y=py-R;y<=py+R;y++)for(let x=px-R;x<=px+R;x++)if(x>=2&&y>=2&&x<MW-2&&y<MH-2&&Math.hypot(x-px,y-py)<=R){const i=y*MW+x;if(t[i]!==SANDF)t[i]=FLOOR;}};
   clr(cx,cy,5);for(let y=cy-2;y<=cy+2;y++)for(let x=cx-2;x<=cx+2;x++)o[y*MW+x]=-1;
   if(!m.mirror)clr(m.spawn[0],m.spawn[1],m.kind==='attack'?6:5);
   if(m.mirror){for(let y=0;y<MH;y++)for(let x=0;x<W;x++){const i=y*MW+x,j=y*MW+(MW-1-x);t[j]=t[i];o[j]=o[i];}}
+  // things that exist on one side only (the colony district) go down after the mirror, across the whole width
+  W=MW;for(const op of m.post||[])apply(op);
   G.veins=veins;
   const all=m.mirror?veins.concat(veins.map(([x,y,it])=>[MW-x,y,it])):veins;
   G.evein=all.filter(([x,y])=>Math.hypot(x-G.spawn.x,y-G.spawn.y)<(m.base==='lite'?24:34));
@@ -3526,6 +3763,7 @@ async function gz(str,dir){const s=new Blob([str]).stream().pipeThrough(dir?new 
 async function encodeSave(){const j=JSON.stringify(snapGame());return 'LC1:'+b64(await gz(j,true));}
 async function decodeSave(s){if(!s||!s.startsWith('LC1:'))throw new Error('Not a Last Colony save');const u=await gz(unb64(s.slice(4)),false);return JSON.parse(new TextDecoder().decode(u));}
 function applySave(S){
+  RADIO.length=0;PINGS.length=0;
   setMapSize(S.MW);
   const g={};for(const k in S.g)g[k]=unpackVal(S.g[k]);
   G=Object.assign(g,{flow:new Float64Array(N),flowNext:new Int32Array(N),pflow:new Float64Array(N),pflowNext:new Int32Array(N),bgrid:new Int32Array(N),
@@ -3845,7 +4083,7 @@ function dlgOpen(){return DLG.open;}
 function playStory(keys,done){keys=(keys||[]).filter(k=>SEQ[k]);if(!keys.length){if(done)done();return;}
   DLG.queue=keys.slice();DLG.done=done||null;DLG.open=true;DLG.slots=[null,null];$('commbg').hidden=false;$('comm').classList.add('in');keys.length&&nextSeq();
   if(!DLG.raf)DLG.raf=requestAnimationFrame(dlgLoop);}
-function nextSeq(){const k=DLG.queue.shift();if(!k){closeDlg();return;}DLG.seq=SEQ[k];DLG.i=0;DLG.slots=[null,null];$('commChan').textContent=DLG.seq.chan;
+function nextSeq(){const k=DLG.queue.shift();if(!k){closeDlg();return;}DLG.seq=SEQ[k];seqFocus(k);DLG.i=0;DLG.slots=[null,null];$('commChan').textContent=DLG.seq.chan;
   $('comm').classList.toggle('hum',DLG.seq.lines.some(l=>CHARS[l[0]].side==='h')&&!DLG.seq.lines.some(l=>CHARS[l[0]].side==='p'));
   $('comm').classList.toggle('mix',DLG.seq.lines.some(l=>CHARS[l[0]].side==='h')&&DLG.seq.lines.some(l=>CHARS[l[0]].side==='p'));showLine();}
 function showLine(){const [who,text]=DLG.seq.lines[DLG.i],ch=CHARS[who];
@@ -3882,7 +4120,7 @@ function storyBegin(){const st=G&&G.story;if(!st)return;const S=STORY[st.m];
   if(st.s==='intro')playStory(S.intro,()=>{if(!G||G.story!==st)return;
     if(S.tutorial&&!(CAMP&&CAMP.flags&&CAMP.flags.tut1))enterTut(0);
     else if(S.tutorial)offerTutorial();
-    else{st.s='main';st.hold=false;const mm=MIS[st.m];if(mm)msg(mm.tip,'good');}});
+    else{st.s='main';st.hold=false;const mm=MIS[st.m];if(mm)msg(mm.tip,'good');if(G.core&&SEQ_FOCUS[S.intro[S.intro.length-1]])centerOn(G.core.x+1.5+6,G.core.y+1.5);}});
   else if(st.s==='tut'){if(st.k<0)offerTutorial();else enterTut(st.k,true);}
   else if(st.s==='fc_talk')fcTalk();
   else if(st.s==='fc_after')fcAfter();
@@ -3905,7 +4143,7 @@ const TUT=[
    check:()=>G.units.some(u=>u.hold)},
   {id:'swarm',title:'Swarm orders',text:'The Swarm button (or C) switches every ant between Defend and Attack. Switching clears move orders. Press it twice to bring your ants home.',
    hl:['#cmdBtn'],enter:st=>{st.toggles=0;},check:st=>st.toggles>=2},
-  {id:'web',title:'The Rootweb',text:'The purple ground is Rootweb. Every growth has to stand on it, although vines can reach past it. The Bloom spreads it by itself until it covers 30% of the map. Ore lies in the ground as coloured crystals: copper is orange.',
+  {id:'web',title:'The Rootweb',text:'The purple ground is Rootweb. Every growth has to stand on it, although vines can reach past it. The Bloom spreads it by itself, but here only a short way around it: the dashed ring shows how far while you place a growth. Rootweb Nodes push it further. Ore lies in the ground as coloured crystals: copper is orange.',
    next:true,check:()=>false},
   {id:'tap',title:'Grow a Root Tap',text:'Open the Roots tab and pick the Root Tap (or press 4), then place it on copper ore. More ore under it means faster gathering. Every growth costs items from the Bloom, shown at the top left.',
    hl:['#mtabs .tab[title="Roots"]','.bbtn[data-t="drill"]'],ring:()=>{const v=nearVein(CU);return v&&[v[0],v[1],3.6];},
@@ -3942,10 +4180,20 @@ function storyDrawWorld(c,time){const st=G.story;if(!st)return;let r=null;
 function startFirstContact(){const st=G.story;showTut(null);
   const tur=[...G.blocks.values()].filter(b=>b.team===0&&b.t==='duo').sort((a,b)=>dist2(a,G.core)-dist2(b,G.core))[0];
   const [tx,ty]=tur?bCenter(tur):[G.core.x+5,G.core.y+1.5];
+  st.s='fc_walk';st.t=0;st.cease=true;st.turret=tur?tur.id:0;st.look=[tx,ty];
+  G.bullets=G.bullets.filter(p=>p.team!==0);
+  const track=G.mapv>=2&&MIS[st.m]&&MIS[st.m].patrol;
+  if(track){
+    // Patrol 7 enters from the map edge and walks the survey track; past its end it heads for the new Thorn Spitter, stopping well short
+    const R=track.map(([x,y])=>[x+.5,y+.5]),[ex,ey]=R[R.length-1],dx=tx-ex,dy=ty-ey,L=Math.hypot(dx,dy)||1;if(L>9)R.push(freeNear(tx-dx/L*8,ty-dy/L*8,1));
+    st.home=R[0];st.route=1;
+    for(let k=0;k<3;k++){const side=k===0?0:k===1?1.1:-1.1,r=patrolLane(R,side),e=spawnEnemy('dagger');e.x=r[0][0];e.y=r[0][1];
+      e.script=1;e.lead=k===0?1:0;e.route=r;e.wp=1;e.goal=r[1];e.wait=k*1.4;e.id=G.nextId++;e.ang=Math.atan2(r[1][1]-r[0][1],r[1][0]-r[0][0]);}
+    ping(R[0][0]-2,R[0][1],'Movement on the survey track');
+    msg('Something is moving along the survey track to the east.','alert');return;}
   let dx=G.spawn.x-tx,dy=G.spawn.y-ty;const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
   const far=Math.min(24,L-1),[sx,sy]=freeNear(tx+dx*far,ty+dy*far,1),goal=freeNear(tx+dx*7.5,ty+dy*7.5,1);
-  st.s='fc_walk';st.t=0;st.cease=true;st.turret=tur?tur.id:0;st.look=[tx,ty];st.home=[sx,sy];
-  G.bullets=G.bullets.filter(p=>p.team!==0);
+  st.home=[sx,sy];
   for(let k=0;k<3;k++){const side=k===0?0:k===1?1:-1,back=k?1.6:0;
     const g=freeNear(goal[0]-dx*back-dy*side*1.7,goal[1]-dy*back+dx*side*1.7,1);
     const e=spawnEnemy('dagger');e.x=sx-dy*side*1.2-dx*back;e.y=sy+dx*side*1.2-dy*back;const i=tileAt(e.x,e.y);if(i<0||solidTile(i,1)){e.x=sx;e.y=sy;}
@@ -3953,18 +4201,31 @@ function startFirstContact(){const st=G.story;showTut(null);
   msg('Tremors in the soil to the east. Something heavy is moving toward the new Thorn Spitter.','alert');
   centerOn((tx+sx)/2,(ty+sy)/2);
 }
+// the same route shifted sideways, so the three vehicles drive side by side; any point that lands on rock keeps the centre line
+function patrolLane(R,off){return R.map(([x,y],k)=>{const [ax,ay]=R[Math.max(0,k-1)],[bx,by]=R[Math.min(R.length-1,k+1)],dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1;
+  const px=x-dy/L*off,py=y+dx/L*off,i=tileAt(px,py);return i<0||solidTile(i,1)?[x,y]:[px,py];});}
 function scriptStep(e,dt){const d=E[e.t];e.cd=1;e.target=null;e.tu=null;if(!e.goal)return;
+  if(e.wait>0){e.wait-=dt;return;}
+  // on a route: move on to the next waypoint as each one is reached
+  if(e.route&&!e.hold&&e.wp<e.route.length-1&&Math.hypot(e.goal[0]-e.x,e.goal[1]-e.y)<.8){e.wp++;e.goal=e.route[e.wp];}
   const [gx,gy]=e.goal,L=Math.hypot(gx-e.x,gy-e.y);
   if(L>.45){unstick(e,1);navTo(e,gx,gy,d.spd*1.35,dt,1);e.arr=0;}else e.arr=1;
   if(e.arr&&G.story&&G.story.look&&!e.out)e.ang+=(((Math.atan2(G.story.look[1]-e.y,G.story.look[0]-e.x)-e.ang+Math.PI*3)%(Math.PI*2))-Math.PI)*.08;
-  if(e.out&&(L<1.2||e.x<1||e.y<1||e.x>MW-1||e.y>MH-1))e.dead=true;}
+  if(e.out&&(e.route?e.wp>=e.route.length-1&&L<1.2:L<1.2)||e.out&&(e.x<2.5||e.y<2.5||e.x>MW-2.5||e.y>MH-2.5))e.dead=true;}
 function storyTick(dt){const st=G.story;if(!st)return;st.t+=dt;
   if(st.s==='fc_walk'){const P=G.enemies.filter(e=>e.script);const lead=P.find(e=>e.lead)||P[0];
-    if(!lead||lead.arr&&P.every(e=>e.arr||st.t>25)||st.t>45){for(const e of P){e.arr=1;}st.s='fc_talk';st.t=0;fcTalk();}}
+    if(st.route){
+      // the scene starts where the patrol can actually see the growth: close to the Rootweb or within sight of the Thorn Spitter
+      const seen=lead&&(webNear(lead.x,lead.y,6.5)||Math.hypot(lead.x-st.look[0],lead.y-st.look[1])<10),end=lead&&lead.wp>=lead.route.length-1&&Math.hypot(lead.goal[0]-lead.x,lead.goal[1]-lead.y)<.8;
+      if(!lead||seen||end||st.t>90){for(const e of P){e.arr=1;e.hold=1;e.goal=[e.x,e.y];}st.seenAt=lead?[+lead.x.toFixed(1),+lead.y.toFixed(1)]:null;st.s='fc_talk';st.t=0;fcTalk();}}
+    else if(!lead||lead.arr&&P.every(e=>e.arr||st.t>25)||st.t>45){for(const e of P){e.arr=1;}st.s='fc_talk';st.t=0;fcTalk();}}
   else if(st.s==='fc_withdraw'){if(!G.enemies.some(e=>e.script&&!e.dead)||st.t>40){for(const e of G.enemies)if(e.script)e.dead=true;st.s='fc_after';st.t=0;st.cease=false;fcAfter();}}}
 function fcTalk(){const st=G.story;const lead=G.enemies.find(e=>e.script&&e.lead)||G.enemies.find(e=>e.script);if(lead)centerOn(lead.x-3,lead.y);
   playStory(['fc_patrol','fc_command','fc_general'],()=>{if(!G||G.story!==st)return;st.s='fc_withdraw';st.t=0;
-    for(const e of G.enemies)if(e.script){e.out=1;e.arr=0;e.goal=freeNear(st.home[0]+(rnd()-.5)*2,st.home[1]+(rnd()-.5)*2,1);e.nav=null;}
+    for(const e of G.enemies)if(e.script){e.out=1;e.arr=0;e.nav=null;
+      // back the way it came, along the track and off the map
+      if(e.route){e.hold=0;e.route=e.route.slice(0,Math.max(1,e.wp)).reverse();e.route.unshift([e.x,e.y]);e.wp=1;e.goal=e.route[1]||e.route[0];}
+      else e.goal=freeNear(st.home[0]+(rnd()-.5)*2,st.home[1]+(rnd()-.5)*2,1);}
     msg('Patrol 7 is withdrawing to report. Let it go.','good');});}
 function fcAfter(){const st=G.story;
   playStory(['fc_after'],()=>{if(!G||G.story!==st)return;st.s='main';st.hold=false;st.cease=false;st.fc=1;
@@ -3986,7 +4247,7 @@ function loop(now){
     if(keys.has('a')||keys.has('arrowleft'))px-=1;if(keys.has('d')||keys.has('arrowright'))px+=1;
     if(keys.has('w')||keys.has('arrowup'))py-=1;if(keys.has('s')||keys.has('arrowdown'))py+=1;
     if(px||py){cam.x+=px*sp;cam.y+=py*sp;clampCam();}
-    autosaveTick(dt);storyFrame();if(!G.paused&&!G.over&&!DLG.open){acc+=dt*G.speed;let n=0;while(acc>=STEP&&n<20){step(STEP);acc-=STEP;n++;}if(n>=20)acc=0;}
+    autosaveTick(dt);storyFrame();if(!G.paused&&!G.over)radioTick(dt);if(!G.paused&&!G.over&&!DLG.open){acc+=dt*G.speed;let n=0;while(acc>=STEP&&n<20){step(STEP);acc-=STEP;n++;}if(n>=20)acc=0;}
     render();
     if(frame%3===0)renderMini();
     if(frame%8===0)updateHUD();

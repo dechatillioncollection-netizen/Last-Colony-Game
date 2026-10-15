@@ -24,10 +24,10 @@ Press F3 in game to see the frame rate and which renderer is drawing the Rootweb
 | `art/plant/` | painted layers for the Bloom, Seed Pod, Thorn Spitter and Living Rootweb |
 | `art/source/` | the scripts that paint those layers |
 | `art/ART-GUIDE.md` | how the painted art is layered, animated and scaled |
-| `docs/` | story bible, campaign dialogue, game guide, test range layout, screenshots |
+| `docs/` | story bible, campaign dialogue, game guide, campaign maps (`v34-campaign-maps.md`), test range layout, screenshots |
 | `electron/` | the Windows desktop build (`electron/build.sh` makes `LastColony-Windows.zip`) |
 | `tests/` | Playwright tests and profilers, see `tests/README.md` |
 
 ## Notes
 
-`docs/story-bible.txt` section 5 is a private long-term twist. Keep it out of player-facing text.
+`docs/story-bible.txt` section 6 is a private long-term twist. Keep it out of player-facing text.

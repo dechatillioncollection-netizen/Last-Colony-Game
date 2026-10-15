@@ -40,17 +40,17 @@ const {chromium}=require(process.env.PW||'playwright');
  await p.waitForTimeout(1500);console.log('turret',JSON.stringify(await st()));
  await p.screenshot({path:'s_fc_walk.png'});
  // watch the patrol walk; record HP and bullets
- let mon=[];for(let k=0;k<60;k++){const s=await p.evaluate(()=>{const G=window.__game();const P=G.enemies.filter(e=>e.script);return {s:G.story.s,n:P.length,hp:P.map(e=>e.hp|0).join('/'),pb:G.bullets.filter(b=>b.team===0).length,eb:G.bullets.filter(b=>b.team===1).length,cease:G.story.cease,dlg:DLG.open,pos:P.map(e=>e.x.toFixed(1)+','+e.y.toFixed(1)).join(' ')};});
+ let mon=[];for(let k=0;k<140;k++){const s=await p.evaluate(()=>{const G=window.__game();const P=G.enemies.filter(e=>e.script);return {s:G.story.s,n:P.length,hp:P.map(e=>e.hp|0).join('/'),pb:G.bullets.filter(b=>b.team===0).length,eb:G.bullets.filter(b=>b.team===1).length,cease:G.story.cease,dlg:DLG.open,pos:P.map(e=>e.x.toFixed(1)+','+e.y.toFixed(1)).join(' ')};});
    mon.push(s);if(s.dlg)break;await p.waitForTimeout(500);}
- console.log('walk samples',JSON.stringify(mon.filter((x,i)=>i%6===0||x.dlg)));
+ console.log('seenAt',await p.evaluate(()=>JSON.stringify(window.__game().story.seenAt)));console.log('walk samples',JSON.stringify(mon.filter((x,i)=>i%6===0||x.dlg)));
  await p.waitForTimeout(500);await p.screenshot({path:'s_fc_talk1.png'});
  for(let k=0;k<4;k++){await p.keyboard.press('Space');await p.waitForTimeout(50);}
  await p.waitForTimeout(800);await p.screenshot({path:'s_fc_talk2.png'});
  for(let k=0;k<80&&await p.evaluate(()=>DLG.open&&DLG.seq&&DLG.seq.chan.indexOf('SUPREME')<0);k++){await p.keyboard.press('Space');await p.waitForTimeout(40);}
  await p.waitForTimeout(900);await p.screenshot({path:'s_fc_general.png'});
- for(let k=0;k<60&&await p.evaluate(()=>DLG.open);k++){await p.keyboard.press('Space');await p.waitForTimeout(40);}
+ for(let k=0;k<200&&await p.evaluate(()=>DLG.open);k++){await p.keyboard.press('Space');await p.waitForTimeout(40);}
  console.log('after talk',JSON.stringify(await st()));
- mon=[];for(let k=0;k<70;k++){const s=await p.evaluate(()=>{const G=window.__game();const P=G.enemies.filter(e=>e.script);return {s:G.story.s,n:P.length,hp:P.map(e=>e.hp|0).join('/'),pb:G.bullets.filter(b=>b.team===0).length,eb:G.bullets.filter(b=>b.team===1).length,cease:G.story.cease,dlg:DLG.open};});
+ mon=[];for(let k=0;k<140;k++){const s=await p.evaluate(()=>{const G=window.__game();const P=G.enemies.filter(e=>e.script);return {s:G.story.s,n:P.length,hp:P.map(e=>e.hp|0).join('/'),pb:G.bullets.filter(b=>b.team===0).length,eb:G.bullets.filter(b=>b.team===1).length,cease:G.story.cease,dlg:DLG.open};});
    mon.push(s);if(s.dlg)break;await p.waitForTimeout(500);}
  console.log('withdraw samples',JSON.stringify(mon.filter((x,i)=>i%6===0||x.dlg)));
  await p.waitForTimeout(600);await p.screenshot({path:'s_fc_after.png'});
