@@ -2517,6 +2517,13 @@ const XG={drill:{tips:[[-2.34,158],[-1.40,120],[-0.78,156],[0.80,158],[1.78,120]
   pdrill:{tips:[[-2.36,164],[-1.52,122],[-0.80,162],[0.02,122],[0.76,164],[1.62,122],[2.38,162],[3.12,120]],sx:46/128,sy:44/128,scy:-4/128,
     con:.1,conT:.22,run:.42,lanes:3,swell:.075,grain:.11},
   smelter:{vx:90/128,vy:84/128,vcy:-4/128,ocy:-10/128}};
+// Sap Burner, Sunleaf and Spore Bellows sizes as painted by art/source/paint_energy.js (in tiles, from the footprint centre):
+// the burner's chamber radius and the angles of its vessels; the Sunleaf's leaves [angle, length at 128 px a tile] and roots, how
+// often a pulse gathers and how slowly the light moves; the Bellows' three sacs [x, y, size], its sac image size and its vents, how
+// long one breath takes and where in it the breath out comes.
+const EG={combustion:{r:27/128,tips:[-2.5,-1.45,-.4,.62,1.66,2.7]},
+  solar:{leaves:[[-2.2,58],[-.95,60],[.3,57],[1.5,59],[2.75,56]],roots:[-1.9,-.2,1.3,2.9],period:3.4,sheen:6},
+  bellows:{sacs:[[-50/128,-40/128,.9],[54/128,-32/128,.84],[2/128,54/128,.88]],sz:160/128,vents:[[-4/128,-6/128],[24/128,14/128],[-24/128,16/128]],breath:2.8,out:.62}};
 const ART={plant:{
   nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.018,period:4.2},
     layers:[{f:'base.png'},{f:'liquid.png',g:'dome'},{f:'seed.png',anim:'float',n:5,size:.2,g:'dome',lite:false},
@@ -2544,6 +2551,12 @@ const ART={plant:{
     layers:['roots','base','tendrils','sac','membrane','veins','shine','grain','chan','chan_glow','pulse'].map(n=>({f:n+'.png'}))},
   smelter:{name:'Chitin Vat',dir:'plant/chitin-vat/',custom:(...a)=>drawVat(...a),customUnder:(...a)=>drawTapUnder(...a),box:3,t:'smelter',
     layers:['roots','base','fluid','swirl','plate','coal','sand','membrane','folds','veins','shine','chan','chan_glow','pulse'].map(n=>({f:n+'.png'}))},
+  combustion:{name:'Sap Burner',dir:'plant/sap-burner/',custom:(...a)=>drawBurner(...a),customUnder:(...a)=>drawSmallUnder(...a),box:2,t:'combustion',
+    layers:['roots','base','chamber','glow','ember','coal','membrane','ridges','veins','shine','chan','chan_glow','pulse'].map(n=>({f:n+'.png'}))},
+  solar:{name:'Sunleaf',dir:'plant/sunleaf/',custom:(...a)=>drawSunleaf(...a),customUnder:(...a)=>drawSmallUnder(...a),box:2,t:'solar',
+    layers:['roots','base','leaves','veins','heart','sheen_a','sheen_b','pulse'].map(n=>({f:n+'.png'}))},
+  bellows:{name:'Spore Bellows',dir:'plant/spore-bellows/',custom:(...a)=>drawBellows(...a),customUnder:(...a)=>drawTapUnder(...a),box:3,t:'bellows',
+    layers:['roots','base','sac','mist','vents','spore','puff','veins','pulse'].map(n=>({f:n+'.png'}))},
   node:{name:'Rootweb Node',dir:'plant/rootweb-node/',custom:(...a)=>drawNode(...a),customUnder:(...a)=>drawNodeUnder(...a),box:1,t:'node',layers:[{f:'root.png'},{f:'base.png'},{f:'petal.png'},{f:'fluid.png'},{f:'nucleus.png'},{f:'membrane.png'},{f:'ring.png'},{f:'pulse.png'}]},
   rootweb:{name:'Rootweb',dir:'plant/rootweb/',web:true,layers:[{f:'cells.png'},{f:'pulse.png'},{f:'sheen.png'},{f:'bud.png'}]},
   duo:{name:'Thorn Spitter',dir:'plant/thorn-spitter/',pad:.5,dome:[.5,.5,.094],breathe:{amp:.045,period:3.6},hurtShrink:.12,
@@ -2984,6 +2997,128 @@ function drawTap(c,a,x,y,b,tt,mode){const X=XG[a.t],I=oSet(a),cx=x+T,cy=y+T,bx=x
   if(b&&b.oreItem>=0)seedHD(c,b.oreItem,x+2*T-9,y+9,7);}
 function drawTapUnder(c,a,b){dI(c,oSet(a).roots,b.x*T-T/2,b.y*T-T/2,3*T,3*T);}
 
+// ===== Sap Burner: coal drawn into the reaction chamber, the chamber swelling and glowing, vigor pulsing out along its vessels =====
+// Driven by the burner's real state: its burn timer jumping back up is one piece of coal taken in (the game burns each for 2 s),
+// a burn timer above zero is the burner making vigor, and its coal store going up is a piece arriving by vine.
+const sw=(a,b,u)=>u>a&&u<b?Math.sin(Math.PI*(u-a)/(b-a)):0;   // a soft bump between a and b
+// the sides a 1x1 growth gets a vessel opening on: where a neighbour really feeds it coal (a vine pointing in, a knot or bulb, a coal tap)
+function eLinks(b,s){const key=G.blocks.size*7919+Math.floor(G.time*2);if(s.lk===key)return s.lm;s.lk=key;let m=0;s.ln=s.ln||[];
+  for(let k=0;k<4;k++){const o=blockAt(b.x+D4X[k],b.y+D4Y[k]);s.ln[k]=null;if(!o||o===b||o.team!==b.team)continue;const d=B[o.t];
+    if(d.belt?pointsAt(o,b):o.t==='junction'||o.t==='router'||o.t==='sorter'||((o.t==='drill'||o.t==='pdrill')&&o.oreItem===COAL)){m|=1<<k;s.ln[k]=o;}}
+  return s.lm=m;}
+function eUnder(I,mask){return cc=>{for(let k=0;k<4;k++)if(mask>>k&1)sideImg(cc,I.chan,T,T,k);dI(cc,I.base,0,0,2*T,2*T);};}
+function drawBurner(c,a,x,y,b,tt,mode){const X=EG.combustion,I=oSet(a),cx=x+T/2,cy=y+T/2,bx=x-T/2,by=y-T/2,BS=2*T,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  if(lite&&!b){dI(c,oFlat(a),bx,by,BS,BS);return;}
+  let s=null,mask=0,on=false,u=9,gl=0,br=1,rk=1,burn=0;
+  if(b){s=ost(b);mask=eLinks(b,s);burn=b.burn||0;on=burn>0;const co=b.inv[COAL]||0;
+    if(s.burn===undefined){s.burn=burn;s.eat=-9;s.co=co;s.inT=-9;s.ink=-1;s.fr=[];s.gl=on?.6:0;s.lt=tt;s.n=0;}
+    if(burn>s.burn+.5){s.eat=tt;s.n++;}s.burn=burn;   // its burn timer only ever goes back up when it takes in a piece of coal
+    if(co>s.co){let k=-1;for(let q=0;q<4;q++)if(s.fr[q]===COAL){k=q;break;}if(k<0)for(let q=0;q<4;q++)if(s.ln&&s.ln[q]){k=q;break;}s.inT=tt;s.ink=k;}s.co=co;
+    for(let q=0;q<4;q++){const o=s.ln&&s.ln[q];s.fr[q]=o&&B[o.t].belt&&o.belt.length&&pointsAt(o,b)?o.belt[o.belt.length-1].i:-1;}
+    u=tt-s.eat;
+    // how hot the chamber is: steady while it burns, a surge as each piece catches, easing off as the piece runs out, fading when it stops
+    const tgt=on?(.5+.22*Math.min(1,burn/.4))+.4*sw(.12,.8,u):0,dt=Math.min(.1,Math.max(0,tt-s.lt));s.lt=tt;
+    s.gl+=(tgt-s.gl)*Math.min(1,dt*(tgt>s.gl?9:2.5));gl=live||lite?s.gl:on?.6:0;
+    if(live){br=1+(on?.014:.006)*Math.sin(tt*6.283/(on?1.7:5.5)+b.id)+.06*sw(.18,.62,u);rk=1+.12*sw(0,.42,u);}
+    br*=1-.08*(1-Math.max(0,b.hp/b.max));}
+  if(b&&lite){c.drawImage(oCache(a,'r'+mask,cc=>{eUnder(I,mask)(cc);for(const k of ['chamber','membrane','ridges'])dI(cc,I[k],0,0,BS,BS);},2),bx,by,BS,BS);
+    if(gl>.03){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(1,gl);dI(c,I.glow,bx,by,BS,BS);c.restore();}return;}
+  if(b)c.drawImage(oCache(a,'u'+mask,eUnder(I,mask),2),bx,by,BS,BS);else dI(c,I.base,bx,by,BS,BS);
+  scaled(c,I.chamber,cx,cy,br,bx,by,BS,BS);
+  if(gl>.02){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(1,gl*.9);scaled(c,I.glow,cx,cy,br*(.9+.15*gl),bx,by,BS,BS);c.restore();}
+  // the coal it is digesting, smaller as it burns down; a new piece slides in from the rim as it is taken in
+  if(on){const R=X.r*T,z=R*1.15*(.4+.6*Math.min(1,burn/2)),v=live?Math.min(1,u/.3):1,an=-Math.PI/2+(s.ink>=0?s.ink*Math.PI/2+Math.PI/2:0),
+      px=cx+Math.cos(an)*R*.85*(1-v),py=cy+Math.sin(an)*R*.85*(1-v);dI(c,I.ember,px-z/2,py-z/2,z,z);}
+  scaled(c,I.membrane,cx,cy,br,bx,by,BS,BS);
+  scaled(c,I.ridges,cx,cy,rk,bx,by,BS,BS);
+  // vigor pulses out along the vessels, twice for each piece of coal
+  let ve=0;
+  if(live&&on){for(const t0 of [.5,1.25]){const v=(u-t0)/.55;if(v<0||v>=1)continue;ve=Math.max(ve,Math.sin(Math.PI*v));
+      c.save();c.globalCompositeOperation='lighter';for(let l=0;l<3;l++){const an=X.tips[(s.n*2+l*2+(t0>1?1:0)+b.id)%X.tips.length],r=(X.r+.06+v*.26)*T,z=T*.16*(1-v*.4);
+        c.globalAlpha=.75*(1-v);dI(c,I.pulse,cx+Math.cos(an)*r-z,cy+Math.sin(an)*r-z,z*2,z*2);}c.restore();}}
+  if(b){const a1=(on?.14:.03)+.5*ve;if(a1>.03){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=a1;dI(c,I.veins,bx,by,BS,BS);c.restore();}}
+  // a piece of coal arriving through the vessel that brought it
+  if(live&&s.ink>=0){const v=(tt-s.inT)/.4;if(v>=0&&v<1){const k=s.ink,ex=cx+D4X[k]*T/2,ey=cy+D4Y[k]*T/2,px=ex+(cx-ex)*v*.7,py=ey+(cy-ey)*v*.7,z=T*.2;
+      c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.5*(1-v);sideImg(c,I.chan_glow,cx,cy,k);c.restore();dI(c,I.coal,px-z/2,py-z/2,z,z);}}
+  if(!a.bake)dI(c,I.shine,bx,by,BS,BS);}
+function drawSmallUnder(c,a,b){dI(c,oSet(a).roots,b.x*T-T/2,b.y*T-T/2,2*T,2*T);}
+
+// ===== Sunleaf: light shimmering over the leaves, pulses gathering to the heart and running out into the roots =====
+// The Sunleaf makes its 5 vigor all the time and has no other state, so this is a calm ambient rhythm, the same whatever happens.
+function drawSunleaf(c,a,x,y,b,tt,mode){const X=EG.solar,I=oSet(a),cx=x+T/2,cy=y+T/2,bx=x-T/2,by=y-T/2,BS=2*T,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  if(lite){dI(c,oFlat(a),bx,by,BS,BS);return;}
+  const id=b?b.id:0,P=X.period,ph=(tt+id*.37)/P,n=Math.floor(ph),v=ph-n;let br=1;
+  if(b){br=(live?1+.012*Math.sin(tt*6.283/5.5+id):1)*(1-.06*(1-Math.max(0,b.hp/b.max)));}
+  dI(c,I.base,bx,by,BS,BS);
+  scaled(c,I.leaves,cx,cy,br,bx,by,BS,BS);
+  const gat=live?sw(.05,.45,v):0,hb=live?sw(.3,.6,v):0;
+  c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.12+.32*gat;scaled(c,I.veins,cx,cy,br,bx,by,BS,BS);c.restore();
+  // pulses gather from the tips of two leaves down to the heart
+  if(live&&v<.42){const w=v/.42;c.save();c.globalCompositeOperation='lighter';
+    for(let l=0;l<2;l++){const [an,r]=X.leaves[(n*2+l*3+id)%X.leaves.length],rr=(r/128*.9-w*w*(r/128*.9-.05))*T*br,z=T*.14*(1+w*.3);c.globalAlpha=.7*Math.sin(Math.PI*Math.min(1,w*1.15));dI(c,I.pulse,cx+Math.cos(an)*rr-z,cy+Math.sin(an)*rr-z,z*2,z*2);}c.restore();}
+  if(hb>0){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.55*hb;dI(c,I.heart,bx,by,BS,BS);c.restore();}
+  dI(c,I.heart,bx,by,BS,BS);
+  // then a fainter pulse runs out from the heart along a root into the ground round it
+  if(live&&v>.45&&v<.8){const w=(v-.45)/.35,an=X.roots[(n+id)%X.roots.length],rr=(.08+w*.62)*T,z=T*.1;c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.4*(1-w);dI(c,I.pulse,cx+Math.cos(an)*rr-z,cy+Math.sin(an)*rr-z,z*2,z*2);c.restore();}
+  // wet light drifting across the leaves
+  if(!a.bake){const m=live?.5+.5*Math.sin(tt*6.283/X.sheen+id*1.7):0;c.save();c.globalAlpha=.7*(1-m);scaled(c,I.sheen_a,cx,cy,br,bx,by,BS,BS);c.globalAlpha=.7*m;if(m>.02)scaled(c,I.sheen_b,cx,cy,br,bx,by,BS,BS);c.restore();}}
+
+// ===== Spore Bellows: the sacs fill with spores, squeeze them out through the vents, and the spores settle on Rootweb as it spreads =====
+// A Bellows doubles the spread of every Rootweb source within 12 tiles while the swarm has at least a quarter of the vigor it needs.
+// It breathes in full only while that is really happening: it has the vigor, and a source it reaches has just covered new ground.
+// Each breath out sends spores towards tiles those sources have just covered. With nothing to boost it rests; without vigor it sags.
+function webBornAt(i){if(webGPU&&GLR.born)return GLR.born[i];if(!webGPU&&webArtOn()){const bn=webBorn.get(i);return bn?bn.t:-9;}return null;}
+function bellowsTrack(b,s,tt){const X=EG.bellows;
+  if(s.ph===undefined){s.ph=0;s.grow=-9;s.ex=-9;s.tiles=[];s.mot=[];s.wm=new Map();s.lt=tt;s.sk=-1;s.src=[];}
+  const key=G.blocks.size*7919+Math.floor(G.time*2);
+  if(s.sk!==key){s.sk=key;s.src=webSources().filter(o=>{const [ox,oy]=bCenter(o);return Math.hypot(b.x+1-ox,b.y+1-oy)<=12;});}
+  const pw=G.powSat>=.25;let grew=false;const [bx,by]=bCenter(b);
+  for(const o of s.src){const L=o.wlist,wi=o.wi||0;let p=s.wm.get(o.id);
+    if(!p||p.L!==L||wi<p.wi){s.wm.set(o.id,{L,wi});continue;}
+    if(wi>p.wi&&L){for(let k=p.wi,e=Math.min(wi,p.wi+60);k<e;k++){const i=L[k];if(!G.web[i])continue;const bt=webBornAt(i);if(bt!==null&&bt<G.time-.3)continue;
+        if(pw){grew=true;const tx=i%MW,ty=(i/MW)|0;if(s.tiles.length<10&&Math.hypot(tx+.5-bx,ty+.5-by)<16)s.tiles.push([tx,ty]);}}}
+    p.wi=wi;}
+  if(grew)s.grow=tt;
+  const act=pw&&tt-s.grow<1.6,dt=Math.min(.1,Math.max(0,tt-s.lt));s.lt=tt;
+  // one breath takes X.breath seconds: in (the sacs fill), out (they squeeze the spores through the vents), then a short rest
+  if(act||s.ph>0){const p0=s.ph;s.ph+=dt/X.breath;
+    if(p0<X.out&&s.ph>=X.out){s.ex=tt;s.mot=s.tiles.splice(0,6).map((t,j)=>({x:t[0],y:t[1],t:tt+j*.07}));s.tiles.length=0;}
+    if(s.ph>=1)s.ph=act?s.ph-1:0;}
+  return {pw,act};}
+function sacK(v,X){if(v<0)v+=1;return v<X.out?1+.17*Math.sin(Math.PI/2*v/X.out):v<X.out+.18?1.17-.29*Math.sin(Math.PI/2*(v-X.out)/.18):.88+.12*Math.sin(Math.PI/2*(v-X.out-.18)/(1-X.out-.18));}
+function drawBellows(c,a,x,y,b,tt,mode){const X=EG.bellows,I=oSet(a),cx=x+T,cy=y+T,bx=x-T/2,by=y-T/2,BS=3*T,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  if(lite&&!b){dI(c,oFlat(a),bx,by,BS,BS);return;}
+  let s=null,st={pw:true,act:false};if(b){s=ost(b);st=bellowsTrack(b,s,tt);}
+  const ue=s?tt-s.ex:9;
+  if(b&&lite){dI(c,oFlat(a),bx,by,BS,BS);
+    if(!ART_RM&&ue<1){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.5*(1-ue);dI(c,I.veins,bx,by,BS,BS);c.restore();}return;}
+  dI(c,I.base,bx,by,BS,BS);
+  const hurt=b?1-.07*(1-Math.max(0,b.hp/b.max)):1,inCyc=!!s&&s.ph>0;
+  // the sacs, each a little behind the one before; between breaths they barely move, and without vigor they sag
+  X.sacs.forEach(([sx,sy,k],i)=>{let g;
+    if(live&&inCyc)g=sacK(s.ph-i*.05,X);else g=live?1+(st.pw?.02:.01)*Math.sin(tt*6.283/5+i*2.1+b.id):1;
+    if(b&&!st.pw)g*=.95;g*=hurt;
+    const px=cx+sx*T,py=cy+sy*T,z=X.sz*T*k*g;dI(c,I.sac,px-z/2,py-z/2,z,z);
+    // the spores inside: dim at rest, thickest just before the breath out
+    const mv=live&&inCyc?s.ph-i*.05:-1,ma=b?(st.pw?.3:.14)+(mv>=0&&mv<X.out?.6*mv/X.out:mv>=X.out&&mv<X.out+.2?.6*(1-(mv-X.out)/.2):0):.32,mz=z*.7;
+    c.save();c.globalAlpha=ma;dI(c,I.mist,px-mz/2,py-mz/2,mz,mz);c.restore();
+    if(live)for(let j=0;j<3;j++){const h1=hash(j,b.id,40+i),h2=hash(j,b.id,50+i),an=h1*6.283+tt*(.15+h2*.2)*(st.pw?1:.4),r=z*(.12+h2*.22),q=T*.07;c.save();c.globalAlpha=.55;dI(c,I.spore,px+Math.cos(an)*r-q,py+Math.sin(an)*r*.9-q,q*2,q*2);c.restore();}});
+  dI(c,I.vents,bx,by,BS,BS);
+  if(!live)return;
+  c.save();c.globalCompositeOperation='lighter';
+  if(ue<1){c.globalAlpha=.45*(1-ue);dI(c,I.veins,bx,by,BS,BS);}
+  // the breath out: spores puffed from the vents, spreading a little way and thinning out
+  if(ue<1.4){const u=ue/1.4;c.globalCompositeOperation='source-over';
+    for(const [vx,vy] of X.vents){const r=T*(.3+u*1.2),px=cx+vx*T,py=cy+vy*T-u*T*.35;c.globalAlpha=.75*(1-u);dI(c,I.puff,px-r,py-r,r*2,r*2);}
+    const R=T*(1.2+u*2.4);c.globalAlpha=.16*(1-u);dI(c,I.puff,cx-R,cy-R,R*2,R*2);}
+  // and towards the Rootweb its sources have just grown: spores drift out and settle, and the new tissue glints
+  c.globalCompositeOperation='lighter';
+  if(s.mot.length){for(const m of s.mot){const w=(tt-m.t)/.9,ex=(m.x+.5)*T,ey=(m.y+.5)*T,[vx,vy]=X.vents[0],sx0=cx+vx*T,sy0=cy+vy*T;if(w<0)continue;
+      if(w<1){const px=sx0+(ex-sx0)*w,py=sy0+(ey-sy0)*w-Math.sin(Math.PI*w)*T*.6,q=T*.11;c.globalAlpha=.8*(1-w*.3);dI(c,I.spore,px-q,py-q,q*2,q*2);}
+      else if(w<1.6){const g=(w-1)/.6,q=T*(.2+.2*g);c.globalAlpha=.45*(1-g);dI(c,I.pulse,ex-q,ey-q,q*2,q*2);}}
+    if(tt-s.mot[s.mot.length-1].t>1.6)s.mot.length=0;}
+  c.restore();}
+
 // ===== Chitin Vat: coal and sand drawn in, the fluid turning, a plate hardening, the vat squeezing shut, the chitin out by its vessel =====
 // Driven by the vat's real stores (coal, sand, finished chitin) and its progress; it works only while it has inputs and vigor.
 const VAT_PLATES=[[-.36,.26,.3,1],[.4,-.1,-.6,.95],[.05,.52,1.2,.9],[-.5,-.3,2.1,.86],[.5,.3,-1.4,.86],[.12,-.52,.7,.82]];
@@ -3072,8 +3207,8 @@ function drawNodeUnder(c,a,b,lite){if(lite)return;const ph=b.id*2.17,A=[];let ma
     s.tc=cv;s.tm=mask;s.th=hi;}
   c.drawImage(s.tc,(b.x-1)*T,(b.y-1)*T,3*T,3*T);}
 // per-kind crowd limits: past these many on screen (or zoomed out) a kind draws its baked look plus what the player needs
-const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
-const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0};
+const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24,combustion:40,solar:40,bellows:16},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
+const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0,combustion:0,solar:0,bellows:0};
 function organLite(t){const N=ORGAN_N;return (typeof cam!=='undefined'&&cam.z<ART_LOD_ZOOM)||N[t]>ORGAN_MAX[t]||((t==='router'||t==='sorter'||t==='node')&&N.router+N.sorter+N.node+N.press>ORGAN_ALL_MAX);}
 // a Splitter Bulb or Sorting Gland: vines run straight into its channels
 const organJoin=o=>(o.t==='router'||o.t==='sorter')&&organOpen(o.t);

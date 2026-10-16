@@ -412,3 +412,58 @@ The three 2x2 production growths are painted as living organs. This is artwork o
   - The tendril tips and chamber sizes are repeated in the game (`XG`); a repainted tap must keep them, or the pulses will not start at the painted tips.
 - **Settings and fallback:** Low quality and painted art off give the previous look. If any file for one of the three fails to load, that structure falls back to its previous look (with a console warning) and the others stay painted. Build-menu icons use the baked resting picture.
 - **Painter script:** `art/source/paint_extract.js` (run with `node art/source/runpaint.js art/source/paint_extract.js art/plant`). The drawing code is `drawTap`, `drawTapUnder`, `drawVat`, `vatPlates`, `xLinks`, `xTakes`, `xFeeds`, `xShip` and `tapGrains` in the game.
+
+## Painted energy growths (v38): Sap Burner, Sunleaf, Spore Bellows
+
+The two vigor growths and the Rootweb accelerator are painted as living organs. This is artwork only: the 60 vigor of a burning Sap Burner, the 5 of a Sunleaf, coal use (one piece burns for 2 s), the Spore Bellows' doubled spread within 12 tiles and its 10 vigor, costs, footprints, health, building rules and the save format are unchanged. `ident38.js` plays the same colony in v37 and v38, drawing every other step with painted art on and through a wave, and the saves are byte-identical on Medium and Epic. `xtest38.js` compares vigor made and used, coal burned, Rootweb spread and every store with v37 in the Test Range and in Survival, with and without vigor.
+
+- **What the game does (checked in the code before painting):**
+  - **Sap Burner** (`combustion`, 1x1, 100 hp) takes coal from vines, taps, Knots and Bulbs while it holds fewer than 10 (`accepts`). When its burn timer (`b.burn`) has run out and it has coal, it uses one piece and sets the timer to 2 s. While the timer is above zero it adds 60 to the swarm's vigor (`computePower`).
+  - **Sunleaf** (`solar`, 1x1, 80 hp) always adds 5 vigor. It has no input, no timer and no other state.
+  - **Spore Bellows** (`bellows`, 2x2, 220 hp) always counts 10 vigor as used. While the swarm has at least a quarter of the vigor it needs (`G.powSat >= .25`), every Rootweb source (the Bloom or a Rootweb Node) whose centre is within 12 tiles of the Bellows' centre spreads twice as fast (`bellowsNear`, `stepWeb`). Each source walks its own list of tiles (`b.wlist`, `b.wi`).
+  - None of them had animation events. The art makes its own from that state, in `OST` (outside the block, never saved): the burn timer jumping back up is one piece of coal taken in; the coal store going up is a piece arriving; a source within 12 tiles moving along its list onto a tile covered just now, while the swarm has the vigor, is the Bellows really boosting new growth.
+- **Sap Burner:** a compact, dense violet body ringed by heavy lobes, with a raised rim of fleshy folds round a small translucent reaction chamber. The tissue nearest the chamber is heat-darkened and finely cracked. Inside sits the coal it is digesting, a dark lump with amber cracks that gets smaller as the piece burns down. For each piece of coal:
+  1. The new lump slides in from the rim (from the side its vine comes in, when there is one) and the folds open a little.
+  2. The chamber swells (6%) and its amber glow surges.
+  3. The glow holds steady while the piece burns.
+  4. Twice per piece, vigor pulses run out along three of its six vessels.
+  5. The glow eases off as the piece runs out, then the next piece catches.
+  A piece of coal arriving by vine runs in along its vessel stub. With no coal the chamber goes dark within a second and only slow breathing remains. The game's own warm light round a burning burner is unchanged.
+- **Sunleaf:** a rosette of broad translucent leaves like water-lily pads, five large and five small, pale turquoise fading to lavender at the rims, with a midrib and paired side veins in each, fanning from a small wet stem knot. In the middle a cup of lavender bracts holds a softly luminous heart. Because it always makes its vigor, it has one calm rhythm (every 3.4 s, offset per leaf): wet light drifts slowly across the leaves, two faint pulses gather from the leaf tips to the heart, the heart brightens a little, and a fainter pulse runs out along a root. It is lighter, paler and finer than the dense, dark burner, so the two are easy to tell apart.
+- **Spore Bellows:** three translucent bellows sacs, heavy with pale spore mist and pleated where they fold, on a fleshy lobed root base with veins running up into them, and three frilled, gill-like vents where the sacs meet. While it is really boosting new growth it breathes in full, one breath every 2.8 s:
+  1. The sacs fill one after another (up to 17% larger) and the mist inside thickens.
+  2. They squeeze (down to 88%) and puff spores out of the vents, which spread a little way and thin out.
+  3. Its veins light briefly.
+  4. Spores drift out to up to six tiles its sources have just covered (within 16 tiles), and that new Rootweb glints as they settle.
+  5. It relaxes before the next breath.
+  When the sources in reach have finished spreading it completes its breath and rests, the sacs barely moving and a few spores drifting inside. Without enough vigor the sacs sag a little and the spores barely move. There is no fog when it is idle.
+- **Hurt and built:** each sags a little as it is hurt (up to 8%). The white hit flash, health bar, build fade and selection box are drawn by the game as before.
+- **Openings:** a Sap Burner gets a vessel stub on a side only where a neighbour really feeds it coal: a vine pointing into it, a Knot, Bulb or Sorting Gland, or a tap on coal. The Sunleaf and Spore Bellows take no items and get none. Vine ends are drawn exactly as before.
+- **Footprint:** the organs stay inside their tiles. Fine roots reach a little past them and are drawn under neighbouring growths.
+- **Performance:**
+  - Crowd limits on screen: 40 Sap Burners, 40 Sunleaves and 16 Spore Bellows. Past a limit, or zoomed out past 0.75×, that kind draws one cached picture. A burner still shows its glow (one extra draw), so burning and idle stay readable; a Bellows' veins still flash when it breathes out.
+  - The burner's base and vessel stubs are one cached picture per set of openings. Layers are half size at normal zoom and clipped to their visible pixels. Nothing is processed per pixel per frame. The Bellows looks up the sources in its reach twice a second.
+  - Measured with `xperf38.js` in headless Chromium on Medium (software drawing, so a real browser is faster), everything in view at 0.9× zoom and every burner burning. Times are for the whole frame's `render()`. The median is the useful number, because the background Rootweb repaint of the freshly laid test ground makes occasional slow frames in both builds; their total time is the same in both.
+
+| On screen | v37 median | v38 median | v37 mean | v38 mean |
+| --- | --- | --- | --- | --- |
+| 25 Sap Burners | 2.3 ms | 2.6 ms (full motion) | 13.4 ms | 13.6 ms |
+| 50 Sap Burners | 2.6 ms | 2.6 ms (cached pictures) | 14.5 ms | 15.7 ms |
+| 100 Sap Burners | 3.0 ms | 3.0 ms (cached pictures) | 16.6 ms | 17.2 ms |
+| 25 Sunleaves | 2.1 ms | 2.5 ms (full motion) | 12.0 ms | 13.1 ms |
+| 50 Sunleaves | 2.2 ms | 2.5 ms (cached pictures) | 11.3 ms | 13.4 ms |
+| 100 Sunleaves | 2.4 ms | 2.7 ms (cached pictures) | 12.3 ms | 12.6 ms |
+| 25 Spore Bellows | 2.6 ms | 2.2 ms (cached pictures) | 13.6 ms | 13.1 ms |
+| 50 Spore Bellows | 3.1 ms | 2.5 ms (cached pictures) | 16.4 ms | 14.0 ms |
+| 100 Spore Bellows | 4.1 ms | 2.8 ms (cached pictures) | 21.3 ms | 15.7 ms |
+| 25 mixed | 2.4 ms | 2.8 ms (full motion) | 12.7 ms | 13.4 ms |
+| 50 mixed | 2.9 ms | 3.4 ms (full motion) | 17.9 ms | 16.1 ms |
+| 100 mixed | 3.4 ms | 3.8 ms (Bellows cached) | 18.4 ms | 18.1 ms |
+
+- **Textures:**
+  - `art/plant/sap-burner/` (256x256 with the tile in the middle 128x128): `roots.png` (drawn under neighbours), `base.png` (body, ridges and scorched ring), `chamber.png`, `glow.png` (added with a light blend), `ember.png` (48x48, the coal being digested), `coal.png` (32x32), `membrane.png`, `ridges.png` (the game opens them), `veins.png`, `shine.png`, `chan.png` and `chan_glow.png` (128x128 vessel stub from a tile's right edge inward), `pulse.png`.
+  - `art/plant/sunleaf/` (256x256): `roots.png`, `base.png`, `leaves.png`, `veins.png`, `heart.png`, `sheen_a.png` and `sheen_b.png` (the game fades between them), `pulse.png`.
+  - `art/plant/spore-bellows/` (384x384 with the 2x2 footprint in the middle 256x256): `roots.png`, `base.png`, `sac.png` (160x160, one sac, drawn three times), `mist.png` (128x128), `vents.png`, `spore.png` (24x24), `puff.png` (128x128), `veins.png`, `pulse.png`.
+  - The chamber radius, vessel and leaf angles, sac and vent positions are repeated in the game (`EG`); a repainted texture must keep them.
+- **Settings and fallback:** Low quality and painted art off give the previous look. If any file for one of the three fails to load, that structure falls back to its previous look (with a console warning) and the others stay painted. Build-menu icons use the baked resting picture.
+- **Painter script:** `art/source/paint_energy.js` (run with `node art/source/runpaint.js art/source/paint_energy.js art/plant`). The drawing code is `drawBurner`, `eLinks`, `eUnder`, `drawSunleaf`, `drawSmallUnder`, `drawBellows`, `bellowsTrack`, `sacK` and `webBornAt` in the game.

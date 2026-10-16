@@ -50,10 +50,10 @@ The swarm has 26 growths, including the Bloom. All of them except the Bloom, Vin
 - Sorting Gland (Vines, 1×1): Passes one chosen item straight through and sends the rest left or right.
 - Resin Gland (Glands, 2×2): Digests 2 coal into 1 resin.
 - Chitin Vat (Glands, 2×2): Grows 1 coal and 2 sand into chitin. Uses 30 vigor. When it is working the fluid turns and a new plate forms inside; when it is short of coal, sand or vigor it rests and the fluid barely moves.
-- Sap Burner (Vigor, 1×1): Burns coal for 60 vigor.
+- Sap Burner (Vigor, 1×1): Burns coal for 60 vigor. Its chamber glows amber while it burns and flares as each piece of coal catches; a dark chamber means it has run out of coal.
 - Sunleaf (Vigor, 1×1): A trickle of 5 vigor from sunlight, no fuel.
 - Rootweb Node (Rootweb, 1×1): Grows a new patch of Rootweb. Chain them outward.
-- Spore Bellows (Rootweb, 2×2): Doubles Rootweb spread within 12 tiles. Uses 10 vigor.
+- Spore Bellows (Rootweb, 2×2): Doubles Rootweb spread within 12 tiles. Uses 10 vigor. It breathes out clouds of spores while it is speeding up Rootweb that is still spreading, and rests when there is nothing left to speed up or the swarm is short of vigor.
 - Bark Wall (Bark, 1×1): Basic wall that soaks up fire.
 - Great Bark (Bark, 2×2): Four bark walls in one.
 - Ironbark (Bark, 1×1): A much tougher wall hardened with titanium.
