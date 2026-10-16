@@ -247,7 +247,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <button class="mode" id="m-load"><b>LOAD GAME</b><span>Continue a saved game, or import a save file from the web version or the Windows app.</span></button>
       <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics quality and fog of war.</span></button>
     </div>
-    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine &middot; <kbd>R</kbd> rotate &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms &middot; <kbd>Space</kbd> pause.</p>
+    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine, or with nothing chosen to box-select ants &middot; <kbd>R</kbd> rotate &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms &middot; <kbd>Space</kbd> pause.</p>
   </div>
 </div>
 
@@ -1896,6 +1896,15 @@ function removeArea(a,b){
   const ids=new Set();for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const o=blockAt(x,y);if(o)ids.add(o.id);}
   let n=0;for(const id of ids)if(deconstruct(G.blocks.get(id)))n++;return n;
 }
+// selected ants: G.selUs lists every selected ant (G.selU is the first one, used by the panel and the tutorial)
+function selAnts(){const ids=G.selUs&&G.selUs.length?G.selUs:G.selU?[G.selU]:[];if(!ids.length)return [];const s=new Set(ids);return G.units.filter(u=>s.has(u.id)&&!u.dead);}
+function setSelAnts(ids){G.selUs=ids;G.selU=ids[0]||0;G.sel=0;renderPanel(true);}
+// send ants to a spot; a group spreads out round it (nearest ant to the middle) so they don't pile up on one point
+function sendAnts(list,wx,wy){const spots=[];
+  for(let r=0;spots.length<list.length&&r<10;r++){const m=r?Math.max(6,Math.round(2*Math.PI*r)):1;
+    for(let j=0;j<m&&spots.length<list.length;j++){const a=j/m*2*Math.PI,x=wx+r*.85*Math.cos(a),y=wy+r*.85*Math.sin(a),i=tileAt(x,y);if(i>=0&&!solidTile(i,0))spots.push([x,y]);}}
+  const ord=[...list].sort((a,b)=>Math.hypot(a.x-wx,a.y-wy)-Math.hypot(b.x-wx,b.y-wy));
+  ord.forEach((u,j)=>{u.hold=spots[j]||[wx,wy];u.nav=null;});}
 cv.addEventListener('pointerup',e=>{
   const md=mouse.down;mouse.down=null;if(!md||!G||G.over)return;
   const [wx,wy]=s2w(e.offsetX,e.offsetY);
@@ -1917,13 +1926,19 @@ cv.addEventListener('pointerup',e=>{
     if(md.moved&&plan.length&&B[t].rot)G.rot=plan[plan.length-1][2];
     return;
   }
+  // a left-button drag draws a box: every ant inside it is selected (Shift adds to the selection)
+  if(md.moved&&md.b===0&&md.type!=='touch'){
+    const x0=Math.min(md.w[0],wx),x1=Math.max(md.w[0],wx),y0=Math.min(md.w[1],wy),y1=Math.max(md.w[1],wy);
+    const ids=G.units.filter(u=>{if(u.dead)return false;const r=U[u.t].r;return u.x+r>=x0&&u.x-r<=x1&&u.y+r>=y0&&u.y-r<=y1;}).map(u=>u.id);
+    if(e.shiftKey){const have=selAnts().map(u=>u.id);setSelAnts([...have,...ids.filter(id=>!have.includes(id))]);}else setSelAnts(ids);
+    if(ids.length)msg(`${ids.length} ${ids.length===1?'ant':'ants'} selected.`);return;}
   if(md.moved)return;
   let pu=null,pd=.9;for(const u of G.units){const dd=Math.hypot(u.x-wx,u.y-wy);if(dd<pd){pd=dd;pu=u;}}
-  if(pu){G.selU=pu.id;G.sel=0;renderPanel(true);return;}
-  const o=blockAt(Math.floor(wx),Math.floor(wy)),su=G.selU&&G.units.find(u=>u.id===G.selU);
-  // with an ant selected, a tap on open ground sends it there
-  if(su&&!o){const i=tileAt(wx,wy);if(i>=0&&!solidTile(i,0)){su.hold=[wx,wy];su.nav=null;msg(`${U[su.t].name} moving out.`);return;}}
-  G.selU=0;G.sel=o?o.id:0;renderPanel(true);
+  if(pu){if(e.shiftKey){const have=selAnts().map(u=>u.id);setSelAnts(have.includes(pu.id)?have.filter(id=>id!==pu.id):[...have,pu.id]);}else setSelAnts([pu.id]);return;}
+  const o=blockAt(Math.floor(wx),Math.floor(wy)),sel=selAnts();
+  // with ants selected, a tap on open ground sends them there
+  if(sel.length&&!o){const i=tileAt(wx,wy);if(i>=0&&!solidTile(i,0)){sendAnts(sel,wx,wy);msg(sel.length>1?`${sel.length} ants moving out.`:`${U[sel[0].t].name} moving out.`);return;}}
+  G.selU=0;G.selUs=[];G.sel=o?o.id:0;renderPanel(true);
 });
 cv.addEventListener('wheel',e=>{e.preventDefault();const [wx,wy]=s2w(e.offsetX,e.offsetY);
   cam.z=clamp(cam.z*(e.deltaY<0?1.12:1/1.12),.5,2.5);cam.x=wx*T-e.offsetX/cam.z;cam.y=wy*T-e.offsetY/cam.z;clampCam();},{passive:false});
@@ -1934,7 +1949,7 @@ window.addEventListener('keydown',e=>{
   if(!document.getElementById('tech').hidden){if(k==='escape')toggleTech(false);return;}
   keys.add(k);
   if(k===' '){e.preventDefault();setSpeed(G.paused?G.speed:0);}
-  else if(k==='escape'){if(G.tool)setTool(null);else{G.sel=0;G.selU=0;renderPanel(true);}}
+  else if(k==='escape'){if(G.tool)setTool(null);else{G.sel=0;G.selU=0;G.selUs=[];renderPanel(true);}}
   else if(k==='r'){G.rot=(G.rot+(e.shiftKey?3:1))%4;}
   else if(k==='c'){setCommand(G.command==='attack'?'defend':'attack');}
   else if(k==='q'){const [wx,wy]=s2w(mouse.x,mouse.y),o=blockAt(Math.floor(wx),Math.floor(wy));if(o&&o.team===0&&o.t!=='core'&&G.unlocked.has(o.t)){G.tool=null;selectTab(catOf(o.t));setTool(o.t);G.rot=o.rot;}}
@@ -3068,8 +3083,8 @@ function render(){
   if(G.story)storyDrawWorld(ctx,time);
   if(PINGS.length)drawPings(ctx);
   if(G.test)testDrawWorld(ctx,time);
-  {const su=G.selU&&G.units.find(u=>u.id===G.selU);if(su){ctx.strokeStyle='#a6e05a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(su.x*T,su.y*T,U[su.t].r*T+5,0,7);ctx.stroke();
-    if(su.hold){ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(su.x*T,su.y*T);ctx.lineTo(su.hold[0]*T,su.hold[1]*T);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(su.hold[0]*T,su.hold[1]*T,4,0,7);ctx.stroke();}}}
+  for(const su of selAnts()){ctx.strokeStyle='#a6e05a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(su.x*T,su.y*T,U[su.t].r*T+5,0,7);ctx.stroke();
+    if(su.hold){ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(su.x*T,su.y*T);ctx.lineTo(su.hold[0]*T,su.hold[1]*T);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(su.hold[0]*T,su.hold[1]*T,4,0,7);ctx.stroke();}}
   const thornArt=!!artFor('duo',0);
   for(const p of G.bullets){
     if(thornArt&&p.ox!=null&&!p.team){drawThornShot(ctx,p);continue;}
@@ -3119,6 +3134,9 @@ function render(){
   const md=mouse.down;
   if(md&&md.moved&&(md.b===2||G.tool==='remove')){
     ctx.setTransform(DPR,0,0,DPR,0,0);ctx.strokeStyle='#ee5a44';ctx.fillStyle='rgba(238,90,68,.1)';ctx.lineWidth=1;
+    const x=Math.min(md.x,mouse.x),y=Math.min(md.y,mouse.y),w=Math.abs(mouse.x-md.x),h=Math.abs(mouse.y-md.y);ctx.fillRect(x,y,w,h);ctx.strokeRect(x+.5,y+.5,w,h);}
+  else if(md&&md.moved&&md.b===0&&!G.tool&&md.type!=='touch'){
+    ctx.setTransform(DPR,0,0,DPR,0,0);ctx.strokeStyle='#a6e05a';ctx.fillStyle='rgba(166,224,90,.1)';ctx.lineWidth=1;
     const x=Math.min(md.x,mouse.x),y=Math.min(md.y,mouse.y),w=Math.abs(mouse.x-md.x),h=Math.abs(mouse.y-md.y);ctx.fillRect(x,y,w,h);ctx.strokeRect(x+.5,y+.5,w,h);}
 }
 function renderMini(){
@@ -3231,10 +3249,13 @@ function renderTech(){
 // --- selection panel ---
 const panel=$('panel');let panelSig='';
 function renderPanel(force){
-  if(!G)return;const sig='b'+G.sel+'u'+(G.selU||0);if(!force&&sig===panelSig)return;panelSig=sig;
+  if(!G)return;const sig='b'+G.sel+'u'+(G.selU||0)+'n'+(G.selUs?G.selUs.length:0);if(!force&&sig===panelSig)return;panelSig=sig;
   const b=G.blocks.get(G.sel);
+  const grp=!b?selAnts():[];
+  if(grp.length>1){const n={};for(const u of grp)n[u.t]=(n[u.t]||0)+1;
+    panel.innerHTML=`<h3>${grp.length} ANTS SELECTED</h3><div class="hpbar"><i id="p-hp"></i></div><div class="row">Health <b id="p-hpt"></b></div><div class="row">Orders <b id="p-ord"></b></div>`+Object.keys(n).map(t=>`<div class="row">${U[t].name} <b>${n[t]}</b></div>`).join('')+`<p class="tip">Click or tap open ground to send them there; they spread out round the spot. Shift-click or Shift-drag adds ants, and Esc clears the selection. The Swarm button clears move orders.</p>`;updatePanel();return;}
   const su=!b&&G.selU&&G.units.find(u=>u.id===G.selU);
-  if(su){const d=U[su.t];panel.innerHTML=`<h3>${d.name.toUpperCase()}</h3><div class="hpbar"><i id="p-hp"></i></div><div class="row">Health <b id="p-hpt"></b></div><div class="row">Orders <b id="p-ord"></b></div><p>${d.desc}</p><p class="tip">Click or tap open ground to send it there. The Swarm button clears move orders.</p>`;updatePanel();return;}
+  if(su){const d=U[su.t];panel.innerHTML=`<h3>${d.name.toUpperCase()}</h3><div class="hpbar"><i id="p-hp"></i></div><div class="row">Health <b id="p-hpt"></b></div><div class="row">Orders <b id="p-ord"></b></div><p>${d.desc}</p><p class="tip">Click or tap open ground to send it there. Drag a box with the left mouse button to select several ants. The Swarm button clears move orders.</p>`;updatePanel();return;}
   if(!b){panel.innerHTML=`<h3>${G.mission?MIS[G.mission].name.toUpperCase():G.mode==='siege'?'BASE SIEGE':'SURVIVAL'}</h3>${G.mission?(G.held?`<div class="row">Status <b>Captured, no waves</b></div><p class="tip">Your base here is kept. Build freely, then press Leave sector to send spare stock home. What this Bloom takes in sets the sector's production.</p>`:`<div class="row">Objective <b>${G.mode==='siege'?'Destroy the colony core':`Survive ${G.winWave} waves`}</b></div>`):''}<div class="row">Time <b id="p-time"></b></div><div class="row">Enemies destroyed <b id="p-k"></b></div><div class="row">Swarm <b id="p-u"></b></div><div class="row">Rootweb <b id="p-web"></b></div>`+
     (G.mode==='siege'?`<div class="row">Colony cores left <b id="p-ec"></b></div><div id="p-es"></div>`:``);updatePanel();return;}
   const d=B[b.t];
@@ -3248,6 +3269,10 @@ function renderPanel(force){
 function stockRows(){return `<div class="row">Colony core holds <b>${[CU,PB,COAL,GRAPH,SI].map(i=>`<span class="it"><i style="background:${IT[i].c}"></i>${Math.floor(G.eitems[i])}</span>`).join(' ')}</b></div>`;}
 function updatePanel(){
   const b=G.blocks.get(G.sel);
+  if(!b&&G.selUs&&G.selUs.length){const live=selAnts();if(live.length!==G.selUs.length){G.selUs=live.map(u=>u.id);G.selU=G.selUs[0]||0;renderPanel(true);return;}
+    if(live.length>1){let hp=0,mx=0,hold=0;for(const u of live){hp+=u.hp;mx+=u.max;if(u.hold)hold++;}
+      const h=$('p-hp');if(h)h.style.width=(100*hp/mx)+'%';const ht=$('p-hpt');if(ht)ht.textContent=`${Math.ceil(hp)} / ${mx}`;
+      const o=$('p-ord');if(o)o.textContent=hold===live.length?'Holding a spot':hold?`${hold} holding, ${live.length-hold} ${G.command==='attack'?'attacking':'defending'}`:G.command==='attack'?'Attack':'Defend the Bloom';return;}}
   if(!b&&G.selU){const su=G.units.find(u=>u.id===G.selU);if(!su){G.selU=0;renderPanel(true);return;}
     const hp=$('p-hp');if(hp)hp.style.width=(100*su.hp/su.max)+'%';const ht=$('p-hpt');if(ht)ht.textContent=`${Math.ceil(su.hp)} / ${su.max}`;
     const o=$('p-ord');if(o)o.textContent=su.hold?'Holding a spot':G.command==='attack'?'Attack':'Defend the Bloom';return;}
@@ -3808,7 +3833,7 @@ function missionEndCard(win){
 
 // ---------- Saving and loading ----------
 // A save is the whole game state as JSON, gzipped and base64'd. The same file loads in the web version and the Windows app.
-const SAVE_SKIP={selU:1,flow:1,flowNext:1,pflow:1,pflowNext:1,vis:1,webCov:1,webSig:1,recede:1,fx:1,sel:1,tool:1,dirty:1,paused:1,over:1,bgrid:1,core:1,ecores:1,blocks:1,enemies:1,units:1,bullets:1};
+const SAVE_SKIP={selU:1,selUs:1,flow:1,flowNext:1,pflow:1,pflowNext:1,vis:1,webCov:1,webSig:1,recede:1,fx:1,sel:1,tool:1,dirty:1,paused:1,over:1,bgrid:1,core:1,ecores:1,blocks:1,enemies:1,units:1,bullets:1};
 const BLOCK_SKIP={prox:1,target:1,wlist:1,wr:1,wi:1,wacc:1,_t:1,_cv:1,_cvk:1,_st:1,_cm:1,_bd:1,_bt:1,_tg:1};
 const TA={Uint8Array,Int8Array,Int16Array,Int32Array,Float32Array,Float64Array,Uint32Array};
 function b64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
@@ -4199,7 +4224,7 @@ const TUT=[
    hl:['#mini'],enter:st=>{st.c0=[cam.x,cam.y,cam.z];},check:st=>Math.hypot(cam.x-st.c0[0],cam.y-st.c0[1])/T>5||Math.abs(cam.z/st.c0[2]-1)>.18},
   {id:'bloom',title:'Select the Bloom',text:'Click or tap the Bloom, the great flower at the heart of your Rootweb. Selecting any growth shows what it is doing in the panel at the bottom.',
    enter:()=>{if(G.core)centerOn(G.core.x+1.5,G.core.y+1.5);},ring:()=>G.core&&[G.core.x+1.5,G.core.y+1.5,2.4],check:()=>G.core&&G.sel===G.core.id},
-  {id:'ant',title:'Select a Mite Ant',text:'The Bloom has budded three Mite Ants. Click or tap one to select it. Its health and orders show in the panel.',
+  {id:'ant',title:'Select a Mite Ant',text:'The Bloom has budded three Mite Ants. Click or tap one to select it, or drag a box over several with the left mouse button. Its health and orders show in the panel.',
    enter:st=>{if(!st.ants){st.ants=1;for(let k=0;k<3;k++){const [x,y]=freeNear(G.core.x+5,G.core.y+.5+k,0);spawnUnit('mite',x,y);}}},
    ring:()=>{const u=G.units[0];return u&&[u.x,u.y,.9];},check:()=>!!G.selU&&G.units.some(u=>u.id===G.selU)},
   {id:'order',title:'Move your ant',text:'With the ant selected, click or tap open ground to send it there. It will hold that spot and fight anything that comes close.',

@@ -38,6 +38,7 @@ OLD=http://localhost:8123/previous/index.html node tests/otest.js   # Painted or
 | `vscene35.js` | every vessel-to-structure connection side by side in the previous build and this one; writes `shots35/conn_before.png`, `conn_after.png` and what each vessel end meets |
 | `bulbshot.js`, `webshot.js` | v35 screenshots: a Splitter Bulb before and after its vines are turned round, and Rootweb healthy, dormant, recovering and reconnected on Low, Medium and Epic |
 | `perf35.js` | v35 Rootweb supply cost on the 144x144 map, and frame times while patches fade in the previous build and this one |
+| `boxsel.js` | v36 box selection of ants through real mouse input: a left drag selects the ants inside the box, the group panel, a group order spreads the ants out, Shift-drag adds, a click selects one, Esc and an empty drag clear, a drag with a growth chosen still lays a line, a middle drag still pans, the selection is not saved |
 | `lcskir`, `lcquick`, `lcstory`, `lcheld`, `lcsave`, `lctest`, `lcart`, `lcbloom`, `lcweb`, `lchd`, `lcspit` | gameplay, story, saves, art and HD regressions |
 
 Headless Chromium only has software WebGL, so frame times measured on the GPU path (case 11 in `wbtest.js` with `GL=2`) are not meaningful there.

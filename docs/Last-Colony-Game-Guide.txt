@@ -104,7 +104,7 @@ Ants hatch from your Spawning Pods and Brood Chambers. HDF machines arrive in wa
 - Interceptor (HDF, hits ground (flies)): Fast aircraft that circles and strafes.
 - Bomber (HDF, hits ground (flies)): Flies over walls and bombs your growths.
 
-You order your swarm with one button: Defend keeps the ants near the Bloom, and Attack sends them after the enemy. You can also select ants and send them to a spot.
+You order your swarm with one button: Defend keeps the ants near the Bloom, and Attack sends them after the enemy. You can also select ants and send them to a spot: click one ant, or drag a box over several with the left mouse button (with no growth chosen) to select them all. Shift-click or Shift-drag adds ants to the selection and Esc clears it. Click open ground to send them; a group spreads out round the spot instead of piling onto one point.
 
 Campaign synopsis
 
