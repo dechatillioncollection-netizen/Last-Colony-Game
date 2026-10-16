@@ -360,3 +360,55 @@ Only the Bloom feeds the Rootweb. Rootweb joined to the Bloom through other Root
 
 The supply check only runs after the Rootweb changes and at most four times a game second, and the fade step returns at once when nothing is fading. A fade repaints each 2D tile at most 8 times, and the repaint shares the existing per-frame budget, so the number of repaints in the run was the same as v34. Frame-time percentiles were the same in both builds (2D: 66.6 ms median in both, the slow software renderer dominates).
 - `tests/dtest.js` covers all of this (12 checks, on the 2D painter with `GL=0` and the GPU with `GL=2`).
+
+## Painted extraction (v37): Root Tap, Deep Root, Chitin Vat
+
+The three 2x2 production growths are painted as living organs. This is artwork only: mining rates, ore, recipes (1 coal + 2 sand = 1 chitin), the 30 vigor the vat needs, costs, footprints, health, building rules, throughput, routing and the save format are unchanged. `ident37.js` plays the same colony in v36 and v37, drawing every other step with painted art on and through a wave, and the saves are byte-identical on Medium and Epic. `xtest37.js` compares what every structure shipped and holds with v36 in the Test Range and in Survival, with and without vigor.
+
+- **What the game does (checked in the code before painting):**
+  - **Root Tap** (`drill`, rate 0.15) and **Deep Root** (`pdrill`, rate 0.22, titanium at 0.7×) mine the ore under their 2x2 (`oreItem`, `oreCount`; sand comes from sand floor). Progress (`b.prog`) climbs to 1, then one piece goes into the store (`b.out`, at most 10) and progress drops back. Each step a stored piece is offered round the neighbours in turn (`offload`, `b.rr`). With 10 stored, mining stops.
+  - **Chitin Vat** (`smelter`) holds coal and sand (`b.inv`). While it has 1 coal, 2 sand and fewer than 10 chitin stored, progress climbs at the vigor satisfaction over 0.8 s; at 1 it uses the inputs and stores one chitin, which it offers round its neighbours. Without vigor progress stays where it is.
+  - None of them had animation events. The art makes its own from that state, in `OST` (outside the block, never saved): progress dropping is one piece mined or one plate finished; the store going down by more than was just made is one piece handed on, and `b.rr` says to whom; the vat's coal or sand going up is one piece arriving.
+- **Root Tap:** a thick purple root crown with a buttress lobe flaring out towards each of six tendrils. The tendrils end in dark pits on the deposit, each splitting into fine roots, so the ore shows between them at the corners and edges and the tap reads as rooted into it. In the middle is an exposed, translucent absorption sac under a soft violet membrane, with a wet shine. Three to six grains of the ore it is mining float in the sac, tinted from the resource's own colour (copper, lead, coal, sand); the resource icon in the corner is the same one as before and is drawn once. For each piece mined:
+  1. The tendrils contract against the deposit (8%, 0.12 s).
+  2. A pulse carrying a grain runs up two tendrils to the sac (0.3 s), and the channels in the crown light.
+  3. The sac fills as it arrives (5%).
+  4. The grain leaves along the vessel to the neighbour that really took it, and that vessel glows.
+  At rest (backed up, or nothing to mine) it barely breathes and the grains are still.
+- **Deep Root:** the same organ, evolved. The crown is heavier and rounder, on eight thicker, longer tendrils with a blue-white vascular line. The pressure chamber is smaller, behind a thick clear wall held by three hardened ribs, and a collar of pale layered cellulose segments with faint blue mineral glints surrounds it. Internal channels run from the chamber under the collar to the tendrils. Its contractions are slower and stronger (10%, 0.22 s), the pulse takes three tendrils (0.42 s) and the chamber swells harder (7.5%). Its speed is not changed. At normal zoom the soft bubble of the Root Tap and the ribbed shield of the Deep Root are easy to tell apart.
+- **Chitin Vat:** a swollen semi-transparent vat on a deep-purple fleshy foundation, with nutrient veins running up into it, pale milky fluid inside, membrane folds round the opening on top and vessel stubs as its inlets and outlet. Two hardened chitin plates always show inside, plus one for each chitin it holds ready to ship (up to three more). While it works:
+  1. Each piece of coal (dark) or sand (pale) that arrives comes in from the vessel or tap that brought it.
+  2. The fluid turns, and the coal and sand it holds are carried round.
+  3. The next plate appears gradually as progress climbs.
+  4. When a plate is finished the vat squeezes and the folds close round the opening.
+  5. The chitin leaves along the vessel to the neighbour that took it.
+  Idle (short of coal or sand, full, or without vigor) the fluid barely moves, the plates stay visible and the vat breathes slowly.
+- **Hurt and built:** each sags a little as it is hurt (up to 8% at zero health). The white hit flash, health bar, build fade and selection box are drawn by the game as before.
+- **Openings:** an edge tile gets a vessel stub (the Vine's own cross-section at the tile edge, so a Vine or Swift Vine carries straight on into it) only where a neighbour can really take this growth's item, as `accepts()` decides it (a vessel not pointing at it, the Bloom, a Knot, Bulb or Gland, a growth whose recipe uses that item, a turret that fires it). So a Resin Gland beside a copper tap gets no opening, and a vessel pointing into a tap gets none. For the vat, vessels pointing into it and taps on coal or sand beside it get one too. Vine ends are drawn exactly as in v35; the pending global vine fixes are not part of this.
+- **Footprint:** the organs stay inside their 2x2. The fine root net at the tendril tips reaches a little past it and is drawn under neighbouring growths.
+- **Performance:**
+  - Each kind has its own crowd limit on screen: 32 Root Taps, 32 Deep Roots and 24 Chitin Vats. Past a limit, or zoomed out past 0.75×, that kind draws one cached picture per set of openings, plus the resource icon, and the channels still flash each time a piece is mined (the vat's veins glow while it works).
+  - The foundation and vessel stubs are one cached picture per set of openings. The grain tints are made once when the art loads. Layers are half size at normal zoom and clipped to their visible pixels. Nothing is processed per pixel per frame.
+  - Measured with `xperf37.js` in headless Chromium on Medium (software drawing, so a real browser is faster), everything working and in view at 0.9× zoom. Times are for the whole frame's `render()`; the median is the useful number, because the background Rootweb repaints make occasional slow frames in both builds and pull the mean up:
+
+| On screen | v36 median | v37 median | v36 mean | v37 mean |
+| --- | --- | --- | --- | --- |
+| 25 Root Taps | 2.9 ms | 3.5 ms (full motion) | 16.9 ms | 19.7 ms |
+| 50 Root Taps | 5.1 ms | 3.4 ms (cached pictures) | 27.5 ms | 21.6 ms |
+| 100 Root Taps | 6.1 ms | 4.4 ms (cached pictures) | 28.8 ms | 25.4 ms |
+| 25 Deep Roots | 2.8 ms | 3.3 ms (full motion) | 16.2 ms | 19.9 ms |
+| 50 Deep Roots | 3.8 ms | 3.1 ms (cached pictures) | 21.6 ms | 19.2 ms |
+| 100 Deep Roots | 6.1 ms | 4.3 ms (cached pictures) | 30.6 ms | 26.5 ms |
+| 25 Chitin Vats | 3.1 ms | 2.5 ms (cached pictures) | 18.2 ms | 14.2 ms |
+| 50 Chitin Vats | 3.9 ms | 3.1 ms (cached pictures) | 22.3 ms | 20.2 ms |
+| 100 Chitin Vats | 5.9 ms | 4.5 ms (cached pictures) | 29.5 ms | 26.7 ms |
+| 25 mixed | 3.2 ms | 3.5 ms (full motion) | 18.1 ms | 20.0 ms |
+| 50 mixed | 4.4 ms | 4.7 ms (full motion) | 22.9 ms | 23.2 ms |
+| 100 mixed | 6.6 ms | 4.8 ms (cached pictures) | 29.8 ms | 28.2 ms |
+
+- **Textures** (all 384x384 with the 2x2 footprint in the middle 256x256, except where noted):
+  - `art/plant/root-tap/` and `art/plant/deep-root/`: `roots.png` (drawn under neighbours), `base.png` (crown, and for the Deep Root its cellulose collar), `tendrils.png` (the game contracts it), `sac.png`, `membrane.png`, `veins.png` (added with a light blend), `shine.png`, `grain.png` (32x32 grey grain, tinted per resource), `chan.png` and `chan_glow.png` (128x128 vessel stub from a tile's right edge inward), `pulse.png`.
+  - `art/plant/chitin-vat/`: `roots.png`, `base.png` (foundation and veins), `fluid.png`, `swirl.png` (turned by the game), `plate.png` (72x72), `coal.png` and `sand.png` (32x32), `membrane.png` (with the opening cut out), `folds.png`, `veins.png`, `shine.png`, `chan.png`, `chan_glow.png`, `pulse.png`.
+  - The tendril tips and chamber sizes are repeated in the game (`XG`); a repainted tap must keep them, or the pulses will not start at the painted tips.
+- **Settings and fallback:** Low quality and painted art off give the previous look. If any file for one of the three fails to load, that structure falls back to its previous look (with a console warning) and the others stay painted. Build-menu icons use the baked resting picture.
+- **Painter script:** `art/source/paint_extract.js` (run with `node art/source/runpaint.js art/source/paint_extract.js art/plant`). The drawing code is `drawTap`, `drawTapUnder`, `drawVat`, `vatPlates`, `xLinks`, `xTakes`, `xFeeds`, `xShip` and `tapGrains` in the game.

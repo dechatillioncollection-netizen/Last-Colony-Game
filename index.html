@@ -2509,6 +2509,14 @@ function hashS(n){return (Math.sin(n*12.9898)*43758.5453)%1;}
 const ART_BASE='art/';
 const CH=[.34,.34,.32,.32]; // the Bloom chamber's square, for cropping its layers
 const SC=[.35,.35,.3,.3]; // the Thorn Spitter chamber's square
+// Root Tap and Deep Root tendril tips [angle, distance from the footprint centre at 128 px a tile] and chamber sizes, as painted
+// by art/source/paint_extract.js; the Chitin Vat's vat and opening (XG.smelter). con/conT: how far and how long the tendrils
+// contract per piece mined, run: how long the pulse takes up them, lanes: how many tendrils carry it, swell: how much the sac fills.
+const XG={drill:{tips:[[-2.34,158],[-1.40,120],[-0.78,156],[0.80,158],[1.78,120],[2.40,154]],sx:58/128,sy:54/128,scy:-4/128,
+    con:.08,conT:.12,run:.3,lanes:2,swell:.05,grain:.13},
+  pdrill:{tips:[[-2.36,164],[-1.52,122],[-0.80,162],[0.02,122],[0.76,164],[1.62,122],[2.38,162],[3.12,120]],sx:46/128,sy:44/128,scy:-4/128,
+    con:.1,conT:.22,run:.42,lanes:3,swell:.075,grain:.11},
+  smelter:{vx:90/128,vy:84/128,vcy:-4/128,ocy:-10/128}};
 const ART={plant:{
   nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.018,period:4.2},
     layers:[{f:'base.png'},{f:'liquid.png',g:'dome'},{f:'seed.png',anim:'float',n:5,size:.2,g:'dome',lite:false},
@@ -2530,6 +2538,12 @@ const ART={plant:{
   router:{name:'Splitter Bulb',dir:'plant/splitter-bulb/',custom:(...a)=>drawSplitter(...a),box:1,t:'router',layers:[{f:'base.png'},{f:'chan.png'},{f:'chan_glow.png'},{f:'valve.png'},{f:'fluid.png'},{f:'membrane.png'},{f:'shine.png'},{f:'pulse.png'}]},
   sorter:{name:'Sorting Gland',dir:'plant/sorting-gland/',custom:(...a)=>drawSorter(...a),box:1,t:'sorter',layers:[{f:'base.png'},{f:'main.png'},{f:'main_glow.png'},{f:'side.png'},{f:'side_glow.png'},{f:'body.png'},{f:'filter.png'},{f:'shine.png'},{f:'socket.png'},{f:'pulse.png'}]},
   press:{name:'Resin Gland',dir:'plant/resin-gland/',custom:(...a)=>drawResin(...a),customUnder:(...a)=>drawResinUnder(...a),box:3,t:'press',layers:[{f:'roots.png'},{f:'base.png'},{f:'sac.png'},{f:'resin.png'},{f:'coal.png'},{f:'membrane.png'},{f:'veins.png'},{f:'shine.png'},{f:'pulse.png'}]},
+  drill:{name:'Root Tap',dir:'plant/root-tap/',custom:(...a)=>drawTap(...a),customUnder:(...a)=>drawTapUnder(...a),prep:a=>tapGrains(a),box:3,t:'drill',
+    layers:['roots','base','tendrils','sac','membrane','veins','shine','grain','chan','chan_glow','pulse'].map(n=>({f:n+'.png'}))},
+  pdrill:{name:'Deep Root',dir:'plant/deep-root/',custom:(...a)=>drawTap(...a),customUnder:(...a)=>drawTapUnder(...a),prep:a=>tapGrains(a),box:3,t:'pdrill',
+    layers:['roots','base','tendrils','sac','membrane','veins','shine','grain','chan','chan_glow','pulse'].map(n=>({f:n+'.png'}))},
+  smelter:{name:'Chitin Vat',dir:'plant/chitin-vat/',custom:(...a)=>drawVat(...a),customUnder:(...a)=>drawTapUnder(...a),box:3,t:'smelter',
+    layers:['roots','base','fluid','swirl','plate','coal','sand','membrane','folds','veins','shine','chan','chan_glow','pulse'].map(n=>({f:n+'.png'}))},
   node:{name:'Rootweb Node',dir:'plant/rootweb-node/',custom:(...a)=>drawNode(...a),customUnder:(...a)=>drawNodeUnder(...a),box:1,t:'node',layers:[{f:'root.png'},{f:'base.png'},{f:'petal.png'},{f:'fluid.png'},{f:'nucleus.png'},{f:'membrane.png'},{f:'ring.png'},{f:'pulse.png'}]},
   rootweb:{name:'Rootweb',dir:'plant/rootweb/',web:true,layers:[{f:'cells.png'},{f:'pulse.png'},{f:'sheen.png'},{f:'bud.png'}]},
   duo:{name:'Thorn Spitter',dir:'plant/thorn-spitter/',pad:.5,dome:[.5,.5,.094],breathe:{amp:.045,period:3.6},hurtShrink:.12,
@@ -2786,9 +2800,9 @@ const oPx=()=>typeof cam!=='undefined'?cam.z*DPR*T:64;
 const oSet=a=>a.bake||oPx()>66?a.I:a.IH;
 const oFlat=a=>{const px=oPx();return px>66?a.flat:px>34?a.flatH:a.flatQ;};
 // parts that only change when connections change, composited once per layout and shared by every structure of that kind
-function oCache(a,key,fn){const m=a.cache||(a.cache=new Map()),hi=oSet(a)===a.I,k=key+(hi?'h':'l');let cv=m.get(k);
-  if(!cv){const px=hi?128:64;cv=document.createElement('canvas');cv.width=cv.height=px;const cc=cv.getContext('2d');cc.imageSmoothingEnabled=true;cc.scale(px/T,px/T);fn(cc);m.set(k,cv);}return cv;}
-function organReady(a){a.cache=null;const I={},IH={};a.layers.forEach((L,i)=>{const k=L.f.replace('.png',''),im=a.img[i];oBB(im);I[k]=im;IH[k]=oScale(im,.5);});a.I=I;a.IH=IH;
+function oCache(a,key,fn,n=1){const m=a.cache||(a.cache=new Map()),hi=oSet(a)===a.I,k=key+(hi?'h':'l');let cv=m.get(k);
+  if(!cv){const px=hi?128:64;cv=document.createElement('canvas');cv.width=cv.height=px*n;const cc=cv.getContext('2d');cc.imageSmoothingEnabled=true;cc.scale(px/T,px/T);fn(cc);m.set(k,cv);}return cv;}
+function organReady(a){a.cache=null;const I={},IH={};a.layers.forEach((L,i)=>{const k=L.f.replace('.png',''),im=a.img[i];oBB(im);I[k]=im;IH[k]=oScale(im,.5);});a.I=I;a.IH=IH;if(a.prep)a.prep(a);
   // the resting look, baked once: build-menu icons, zoomed-out views and crowds
   const n=a.box*128,cv=document.createElement('canvas');cv.width=cv.height=n;const c=cv.getContext('2d');c.imageSmoothingEnabled=true;
   c.scale(n/(a.box*T),n/(a.box*T));const o=(a.box-B[a.t].size)/2*T;a.bake=true;a.custom(c,a,o,o,null,0,'bake');a.bake=false;a.flat=cv;oBB(cv);a.flatH=oScale(cv,.5);a.flatQ=oScale(cv,.25);}
@@ -2901,6 +2915,122 @@ function drawResin(c,a,x,y,b,tt,mode){const I=oSet(a),S=2*T,cx=x+T,cy=y+T,bx=x-T
   if(live&&s.rs>=0){const f=tt-s.rout;if(f>=0&&f<.4){const u=f/.4,o=s.ro,ex=o?(clamp(cx/T,o.x,o.x+o.size)*T):cx,ey=o?(clamp(cy/T,o.y,o.y+o.size)*T):cy;
     const px=cx+(ex-cx)*u,py=sc+sy*.5+(ey-sc-sy*.5)*u,z=T*.42*(1-u*.3);c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.85*(1-u*.6);dI(c,I.pulse,px-z/2,py-z/2,z,z);c.restore();}}}
 function drawResinUnder(c,a,b){dI(c,oSet(a).roots,b.x*T-T/2,b.y*T-T/2,3*T,3*T);}
+// ===== Root Tap and Deep Root: the tendrils grip the deposit, a pulse runs up them to the sac, the sac swells, the ore leaves by its vessel =====
+// Every step is set off by the tap itself: its progress wrapping round (one piece mined) and its store dropping (one piece handed on).
+// The edge tiles round a 2x2 footprint are numbered k*2+j: side k (0 right, 1 down, 2 left, 3 up), tile j along that side.
+function xEdge(b,k,j){return k===0?[b.x+2,b.y+j]:k===1?[b.x+j,b.y+2]:k===2?[b.x-1,b.y+j]:[b.x+j,b.y-1];}
+const xTile=(k,j)=>k===0?[1.5,.5+j]:k===1?[.5+j,1.5]:k===2?[.5,.5+j]:[.5+j,.5];   // centre of the footprint tile on that edge, in tiles from its corner
+// what a neighbour can really take from it, or hand it, for the item concerned (as accepts() and offload() decide, less how full things are)
+function xTakes(o,b,it){const d=B[o.t];if(d.belt)return !pointsAt(o,b);if(o.t==='core'||o.t==='junction'||o.t==='router'||o.t==='sorter')return true;if(it<0)return false;
+  if(d.input)return d.input.some(([i])=>i===it);if(d.factory)return true;if(o.t==='combustion')return it===COAL;return !!(d.tur&&d.tur.ammo&&d.tur.ammo[it]);}
+function xFeeds(o,b){const d=B[o.t];if(d.belt)return pointsAt(o,b);if(o.t==='junction'||o.t==='router'||o.t==='sorter')return true;
+  const it=o.t==='drill'||o.t==='pdrill'?o.oreItem:d.out??-1;return it>=0&&B[b.t].input.some(([i])=>i===it);}
+// the edge tiles that get a vessel opening: where a neighbour really takes items from the growth (and, for the Chitin Vat, where one feeds it)
+function xLinks(b,s){const key=G.blocks.size*7919+Math.floor(G.time*2);if(s.lk===key)return s.lm;s.lk=key;let m=0;s.ln=s.ln||[];
+  for(let k=0;k<4;k++)for(let j=0;j<2;j++){const [ex,ey]=xEdge(b,k,j),o=blockAt(ex,ey),i=k*2+j;s.ln[i]=null;
+    if(!o||o===b||o.team!==b.team)continue;
+    if((o.t!=='drill'&&o.t!=='pdrill'&&xTakes(o,b,b.t==='smelter'?B.smelter.out:b.oreItem))||(b.t==='smelter'&&xFeeds(o,b))){m|=1<<i;s.ln[i]=o;}}
+  return s.lm=m;}
+// the piece just handed on: which opening it left by (the neighbour offload() served last)
+function xShipSide(b,s){const p=b.prox||[],o=p.length?p[(b.rr-1+p.length)%p.length]:null;if(o)for(let i=0;i<8;i++)if(s.ln&&s.ln[i]===o)return i;return -1;}
+// stubs and foundation: changes only when the connections do, so it is one cached picture per set of openings
+function xUnder(a,I,mask){return cc=>{for(let i=0;i<8;i++)if(mask>>i&1){const [tx,ty]=xTile(i>>1,i&1);sideImg(cc,I.chan,(tx+.5)*T,(ty+.5)*T,i>>1);}dI(cc,I.base,0,0,3*T,3*T);};}
+// a piece travelling out along an opening's vessel: from (fx,fy) to the outer edge of that tile, with the vessel lit behind it
+function xShip(c,I,x,y,i,u,fx,fy,img,z){const k=i>>1,[tx,ty]=xTile(k,i&1),mx=x+tx*T,my=y+ty*T,ex=mx+D4X[k]*T/2,ey=my+D4Y[k]*T/2;
+  c.save();c.globalCompositeOperation='lighter';c.globalAlpha=(1-u)*.55;sideImg(c,I.chan_glow,mx,my,k);c.restore();
+  const v=Math.min(1,u*1.25),px=fx+(ex-fx)*v,py=fy+(ey-fy)*v;
+  c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.75*(1-u*.5);dI(c,I.pulse,px-z,py-z,z*2,z*2);c.restore();
+  if(img&&u<.8)dI(c,img,px-z/2,py-z/2,z,z);}
+// one grain sprite per resource, tinted once when the art loads (never per frame)
+function tapGrains(a){for(const [S,src] of [[a.I,a.I.grain],[a.IH,a.IH.grain]])for(let i=0;i<IT.length;i++){const cv=document.createElement('canvas');cv.width=src.width;cv.height=src.height;const c=cv.getContext('2d');
+  c.drawImage(src,0,0);c.globalCompositeOperation='multiply';c.fillStyle=IT[i].c;c.fillRect(0,0,cv.width,cv.height);c.globalCompositeOperation='destination-in';c.drawImage(src,0,0);S['g'+i]=cv;}}
+function drawTap(c,a,x,y,b,tt,mode){const X=XG[a.t],I=oSet(a),cx=x+T,cy=y+T,bx=x-T/2,by=y-T/2,BS=3*T,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  if(lite&&!b){dI(c,oFlat(a),bx,by,BS,BS);return;}
+  const sc=cy+X.scy*T,sx=X.sx*T,sy=X.sy*T;let s=null,mask=0,work=false,u=9,br=1,tk=1;
+  if(b){s=ost(b);mask=xLinks(b,s);const out=b.out||0;work=b.oreItem>=0&&out<10;
+    if(s.prog===undefined){s.prog=b.prog;s.out=out;s.mine=-9;s.ship=-9;s.n=0;s.rk=-1;}
+    let made=0;if(b.prog<s.prog){made=1;s.mine=tt;s.n++;}s.prog=b.prog;   // a tap's progress only ever drops when a piece is mined
+    // handed on: shown once the pulse from this piece's mining has reached the sac
+    if(s.out+made-out>0){s.ship=tt+(made?X.conT*.5+X.run+.1:0);s.rk=xShipSide(b,s);}s.out=out;
+    u=tt-s.mine;
+    if(live){const t0=X.conT*.5+X.run;
+      tk=1-X.con*(u>=0&&u<X.conT*2?Math.sin(Math.PI*u/(X.conT*2)):0);                       // 1. the tendrils contract against the deposit
+      br=1+(work?.012:.005)*Math.sin(tt*6.283/(work?3.2:6.5)+b.id)                             // breathing: barely, when it rests
+        +(u>=t0-.04&&u<t0+.36?X.swell*Math.sin(Math.PI*(u-t0+.04)/.4):0);}                     // 3. the sac fills as the pulse arrives
+    br*=1-.08*(1-Math.max(0,b.hp/b.max));}
+  if(b&&lite){c.drawImage(oCache(a,'r'+mask,cc=>{xUnder(a,I,mask)(cc);for(const k of ['tendrils','sac','membrane','shine'])dI(cc,I[k],0,0,BS,BS);},3),bx,by,BS,BS);
+    // in a crowd or zoomed out: the channels still light up each time a piece is mined
+    if(!ART_RM){const f=fade(tt,s.mine,.35);if(f>.05){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=f*.7;dI(c,I.veins,bx,by,BS,BS);c.restore();}}
+    if(b.oreItem>=0)seedHD(c,b.oreItem,x+2*T-9,y+9,7);return;}
+  if(b)c.drawImage(oCache(a,'u'+mask,xUnder(a,I,mask),3),bx,by,BS,BS);else dI(c,I.base,bx,by,BS,BS);
+  scaled(c,I.tendrils,cx,cy,tk,bx,by,BS,BS);
+  scaled(c,I.sac,cx,sc,br,bx,by,BS,BS);
+  // what the sac holds: a few grains of the ore it is mining, more while its store is backed up, drifting slowly (still when it rests)
+  const g=b&&b.oreItem>=0?I['g'+b.oreItem]:null;
+  if(g){const n=3+Math.min(3,b.out),sp=live?(work?.45:.08):0;
+    for(let i=0;i<n;i++){const h1=hash(i,b.id,21),h2=hash(i,b.id,22),an=h1*6.283+tt*sp*(.6+h2*.7),r=(.15+h2*.55)*br,z=T*X.grain*(.75+h1*.5);
+      dI(c,g,cx+Math.cos(an)*sx*r-z/2,sc+Math.sin(an)*sy*r-z/2,z,z);}}
+  // 2. a pulse runs up the tendrils from the deposit, carrying grains into the sac
+  let ve=0;
+  if(live&&g){const v=(u-X.conT*.5)/X.run;if(v>=0&&v<1){ve=Math.sin(Math.PI*v);const tips=X.tips;
+    c.save();for(let l=0;l<X.lanes;l++){const [an,r]=tips[(s.n*5+l*3+b.id)%tips.length],r0=r/128*T*tk,r1=sx*.55,rr=r0+(r1-r0)*v*v*(3-2*v),px=cx+Math.cos(an)*rr,py=sc+Math.sin(an)*rr*(sy/sx)+(1-v)*(cy-sc);
+      const z=T*X.grain*(1.6-v*.5);c.globalCompositeOperation='lighter';c.globalAlpha=.7*(1-v*.4);dI(c,I.pulse,px-z,py-z,z*2,z*2);c.globalCompositeOperation='source-over';c.globalAlpha=1;dI(c,g,px-z/3,py-z/3,z*.66,z*.66);}
+    c.restore();}}
+  scaled(c,I.membrane,cx,sc,br*1.01,bx,by,BS,BS);
+  if(live){const a1=(work?.1:.03)+.45*ve;if(a1>.03){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=a1;dI(c,I.veins,bx,by,BS,BS);c.restore();}}
+  if(!a.bake)dI(c,I.shine,bx,by,BS,BS);
+  // 4. the piece leaves the sac along the vessel to the neighbour that took it
+  if(live&&g&&s.rk>=0){const w=(tt-s.ship)/.4;if(w>=0&&w<1)xShip(c,I,x,y,s.rk,w,cx,sc,g,T*X.grain*1.3);}
+  if(b&&b.oreItem>=0)seedHD(c,b.oreItem,x+2*T-9,y+9,7);}
+function drawTapUnder(c,a,b){dI(c,oSet(a).roots,b.x*T-T/2,b.y*T-T/2,3*T,3*T);}
+
+// ===== Chitin Vat: coal and sand drawn in, the fluid turning, a plate hardening, the vat squeezing shut, the chitin out by its vessel =====
+// Driven by the vat's real stores (coal, sand, finished chitin) and its progress; it works only while it has inputs and vigor.
+const VAT_PLATES=[[-.36,.26,.3,1],[.4,-.1,-.6,.95],[.05,.52,1.2,.9],[-.5,-.3,2.1,.86],[.5,.3,-1.4,.86],[.12,-.52,.7,.82]];
+function vatPlates(c,I,cx,vc,vx,n,form,tt,bob,id){const z=T*.5;
+  for(let i=0;i<Math.min(VAT_PLATES.length,n+(form>0?1:0));i++){const [px,py,rot,k]=VAT_PLATES[i],f=i<n?1:form,zz=z*k*(i<n?1:.45+.55*form);
+    c.save();c.globalAlpha*=i<n?1:Math.pow(form,.8);c.translate(cx+px*vx,vc+py*vx+(bob?Math.sin(tt*.7+i*1.7+id)*T*.012:0));c.rotate(rot);dI(c,I.plate,-zz/2,-zz/2,zz,zz);c.restore();}}
+function drawVat(c,a,x,y,b,tt,mode){const X=XG.smelter,I=oSet(a),cx=x+T,cy=y+T,bx=x-T/2,by=y-T/2,BS=3*T,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  if(lite&&!b){dI(c,oFlat(a),bx,by,BS,BS);return;}
+  const vc=cy+X.vcy*T,vx=X.vx*T,vy=X.vy*T,oc=cy+X.ocy*T;let s=null,mask=0,act=0,br=1,fold=1,co=0,sa=0,out=0;
+  if(b){s=ost(b);mask=xLinks(b,s);out=b.out||0;co=b.inv[COAL]||0;sa=b.inv[SAND]||0;
+    if(s.prog===undefined){s.prog=b.prog;s.out=out;s.co=co;s.sa=sa;s.act=-9;s.cyc=-9;s.ship=-9;s.rot=0;s.lt=tt;s.fr=[];s.inC=-9;s.inS=-9;s.rk=-1;}
+    let made=0;if(b.prog!==s.prog){if(b.prog<s.prog){made=1;s.cyc=tt;}s.act=tt;s.prog=b.prog;}   // and the vat's only when a plate is finished
+    if(s.out+made-out>0){s.ship=tt+(made?.28:0);s.rk=xShipSide(b,s);}s.out=out;
+    // coal or sand arriving comes in from the vessel that had it at its mouth a moment ago
+    const arrive=key=>{const it=key==='inC'?COAL:SAND;let k=-1;for(let q=0;q<8;q++)if(s.fr[q]===it){k=q;break;}
+      if(k<0&&s.ln)for(let q=0;q<8;q++){const o=s.ln[q];if(o&&xFeeds(o,b)){k=q;break;}}s[key]=tt;s[key+'k']=k;};
+    if(co>s.co)arrive('inC');if(sa>s.sa)arrive('inS');s.co=co;s.sa=sa;
+    if(s.ln)for(let q=0;q<8;q++){const o=s.ln[q];s.fr[q]=o&&B[o.t].belt&&o.belt.length&&pointsAt(o,b)?o.belt[o.belt.length-1].i:-1;}
+    act=Math.max(0,1-Math.max(0,tt-s.act)/.6);
+    const dt=Math.min(.1,Math.max(0,tt-s.lt));s.lt=tt;if(live)s.rot+=dt*(.06+.55*act);   // 2. the fluid turns, slowly when it rests
+    if(live){br=1+(act>.5?.012:.007)*Math.sin(tt*6.283/(act>.5?2.6:6.5)+b.id)-.05*fade(tt,s.cyc,.22);fold=1-.2*fade(tt,s.cyc,.2);}   // 4. it squeezes as a plate is finished
+    br*=1-.08*(1-Math.max(0,b.hp/b.max));}
+  const nPl=b?2+Math.min(3,out):2;
+  if(b&&lite){c.drawImage(oCache(a,'r'+mask,cc=>{xUnder(a,I,mask)(cc);dI(cc,I.fluid,0,0,BS,BS);dI(cc,I.swirl,0,0,BS,BS);
+      vatPlates(cc,I,1.5*T,1.5*T+X.vcy*T,vx,2,0,0,false,0);for(const k of ['membrane','folds','shine'])dI(cc,I[k],0,0,BS,BS);},3),bx,by,BS,BS);
+    if(!ART_RM&&act>.05){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.3*act;dI(c,I.veins,bx,by,BS,BS);c.restore();}
+    return;}
+  if(b)c.drawImage(oCache(a,'u'+mask,xUnder(a,I,mask),3),bx,by,BS,BS);else dI(c,I.base,bx,by,BS,BS);
+  scaled(c,I.fluid,cx,vc,br,bx,by,BS,BS);
+  c.save();c.translate(cx,vc);c.rotate(s?s.rot:0);c.scale(br,br);dI(c,I.swirl,bx-cx,by-vc,BS,BS);c.restore();
+  // 3. hardened plates: the ones it holds ready to send out, and the next one becoming visible as the cycle runs
+  vatPlates(c,I,cx,vc,vx*br,nPl,b&&b.prog>0?b.prog:0,tt,live,b?b.id:0);
+  // coal and sand it holds, carried round by the fluid
+  if(b){const sp=s.rot*1.6;
+    for(let i=0;i<Math.min(4,co);i++){const h1=hash(i,b.id,31),h2=hash(i,b.id,32),an=h1*6.283+sp*(.7+h2*.5),r=.45+h2*.4,z=T*.15;dI(c,I.coal,cx+Math.cos(an)*vx*r*br-z/2,vc+Math.sin(an)*vy*r*br-z/2,z,z);}
+    for(let i=0;i<Math.min(6,sa);i++){const h1=hash(i,b.id,33),h2=hash(i,b.id,34),an=h1*6.283+sp*(.8+h2*.5),r=.4+h2*.45,z=T*.16;dI(c,I.sand,cx+Math.cos(an)*vx*r*br-z/2,vc+Math.sin(an)*vy*r*br-z/2,z,z);}}
+  // 1. a piece of coal or sand drawn in from the vessel that brought it
+  if(live)for(const [key,img] of [['inC',I.coal],['inS',I.sand]]){const v=(tt-s[key])/.45,k=s[key+'k'];if(v<0||v>=1||k<0)continue;
+    const kk=k>>1,[tx,ty]=xTile(kk,k&1),ex=x+tx*T+D4X[kk]*T/2,ey=y+ty*T+D4Y[kk]*T/2,an=Math.atan2(ey-vc,ex-cx),rx=cx+Math.cos(an)*vx*.7,ry=vc+Math.sin(an)*vy*.7,
+      px=ex+(rx-ex)*v,py=ey+(ry-ey)*v,z=T*.17;
+    c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.55*(1-v);dI(c,I.pulse,px-z,py-z,z*2,z*2);c.restore();dI(c,img,px-z/2,py-z/2,z,z);}
+  scaled(c,I.membrane,cx,vc,br*1.01,bx,by,BS,BS);
+  scaled(c,I.folds,cx,oc,br*fold,bx,by,BS,BS);
+  if(live){const a1=.06+.32*act*(.65+.35*Math.sin(tt*3+b.id));c.save();c.globalCompositeOperation='lighter';c.globalAlpha=a1;dI(c,I.veins,bx,by,BS,BS);c.restore();}
+  if(!a.bake)dI(c,I.shine,bx,by,BS,BS);
+  // 5. the finished chitin leaves by the vessel of the neighbour that took it
+  if(live&&s.rk>=0){const w=(tt-s.ship)/.45;if(w>=0&&w<1)xShip(c,I,x,y,s.rk,w,cx,oc,I.plate,T*.24);}}
 
 // ===== Rootweb Node: a small heart that pulses outward each time it really covers a new tile =====
 const NODE_ROOTS=7;
@@ -2942,9 +3072,9 @@ function drawNodeUnder(c,a,b,lite){if(lite)return;const ph=b.id*2.17,A=[];let ma
     s.tc=cv;s.tm=mask;s.th=hi;}
   c.drawImage(s.tc,(b.x-1)*T,(b.y-1)*T,3*T,3*T);}
 // per-kind crowd limits: past these many on screen (or zoomed out) a kind draws its baked look plus what the player needs
-const ORGAN_MAX={router:60,sorter:60,node:40,press:24},ORGAN_ALL_MAX=90;   // and past this many of all four together (the Resin Gland keeps its detail up to its own limit)
-const ORGAN_N={router:0,sorter:0,node:0,press:0};
-function organLite(t){const N=ORGAN_N;return (typeof cam!=='undefined'&&cam.z<ART_LOD_ZOOM)||N[t]>ORGAN_MAX[t]||(t!=='press'&&N.router+N.sorter+N.node+N.press>ORGAN_ALL_MAX);}
+const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
+const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0};
+function organLite(t){const N=ORGAN_N;return (typeof cam!=='undefined'&&cam.z<ART_LOD_ZOOM)||N[t]>ORGAN_MAX[t]||((t==='router'||t==='sorter'||t==='node')&&N.router+N.sorter+N.node+N.press>ORGAN_ALL_MAX);}
 // a Splitter Bulb or Sorting Gland: vines run straight into its channels
 const organJoin=o=>(o.t==='router'||o.t==='sorter')&&organOpen(o.t);
 function drawBlock(c,t,x,y,rot,b,time,team){
