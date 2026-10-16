@@ -5,3 +5,6 @@ electron/out/
 # screenshots and results written by the test scripts when run from the repo root
 /*.png
 /*_result.json
+exported_save.json
+last-colony-test-range.json
+wbtest_result*.json
