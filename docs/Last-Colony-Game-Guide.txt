@@ -54,9 +54,10 @@ The swarm has 26 growths, including the Bloom. All of them except the Bloom, Vin
 - Sunleaf (Vigor, 1×1): A trickle of 5 vigor from sunlight, no fuel.
 - Rootweb Node (Rootweb, 1×1): Grows a new patch of Rootweb. Chain them outward.
 - Spore Bellows (Rootweb, 2×2): Doubles Rootweb spread within 12 tiles. Uses 10 vigor. It breathes out clouds of spores while it is speeding up Rootweb that is still spreading, and rests when there is nothing left to speed up or the swarm is short of vigor.
-- Bark Wall (Bark, 1×1): Basic wall that soaks up fire.
-- Great Bark (Bark, 2×2): Four bark walls in one.
-- Ironbark (Bark, 1×1): A much tougher wall hardened with titanium.
+- Bark Wall (Bark, 1×1): Basic wall that soaks up fire. Living roots woven through bark; walls side by side knit their roots together into one hedge.
+- Great Bark (Bark, 2×2): Four bark walls in one. Overlapping bark plates bound by two great root bundles.
+- Ironbark (Bark, 1×1): A much tougher wall hardened with titanium. Near-black, mineral-flecked plates.
+  All three walls flinch and bleed sap when hit, crack and split as their health falls, and glow green while a Healing Pod mends them.
 - Petal Gate (Bark, 1×1): A wall that opens for your ants. Too narrow for Bulwark Ants.
 - Maw Gate (Bark, 2×2): A wide gate that opens for every ant, Bulwarks included.
 - Healing Pod (Bark, 1×1): Mends your growths within 6 tiles. Uses 12 vigor.

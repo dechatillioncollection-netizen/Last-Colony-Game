@@ -467,3 +467,54 @@ The two vigor growths and the Rootweb accelerator are painted as living organs. 
   - The chamber radius, vessel and leaf angles, sac and vent positions are repeated in the game (`EG`); a repainted texture must keep them.
 - **Settings and fallback:** Low quality and painted art off give the previous look. If any file for one of the three fails to load, that structure falls back to its previous look (with a console warning) and the others stay painted. Build-menu icons use the baked resting picture.
 - **Painter script:** `art/source/paint_energy.js` (run with `node art/source/runpaint.js art/source/paint_energy.js art/plant`). The drawing code is `drawBurner`, `eLinks`, `eUnder`, `drawSunleaf`, `drawSmallUnder`, `drawBellows`, `bellowsTrack`, `sacK` and `webBornAt` in the game.
+
+## Painted defensive organs (v40): Bark Wall, Great Bark, Ironbark
+
+The three walls are painted as living bark. This is artwork only: health (340, 1400 and 560), costs (6 copper, 24 copper, 6 titanium), footprints, solidity, how units path round walls, how turrets rank them as targets, how Healing Pods mend them, the HDF's own walls and the save format are unchanged. `ident40.js` plays the same walled colony in v38 and v40, drawing every other step with painted art on and through a wave that breaks walls while a Healing Pod mends them, and the saves are byte-identical on Medium and Epic. `xtest40.js` compares every building's health, every enemy and every store with v38 after 40 s of fighting in the Test Range arena, and in Survival with walls hurt on a schedule and mended.
+
+- **What the game keeps for a wall (checked in the code before painting):**
+  - `b.hp` of `b.max` (`max` is the type's health when placed). Both are saved.
+  - `hurtBlock` is the only thing that lowers a wall's health. It also sets `b.hit` (0.12 s), which the game uses for its white flash. A wall at 0 is destroyed.
+  - A powered Healing Pod raises the health of every growth within 6 tiles by 12% of its maximum every 2 s of powered time.
+  - Nothing else: walls have no store, timer, power or animation state, and the game does not record where a hit came from or what made it.
+  - The art therefore works out its own events from health alone and keeps them in `OST` (outside the block, never saved): health lower than the last frame it was drawn is a hit, its size is how hard; health higher is a Healing Pod repair. If a wall has not been drawn for 0.3 s (out of view, another screen), it catches up without reacting, so a hit you did not see never plays late, and loading a save with hurt walls shows them torn but starts no reaction.
+- **Bark Wall:** light and quick to grow. A rounded block of soft umber bark tissue whose grain flows round two knots, with five living roots woven over and under each other through it, each bending its own way and thinning to a tip that dives under at the edge. Short root feet grip the ground round it.
+- **Great Bark:** four walls' worth grown as one. Thick bark plates overlap like shingles, each throwing a deep shadow on the one below, bound by two great root bundles, each a pair of roots twisted round each other, that knot in the middle. Heavier buttress roots, darker colours and a deeper shadow give it the strongest silhouette, which stays readable zoomed out.
+- **Ironbark:** the hardest bark: five domed plates crowded so tight they press into each other, near black with a violet cast, flecked with pale mineral grit where it has taken up titanium, gripped round two corners by hardened, knotted roots. No straight lines, rivets or metal shine: the light it catches is a dull glint on the grit and the tops of the plates.
+- **Joining:** a wall knits a bundle of two twisting roots across every edge it shares with another wall or gate of ours. Both walls draw one, so the bundle reads whole and a run of walls reads as one hedge. Great Bark does this per tile along its sides. Gates, other growths and HDF walls get no bundle.
+- **Reactions (only from real changes in health):**
+  - **Hit:** the wall flinches inward and springs back in 0.34 s (Bark Wall up to 7%, Great Bark 4.5%, Ironbark 3.5%, scaled by how hard the hit was), and a bead of sap wells up and runs a little way down over 1.1 s. The sap shows at a spot on the wall chosen from the wall and its hit count, because the game has no hit position. The game's white hit flash is unchanged.
+  - **Health:** below 92% the bark cracks and beads of sap show in the cracks (fully shown by 60%). Below 55% deep splits open to raw, wet tissue, bark is torn back and a root snaps (fully shown by 25%). A hurt wall sags up to 4%. Below 35% the raw tissue throbs faintly. Health going back up closes the wounds again. The wound look changes in steps of 5% of health.
+  - **Mended:** when a Healing Pod raises its health, pale green healing light runs along its roots and fades over 0.9 s.
+  - **Idle:** a healthy Bark Wall breathes by 0.6% every 6.2 s, Great Bark 0.4%, and Ironbark not at all. Nothing else moves.
+- **Built, selected, destroyed:** the build fade, selection box, health bar and destruction are drawn by the game as before.
+- **Performance:**
+  - Each wall's root feet and joining bundles are one cached picture per set of neighbours, drawn in the pass under all buildings. The body, its wounds and its wet light are one cached picture per kind for each 5% step of health, so a wall at normal zoom draws two pictures (feet and joins, then body), plus a sap bead or the mend light only while a reaction is playing and a faint extra wound layer below 35% health.
+  - Crowd limits on screen: 140 Bark Walls, 140 Ironbark and 48 Great Bark. Past a limit, or zoomed out past 0.75×, that kind draws the same cached body picture without motion, so damage still reads in a crowd and from far away. Joins and feet are the same cached picture in both modes.
+  - Layers are half size at normal zoom and clipped to their visible pixels. Nothing is processed per pixel per frame. Each wall looks up its four sides twice a second.
+  - Measured with `xperf40.js` in headless Chromium on Medium (software drawing, so a real browser with a GPU is faster), everything in view at 0.9× zoom with the walls laid in joined rows. Each time is the whole frame's `render()` plus reading one pixel back from the canvas, which makes the canvas finish its drawing inside the timed span. Without that read-back, headless Chromium saves up several frames and draws them all in one slow frame every few frames, which makes means jump about by several milliseconds from run to run in both builds. The v38 reports were measured without it, so their numbers are not comparable with these.
+
+  | On screen | v38 median | v40 median | v38 mean | v40 mean |
+  | --- | --- | --- | --- | --- |
+  | 50 Bark Walls | 12.2 ms | 13.6 ms (full motion) | 12.4 ms | 14.4 ms |
+  | 100 Bark Walls | 13.3 ms | 15.2 ms (full motion) | 13.4 ms | 16.3 ms |
+  | 200 Bark Walls | 14.9 ms | 16.6 ms (Bark Walls cached) | 15.4 ms | 17.6 ms |
+  | 50 Ironbark | 13.5 ms | 13.3 ms (full motion) | 14.2 ms | 13.8 ms |
+  | 100 Ironbark | 14.1 ms | 14.7 ms (full motion) | 15.5 ms | 15.1 ms |
+  | 200 Ironbark | 14.7 ms | 16.4 ms (Ironbark cached) | 16.0 ms | 17.6 ms |
+  | 50 Great Bark | 13.8 ms | 14.3 ms (Great Bark cached) | 15.0 ms | 14.7 ms |
+  | 100 Great Bark | 14.9 ms | 16.8 ms (Great Bark cached) | 15.6 ms | 17.4 ms |
+  | 200 Great Bark | 17.5 ms | 20.4 ms (Great Bark cached) | 19.3 ms | 21.2 ms |
+  | 50 mixed | 13.3 ms | 13.7 ms (full motion) | 14.0 ms | 14.2 ms |
+  | 100 mixed | 13.2 ms | 15.2 ms (full motion) | 13.5 ms | 15.8 ms |
+  | 200 mixed | 18.3 ms | 16.6 ms (Great Bark cached) | 19.8 ms | 17.2 ms |
+  | 50 mixed, hurt and being hit | 13.1 ms | 13.9 ms (full motion) | 13.4 ms | 14.2 ms |
+  | 100 mixed, hurt and being hit | 14.0 ms | 16.6 ms (full motion) | 14.3 ms | 18.4 ms |
+  | 200 mixed, hurt and being hit | 15.4 ms | 19.4 ms (Great Bark cached) | 15.7 ms | 21.2 ms |
+
+  In typical use (50 to 200 walls in view) the painted walls add about 0.5 to 2 ms to a frame, roughly 0.01 ms per wall. The heaviest case, 200 walls all hurt with one being hit every 0.2 s, adds about 4 ms. Ironbark costs about the same as before. Results vary by 1 to 2 ms between runs (200 mixed walls happened to measure faster than v38).
+- **Textures:**
+  - `art/plant/bark-wall/` and `art/plant/ironbark/` (256x256 with the tile in the middle 128x128), `art/plant/great-bark/` (384x384 with the 2x2 footprint in the middle 256x256), each with: `roots.png` (feet, drawn under neighbours), `join.png` (96x128, the bundle from a tile's centre at x=0 to a quarter tile past its edge, which the game turns to face each neighbour), `base.png`, `wound1.png` (cracks), `wound2.png` (deep splits), `sheen.png` (wet light), `mend.png` (added with a light blend), `seep.png` (48x48, one sap bead).
+  - Box sizes, breathing and flinch strength are in the game's `DW` table; a repainted texture must keep the body inside its footprint and the bundle centred on the tile's middle line.
+- **Settings and fallback:** Low quality and painted art off give the previous look. If any file for one of the three fails to load, that wall falls back to its previous look (with a console warning) and the others stay painted. Build-menu icons and the placement ghost use the baked healthy picture.
+- **Painter script:** `art/source/paint_defense.js` (run with `node art/source/runpaint.js art/source/paint_defense.js art/plant`). The drawing code is `drawWall`, `drawWallUnder` and `wLinks` in the game.

@@ -2524,6 +2524,10 @@ const XG={drill:{tips:[[-2.34,158],[-1.40,120],[-0.78,156],[0.80,158],[1.78,120]
 const EG={combustion:{r:27/128,tips:[-2.5,-1.45,-.4,.62,1.66,2.7]},
   solar:{leaves:[[-2.2,58],[-.95,60],[.3,57],[1.5,59],[2.75,56]],roots:[-1.9,-.2,1.3,2.9],period:3.4,sheen:6},
   bellows:{sacs:[[-50/128,-40/128,.9],[54/128,-32/128,.84],[2/128,54/128,.88]],sz:160/128,vents:[[-4/128,-6/128],[24/128,14/128],[-24/128,16/128]],breath:2.8,out:.62}};
+// Bark Wall, Great Bark and Ironbark as painted by art/source/paint_defense.js: the size of each one's layer box in tiles, how far a
+// healthy wall breathes and how hard a hit makes it flinch (fractions of its size). Ironbark is too dense to breathe.
+const DW={wall:{box:2,breath:.006,flinch:.07},wallL:{box:3,breath:.004,flinch:.045},twall:{box:2,breath:0,flinch:.035}};
+const WALL_LAYERS=['roots','join','base','wound1','wound2','sheen','mend','seep'];
 const ART={plant:{
   nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.018,period:4.2},
     layers:[{f:'base.png'},{f:'liquid.png',g:'dome'},{f:'seed.png',anim:'float',n:5,size:.2,g:'dome',lite:false},
@@ -2557,6 +2561,9 @@ const ART={plant:{
     layers:['roots','base','leaves','veins','heart','sheen_a','sheen_b','pulse'].map(n=>({f:n+'.png'}))},
   bellows:{name:'Spore Bellows',dir:'plant/spore-bellows/',custom:(...a)=>drawBellows(...a),customUnder:(...a)=>drawTapUnder(...a),box:3,t:'bellows',
     layers:['roots','base','sac','mist','vents','spore','puff','veins','pulse'].map(n=>({f:n+'.png'}))},
+  wall:{name:'Bark Wall',dir:'plant/bark-wall/',custom:(...a)=>drawWall(...a),customUnder:(...a)=>drawWallUnder(...a),box:2,t:'wall',layers:WALL_LAYERS.map(n=>({f:n+'.png'}))},
+  wallL:{name:'Great Bark',dir:'plant/great-bark/',custom:(...a)=>drawWall(...a),customUnder:(...a)=>drawWallUnder(...a),box:3,t:'wallL',layers:WALL_LAYERS.map(n=>({f:n+'.png'}))},
+  twall:{name:'Ironbark',dir:'plant/ironbark/',custom:(...a)=>drawWall(...a),customUnder:(...a)=>drawWallUnder(...a),box:2,t:'twall',layers:WALL_LAYERS.map(n=>({f:n+'.png'}))},
   node:{name:'Rootweb Node',dir:'plant/rootweb-node/',custom:(...a)=>drawNode(...a),customUnder:(...a)=>drawNodeUnder(...a),box:1,t:'node',layers:[{f:'root.png'},{f:'base.png'},{f:'petal.png'},{f:'fluid.png'},{f:'nucleus.png'},{f:'membrane.png'},{f:'ring.png'},{f:'pulse.png'}]},
   rootweb:{name:'Rootweb',dir:'plant/rootweb/',web:true,layers:[{f:'cells.png'},{f:'pulse.png'},{f:'sheen.png'},{f:'bud.png'}]},
   duo:{name:'Thorn Spitter',dir:'plant/thorn-spitter/',pad:.5,dome:[.5,.5,.094],breathe:{amp:.045,period:3.6},hurtShrink:.12,
@@ -3043,6 +3050,57 @@ function drawBurner(c,a,x,y,b,tt,mode){const X=EG.combustion,I=oSet(a),cx=x+T/2,
   if(!a.bake)dI(c,I.shine,bx,by,BS,BS);}
 function drawSmallUnder(c,a,b){dI(c,oSet(a).roots,b.x*T-T/2,b.y*T-T/2,2*T,2*T);}
 
+// ===== Bark Wall, Great Bark and Ironbark: living walls that knit to their neighbours, split as they are hurt and close as they mend =====
+// Driven only by what the game really keeps for a wall: its health (b.hp of b.max, saved with the game) going down when it is hit
+// (hurtBlock, which also sets the white hit flash) and going up when a Healing Pod mends it (12% of b.max at a time). The game
+// keeps nothing about where a hit came from, so the sap a hit draws out shows at a spot picked from the wall and its hit count.
+// Visual memory (last health seen, when it was last hit or mended, how many hits and mends it has shown) lives in the OST WeakMap and is never saved.
+const DWJ={wall:1,wallL:1,twall:1,door:1,doorL:1};   // what a wall knits its roots into: other walls and gates of ours
+const sm01=v=>{v=v<0?0:v>1?1:v;return v*v*(3-2*v);};
+// the edge slots that touch a wall or gate of ours: bit k*n+j for side k (0 right, 1 down, 2 left, 3 up) and slot j along it
+function wLinks(b,s){const key=G.blocks.size*7919+Math.floor(G.time*2);if(s.lk===key)return s.lm;s.lk=key;let m=0;const n=b.size;
+  for(let k=0;k<4;k++)for(let j=0;j<n;j++){const o=blockAt(k===0?b.x+n:k===2?b.x-1:b.x+j,k===1?b.y+n:k===3?b.y-1:b.y+j);
+    if(o&&o!==b&&o.team===b.team&&DWJ[o.t])m|=1<<(k*n+j);}
+  return s.lm=m;}
+// a cached picture that also remembers the box its visible pixels sit in, so drawing it skips the empty margins
+function wCache(a,key,fn,n){const cv=oCache(a,key,fn,n);if(cv.bb===undefined)oBB(cv);return cv;}
+// under every building: the wall's root feet and a joining root bundle reaching out to each neighbour, composited once per layout
+function drawWallUnder(c,a,b){const X=DW[b.t],n=b.size,BS=X.box*T,o=(X.box-n)/2*T,m=wLinks(b,ost(b));
+  dI(c,wCache(a,'u'+m,cc=>{const I=oSet(a);dI(cc,I.roots,0,0,BS,BS);
+    for(let k=0;k<4;k++)for(let j=0;j<n;j++)if(m>>(k*n+j)&1){cc.save();cc.translate(o+(k===0?n-.5:k===2?.5:j+.5)*T,o+(k===1?n-.5:k===3?.5:j+.5)*T);cc.rotate(k*Math.PI/2);
+      dI(cc,I.join,0,-T/2,T*.75,T);cc.restore();}},X.box),b.x*T-o,b.y*T-o,BS,BS);}
+// how torn it looks follows its health: cracks from below 92%, deep splits to raw tissue from below 55%
+const wW1=h=>sm01((.92-h)/.32),wW2=h=>sm01((.55-h)/.3);
+// the body with its wounds and wet light as one picture, shared by every wall of a kind at the same health (in 5% steps)
+function wBody(a,q){const F=a.bodyFn||(a.bodyFn=[]);
+  return wCache(a,'b'+q,F[q]||(F[q]=cc=>{const I=oSet(a),BS=DW[a.t].box*T,h=q/20,w1=wW1(h),w2=wW2(h);dI(cc,I.base,0,0,BS,BS);
+    if(w1>.02){cc.globalAlpha=w1;dI(cc,I.wound1,0,0,BS,BS);}if(w2>.02){cc.globalAlpha=w2;dI(cc,I.wound2,0,0,BS,BS);}cc.globalAlpha=1;dI(cc,I.sheen,0,0,BS,BS);}),DW[a.t].box);}
+function drawWall(c,a,x,y,b,tt,mode){const X=DW[a.t],I=oSet(a),n=B[a.t].size,BS=X.box*T,o=(X.box-n)/2*T,bx=x-o,by=y-o,cx=x+n*T/2,cy=y+n*T/2,
+    lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
+  // no building behind it (build menu, placement ghost, the baked look): the healthy wall with its feet
+  if(!b){if(lite){dI(c,oFlat(a),bx,by,BS,BS);return;}for(const k of ['roots','base','sheen'])dI(c,I[k],bx,by,BS,BS);return;}
+  const s=ost(b),hp=Math.max(0,Math.min(1,b.hp/b.max));
+  // a drop in health since the last frame it was drawn is a real hit, a rise is a Healing Pod; after time out of view, just catch up
+  if(s.hp===undefined||tt-s.lt>.3||tt<s.lt){s.hp=b.hp;if(s.n===undefined){s.hurtT=-9;s.healT=-9;s.n=0;s.m=0;s.f=0;}}
+  else if(b.hp<s.hp-.01){s.f=Math.min(1,(s.hp-b.hp)/b.max*5+(tt-s.hurtT<.3?.3:0));s.hurtT=tt;s.n++;}
+  else if(b.hp>s.hp+.01){s.healT=tt;s.m++;}
+  s.hp=b.hp;s.lt=tt;
+  const body=wBody(a,Math.round(hp*20));
+  if(lite){dI(c,body,bx,by,BS,BS);return;}
+  const u=tt-s.hurtT,hv=tt-s.healT,id=b.id;
+  // a hit makes it flinch (tighter the harder the hit), a hurt wall sags a little, and a healthy Bark Wall or Great Bark breathes so
+  // slowly it hardly shows (Ironbark is too dense to)
+  let br=1-.04*(1-hp);
+  if(live){br*=1+X.breath*Math.sin(tt*6.283/6.2+id*1.7)-X.flinch*(.45+.55*s.f)*sw(0,.34,u);}
+  scaled(c,body,cx,cy,br,bx,by,BS,BS);
+  // badly hurt, the raw tissue in its splits throbs faintly
+  if(live&&hp<.35){c.save();c.globalAlpha=wW2(hp)*.16*(.5+.5*Math.sin(tt*6.283/1.6+id));scaled(c,I.wound2,cx,cy,br,bx,by,BS,BS);c.restore();}
+  // mended by a Healing Pod: healing light runs along its roots and fades
+  if(live&&hv>=0&&hv<.9){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.65*Math.sin(Math.PI*Math.min(1,hv/.9))**.6*(1-hv/.9*.3);scaled(c,I.mend,cx,cy,br,bx,by,BS,BS);c.restore();}
+  // sap welling up where it was hit and running down a little
+  if(live&&u>=0&&u<1.1){const v=u/1.1,R=n*T*.3,px=cx+(hash(id,s.n,3)*2-1)*R,py=cy+(hash(id,s.n,5)*2-1)*R-T*.04,z=T*(.13+.07*s.f)*(n>1?1.25:1)*Math.min(1,u/.12)*(1-v*.35);
+    c.save();c.globalAlpha=Math.min(1,(1-v)*1.6);dI(c,I.seep,px-z/2,py-z/2+T*.16*v*v,z,z);c.restore();}}
+
 // ===== Sunleaf: light shimmering over the leaves, pulses gathering to the heart and running out into the roots =====
 // The Sunleaf makes its 5 vigor all the time and has no other state, so this is a calm ambient rhythm, the same whatever happens.
 function drawSunleaf(c,a,x,y,b,tt,mode){const X=EG.solar,I=oSet(a),cx=x+T/2,cy=y+T/2,bx=x-T/2,by=y-T/2,BS=2*T,lite=mode==='lite',live=!!b&&mode==='full'&&!ART_RM;
@@ -3207,8 +3265,8 @@ function drawNodeUnder(c,a,b,lite){if(lite)return;const ph=b.id*2.17,A=[];let ma
     s.tc=cv;s.tm=mask;s.th=hi;}
   c.drawImage(s.tc,(b.x-1)*T,(b.y-1)*T,3*T,3*T);}
 // per-kind crowd limits: past these many on screen (or zoomed out) a kind draws its baked look plus what the player needs
-const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24,combustion:40,solar:40,bellows:16},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
-const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0,combustion:0,solar:0,bellows:0};
+const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24,combustion:40,solar:40,bellows:16,wall:140,twall:140,wallL:48},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
+const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0,combustion:0,solar:0,bellows:0,wall:0,twall:0,wallL:0};
 function organLite(t){const N=ORGAN_N;return (typeof cam!=='undefined'&&cam.z<ART_LOD_ZOOM)||N[t]>ORGAN_MAX[t]||((t==='router'||t==='sorter'||t==='node')&&N.router+N.sorter+N.node+N.press>ORGAN_ALL_MAX);}
 // a Splitter Bulb or Sorting Gland: vines run straight into its channels
 const organJoin=o=>(o.t==='router'||o.t==='sorter')&&organOpen(o.t);
