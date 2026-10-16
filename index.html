@@ -2528,6 +2528,10 @@ const EG={combustion:{r:27/128,tips:[-2.5,-1.45,-.4,.62,1.66,2.7]},
 // healthy wall breathes and how hard a hit makes it flinch (fractions of its size). Ironbark is too dense to breathe.
 const DW={wall:{box:2,breath:.006,flinch:.07},wallL:{box:3,breath:.004,flinch:.045},twall:{box:2,breath:0,flinch:.035}};
 const WALL_LAYERS=['roots','join','base','wound1','wound2','sheen','mend','seep'];
+// Petal Gate, Maw Gate and Healing Pod as painted by art/source/paint_gates.js (drawn by drawGateP, drawGateM and drawPod)
+const PETAL_LAYERS=['roots','join','floor','frame','petalL','petalR','wound1','wound2','mend','seep'];
+const MAW_LAYERS=['roots','join','throat','base','leaf0','leaf1','leaf2','leaf3','leaf4','leaf5','wound1','wound2','mend','seep'];
+const POD_LAYERS=['roots','base','petals','chamber','gloss','veins','glow','mote','pulse','wound1','wound2','seep'];
 const ART={plant:{
   nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.018,period:4.2},
     layers:[{f:'base.png'},{f:'liquid.png',g:'dome'},{f:'seed.png',anim:'float',n:5,size:.2,g:'dome',lite:false},
@@ -2564,6 +2568,9 @@ const ART={plant:{
   wall:{name:'Bark Wall',dir:'plant/bark-wall/',custom:(...a)=>drawWall(...a),customUnder:(...a)=>drawWallUnder(...a),box:2,t:'wall',layers:WALL_LAYERS.map(n=>({f:n+'.png'}))},
   wallL:{name:'Great Bark',dir:'plant/great-bark/',custom:(...a)=>drawWall(...a),customUnder:(...a)=>drawWallUnder(...a),box:3,t:'wallL',layers:WALL_LAYERS.map(n=>({f:n+'.png'}))},
   twall:{name:'Ironbark',dir:'plant/ironbark/',custom:(...a)=>drawWall(...a),customUnder:(...a)=>drawWallUnder(...a),box:2,t:'twall',layers:WALL_LAYERS.map(n=>({f:n+'.png'}))},
+  door:{name:'Petal Gate',dir:'plant/petal-gate/',custom:(...a)=>drawGateP(...a),customUnder:(...a)=>drawGateUnder(...a),box:2,t:'door',layers:PETAL_LAYERS.map(n=>({f:n+'.png'}))},
+  doorL:{name:'Maw Gate',dir:'plant/maw-gate/',custom:(...a)=>drawGateM(...a),customUnder:(...a)=>drawGateUnder(...a),box:3,t:'doorL',layers:MAW_LAYERS.map(n=>({f:n+'.png'}))},
+  mender:{name:'Healing Pod',dir:'plant/healing-pod/',custom:(...a)=>drawPod(...a),customUnder:(...a)=>drawPodUnder(...a),box:2,t:'mender',layers:POD_LAYERS.map(n=>({f:n+'.png'}))},
   node:{name:'Rootweb Node',dir:'plant/rootweb-node/',custom:(...a)=>drawNode(...a),customUnder:(...a)=>drawNodeUnder(...a),box:1,t:'node',layers:[{f:'root.png'},{f:'base.png'},{f:'petal.png'},{f:'fluid.png'},{f:'nucleus.png'},{f:'membrane.png'},{f:'ring.png'},{f:'pulse.png'}]},
   rootweb:{name:'Rootweb',dir:'plant/rootweb/',web:true,layers:[{f:'cells.png'},{f:'pulse.png'},{f:'sheen.png'},{f:'bud.png'}]},
   duo:{name:'Thorn Spitter',dir:'plant/thorn-spitter/',pad:.5,dome:[.5,.5,.094],breathe:{amp:.045,period:3.6},hurtShrink:.12,
@@ -3100,6 +3107,120 @@ function drawWall(c,a,x,y,b,tt,mode){const X=DW[a.t],I=oSet(a),n=B[a.t].size,BS=
   // sap welling up where it was hit and running down a little
   if(live&&u>=0&&u<1.1){const v=u/1.1,R=n*T*.3,px=cx+(hash(id,s.n,3)*2-1)*R,py=cy+(hash(id,s.n,5)*2-1)*R-T*.04,z=T*(.13+.07*s.f)*(n>1?1.25:1)*Math.min(1,u/.12)*(1-v*.35);
     c.save();c.globalAlpha=Math.min(1,(1-v)*1.6);dI(c,I.seep,px-z/2,py-z/2+T*.16*v*v,z,z);c.restore();}}
+// ===== Petal Gate, Maw Gate and Healing Pod (v41): the hedge's living passages and its regenerative organ =====
+// Gates: how far open a gate looks is the game's own gateOpen(b), the same easing towards "one of our ants is within reach" that the
+// previous looks used, advanced once for every frame the gate is drawn, as before (it keeps b.op, which is saved, so a save comes
+// out the same with painted art on or off). The simulation lets any of our ants through a gate of ours at any time and never lets
+// an enemy through; the petals only show what gateOpen says. Health, hits and Healing Pod repairs read as on the walls.
+// Healing Pod: it pumps only when the game really mends something: the heal effect the game adds when a pod restores health (one per
+// pod per repair), sent to the blocks whose health really went up. Its glow follows what the game uses to decide it can repair: a
+// damaged growth of ours within 6 tiles and vigor to run on (G.powSat). Visual memory lives in OST and is never saved.
+const DG={door:{flinch:.06},doorL:{flinch:.04},mender:{breath:.015,flinch:.06}};
+function hTrack(b,s,tt){if(s.hp===undefined||tt-s.lt>.3||tt<s.lt){s.hp=b.hp;if(s.n===undefined){s.hurtT=-9;s.healT=-9;s.n=0;s.m=0;s.f=0;}}
+  else if(b.hp<s.hp-.01){s.f=Math.min(1,(s.hp-b.hp)/b.max*5+(tt-s.hurtT<.3?.3:0));s.hurtT=tt;s.n++;}
+  else if(b.hp>s.hp+.01){s.healT=tt;s.m++;}
+  s.hp=b.hp;s.lt=tt;}
+// a piece of a gate or pod (a petal, a membrane, the frame) with the wounds for its health laid only where that piece is, shared by
+// every structure of the kind at that health (in 5% steps)
+function gPiece(a,n,q){const F=a.pieceFn||(a.pieceFn={}),k=n+q;
+  return wCache(a,'p'+k,F[k]||(F[k]=cc=>{const I=oSet(a),BS=a.box*T,h=q/20,w1=wW1(h),w2=wW2(h);dI(cc,I[n],0,0,BS,BS);cc.globalCompositeOperation='source-atop';
+    if(w1>.02){cc.globalAlpha=w1;dI(cc,I.wound1,0,0,BS,BS);}if(w2>.02){cc.globalAlpha=w2;dI(cc,I.wound2,0,0,BS,BS);}}),a.box);}
+// the mend light after a Healing Pod restores it, and the bead of sap a real hit draws out (box-sized layers, painted units)
+function gAfter(c,a,I,b,s,tt,PX,n){const u=tt-s.hurtT,hv=tt-s.healT;
+  if(hv>=0&&hv<.9&&I.mend){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.65*Math.sin(Math.PI*Math.min(1,hv/.9))**.6*(1-hv/.9*.3);dI(c,I.mend,0,0,PX,PX);c.restore();}
+  if(u>=0&&u<1.1){const v=u/1.1,R=n*128*.3,K=PX/2,px=K+(hash(b.id,s.n,3)*2-1)*R,py=K+(hash(b.id,s.n,5)*2-1)*R-5,z=128*(.13+.07*s.f)*(n>1?1.25:1)*Math.min(1,u/.12)*(1-v*.35);
+    c.save();c.globalAlpha=Math.min(1,(1-v)*1.6);dI(c,I.seep,px-z/2,py-z/2+20*v*v,z,z);c.restore();}}
+// a Petal Gate whose wall line runs up and down is drawn transposed (its petals then part up and down); the painting's light comes
+// from the upper left, which the transpose keeps
+const gTrans=(b,m)=>b.size===1&&(m&10)&&!(m&5);
+// under every building: the gate's feet and the root bundles knitting it to each wall or gate beside it
+function drawGateUnder(c,a,b){const n=b.size,BS=a.box*T,o=(a.box-n)/2*T,s=ost(b),m=wLinks(b,s),tr=gTrans(b,m);
+  dI(c,wCache(a,'u'+m+(tr?'t':''),cc=>{const I=oSet(a);cc.save();if(tr){cc.translate(BS/2,BS/2);cc.transform(0,1,1,0,0,0);cc.translate(-BS/2,-BS/2);}dI(cc,I.roots,0,0,BS,BS);cc.restore();
+    for(let k=0;k<4;k++)for(let j=0;j<n;j++)if(m>>(k*n+j)&1){cc.save();cc.translate(o+(k===0?n-.5:k===2?.5:j+.5)*T,o+(k===1?n-.5:k===3?.5:j+.5)*T);cc.rotate(k*Math.PI/2);
+      dI(cc,I.join,0,-T/2,T*.75,T);cc.restore();}},a.box),b.x*T-o,b.y*T-o,BS,BS);}
+// ---- Petal Gate: two thick petals that contract towards their own jambs ----
+// op 0..1 from gateOpen: first the seam presses tight (both petals swell a little towards it), then each petal draws back into a
+// bunched fold against its jamb, leaving the passage between the jambs clear
+function drawGateP(c,a,x,y,b,tt,mode){const I=oSet(a),PX=256,o=T/2;
+  const op=b?gateOpen(b,tt):0;
+  c.save();c.translate(x-o,y-o);c.scale(T/128,T/128);
+  if(!b){for(const k of ['roots','floor','petalR','petalL','frame'])dI(c,I[k],0,0,PX,PX);c.restore();return;}
+  const s=ost(b);hTrack(b,s,tt);const hp=Math.max(0,Math.min(1,b.hp/b.max)),q=Math.round(hp*20),live=mode==='full'&&!ART_RM,m=wLinks(b,s);
+  if(gTrans(b,m)){c.translate(128,128);c.transform(0,1,1,0,0,0);c.translate(-128,-128);}
+  const u=tt-s.hurtT,fl=live?DG.door.flinch*(.45+.55*s.f)*sw(0,.34,u):0,k=sm01((op-.12)/.8),fx=1+.035*sw(0,.3,op)-.74*k-fl,fy=1+.06*k-fl*.5;
+  dI(c,I.floor,0,0,PX,PX);
+  for(const [n,ax] of [['petalR',170],['petalL',86]]){c.save();c.translate(ax,128);c.scale(fx,fy);c.translate(-ax,-128);dI(c,gPiece(a,n,q),0,0,PX,PX);c.restore();}
+  dI(c,gPiece(a,'frame',q),0,0,PX,PX);
+  if(live)gAfter(c,a,I,b,s,tt,PX,1);
+  c.restore();}
+// ---- Maw Gate: six reinforced membranes closing a wide throat, each turning back into the ring about its own root ----
+const MAW_K=192,MAW_RP=108,MAW_A=j=>j/6*6.283+.26;
+function drawGateM(c,a,x,y,b,tt,mode){const I=oSet(a),PX=384,o=T/2;
+  const op=b?gateOpen(b,tt):0;
+  c.save();c.translate(x-o,y-o);c.scale(T/128,T/128);
+  const s=b?ost(b):null;if(b)hTrack(b,s,tt);const hp=b?Math.max(0,Math.min(1,b.hp/b.max)):1,q=Math.round(hp*20),live=!!b&&mode==='full'&&!ART_RM;
+  const u=b?tt-s.hurtT:9,fl=live?DG.doorL.flinch*(.45+.55*s.f)*sw(0,.34,u):0;
+  // the ring tightens first, then the membranes swing back and draw in under it
+  const pin=.03*sw(0,.36,op),k=sm01((op-.18)/.82),ls=1-.5*k+pin-fl,rot=-.95*k,P=n=>b?gPiece(a,n,q):I[n];
+  if(!b)dI(c,I.roots,0,0,PX,PX);
+  dI(c,I.throat,0,0,PX,PX);
+  const leaf=(j,clip)=>{const an=MAW_A(j),px=MAW_K+Math.cos(an)*MAW_RP,py=MAW_K+Math.sin(an)*MAW_RP;c.save();c.translate(px,py);c.rotate(rot);c.scale(ls,ls);
+    if(clip){c.rotate(an+Math.PI-.42);c.beginPath();c.rect(0,-220,320,220);c.clip();c.rotate(-(an+Math.PI-.42));}
+    c.translate(-px,-py);dI(c,P('leaf'+j),0,0,PX,PX);c.restore();};
+  // each membrane's leading edge lies over the next; the first one's is drawn again over the last to close the circle
+  for(let j=0;j<6;j++)leaf(j,false);leaf(0,true);
+  const rs=1-pin*.5-fl*.4;c.save();c.translate(MAW_K,MAW_K);c.scale(rs,rs);c.translate(-MAW_K,-MAW_K);dI(c,P('base'),0,0,PX,PX);c.restore();
+  if(live)gAfter(c,a,I,b,s,tt,PX,2);
+  c.restore();}
+// ---- Healing Pod ----
+const PODFX=[];const POD_FXH={t:-1,m:new Map()};
+function podTargets(b){const out=[],seen=new Set(),cx=b.x+.5,cy=b.y+.5;
+  for(let y=b.y-7;y<=b.y+7;y++)for(let x=b.x-7;x<=b.x+7;x++){const o=blockAt(x,y);if(!o||seen.has(o)||o.team!==b.team)continue;seen.add(o);
+    if(o.hp>=o.max)continue;const [ox,oy]=bCenter(o);if(Math.hypot(ox-cx,oy-cy)<=6)out.push([o,o.hp]);}
+  return out;}
+// the pod is painted a little small for its tile, so it is drawn at PODS times its painted size about the tile centre
+const PODS=1.25;
+function drawPodUnder(c,a,b){dI(c,oSet(a).roots,(b.x+.5-PODS)*T,(b.y+.5-PODS)*T,2*T*PODS,2*T*PODS);}
+function drawPod(c,a,x,y,b,tt,mode){const I=oSet(a),PX=256,o=T/2,CX=128,CY=124;
+  c.save();c.translate(x-o,y-o);c.scale(T/128,T/128);c.translate(128,128);c.scale(PODS,PODS);c.translate(-128,-128);
+  if(!b){for(const k of ['roots','base','petals','chamber','gloss'])dI(c,I[k],0,0,PX,PX);c.restore();return;}
+  const s=ost(b);hTrack(b,s,tt);const hp=Math.max(0,Math.min(1,b.hp/b.max)),q=Math.round(hp*20),live=mode==='full'&&!ART_RM;
+  // what the game would repair now, re-read four times a second and every frame as its next repair comes due
+  if(s.ct===undefined||tt-s.ct>.25||tt<s.ct||(b.prog||0)>1.7){s.cand=podTargets(b);s.ct=tt;}
+  const can=s.cand.length>0&&G.powSat>0,dt=Math.max(0,Math.min(.1,tt-(s.at??tt)));s.at=tt;s.act=(s.act||0)+((can?1:0)-(s.act||0))*Math.min(1,dt*3);
+  // a repair the game really made: its heal effect for this pod, seen while still fresh; sap runs to the (up to 8 nearest) growths it mended
+  if(POD_FXH.t!==tt){POD_FXH.t=tt;POD_FXH.m.clear();for(const f of G.fx)if(f.k==='heal')POD_FXH.m.set(f.x*8192+f.y,f);}
+  const f=POD_FXH.m.get((b.x+.5)*8192+b.y+.5);
+  if(f&&f!==s.fx){s.fx=f;if(f.max-f.life<.25){s.pumpT=tt;
+    if(live){const [cx,cy]=bCenter(b);let n=0;const got=s.cand.filter(([t,h])=>t!==b&&G.blocks.has(t.id)&&t.hp>h+.01).map(([t])=>{const [tx,ty]=bCenter(t);return [t,tx,ty,Math.hypot(tx-cx,ty-cy)];}).sort((p,q)=>p[3]-q[3]);
+      for(const [t,tx,ty,d] of got){if(++n>8)break;
+      if(PODFX.length<80)PODFX.push({sx:cx,sy:cy,tx,ty,t0:tt+n*.03,dur:.3+d*.07,glow:!DWJ[t.t],sz:t.size});}}}
+    s.cand=podTargets(b);s.ct=tt;}
+  const pu=live&&s.pumpT!==undefined?tt-s.pumpT:9,pump=pu<0?0:pu<.18?pu/.18:Math.exp(-(pu-.18)/.45),ph=b.id*1.7;
+  const u=tt-s.hurtT,fl=live?DG.mender.flinch*(.45+.55*s.f)*sw(0,.34,u):0,act=s.act;
+  // the foundation and petal collar, a hit shaking it slightly
+  const bs=1-fl;c.save();c.translate(128,128);c.scale(bs,bs);c.translate(-128,-128);dI(c,gPiece(a,'base',q),0,0,PX,PX);dI(c,gPiece(a,'petals',q),0,0,PX,PX);c.restore();
+  // bioluminescent veins: faint at rest, brighter while it can repair and as it pumps
+  c.save();c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(1,.16+.3*act+.5*pump);dI(c,I.veins,0,0,PX,PX);c.restore();
+  // the chamber breathes slowly, swells as its next repair comes due (only while it can repair), and squeezes as it sends sap out
+  let br=1+(live?DG.mender.breath*Math.sin(tt*6.283/5.2+ph):0)+.035*act*sm01((b.prog||0)/2)-.13*pump-fl;
+  c.save();c.translate(CX,CY);c.scale(br,br);c.translate(-CX,-CY);dI(c,I.chamber,0,0,PX,PX);
+  const sp=live?tt*(.22+.3*act):0;for(let j=0;j<4;j++){const mx=CX+Math.sin(sp*(1+j*.13)+j*2.1+ph)*13,my=CY+Math.cos(sp*(.8+j*.11)+j*1.3)*10,z=8+j%2*2;c.globalAlpha=.55+.25*act;dI(c,I.mote,mx-z/2,my-z/2,z,z);}
+  c.globalAlpha=1;dI(c,I.gloss,0,0,PX,PX);c.restore();
+  const gl=.08*act+.75*pump+(tt-s.healT>=0&&tt-s.healT<.9?.35*Math.sin(Math.PI*(tt-s.healT)/.9):0);
+  if(gl>.01){c.save();c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(1,gl);dI(c,I.glow,0,0,PX,PX);c.restore();}
+  if(live&&u>=0&&u<1.1){const v=u/1.1,px=128+(hash(b.id,s.n,3)*2-1)*30,py=128+(hash(b.id,s.n,5)*2-1)*30,z=128*(.13+.07*s.f)*Math.min(1,u/.12)*(1-v*.35);
+    c.save();c.globalAlpha=Math.min(1,(1-v)*1.6);dI(c,I.seep,px-z/2,py-z/2+20*v*v,z,z);c.restore();}
+  c.restore();}
+// the sap a pod sends: a soft pulse running out to each growth it really mended, after every building is drawn; walls and gates
+// show their own mend light when it lands, anything else gets a brief soft glow
+function drawPodFx(c,tt){const a=ART.plant.mender;if(!a||a.state!=='ready'||!SET.art){PODFX.length=0;return;}const im=oSet(a).pulse;
+  c.save();c.globalCompositeOperation='lighter';c.imageSmoothingEnabled=true;
+  for(let i=PODFX.length-1;i>=0;i--){const p=PODFX[i],uu=(tt-p.t0)/p.dur;if(uu>1.45||uu<-2){PODFX.splice(i,1);continue;}if(uu<0)continue;
+    if(uu<=1){const v=1-uu,nx=-(p.ty-p.sy),ny=p.tx-p.sx,mx=(p.sx+p.tx)/2+nx*.12,my=(p.sy+p.ty)/2+ny*.12,px=v*v*p.sx+2*v*uu*mx+uu*uu*p.tx,py=v*v*p.sy+2*v*uu*my+uu*uu*p.ty,z=T*.42*(1-.3*uu);
+      c.globalAlpha=.7*Math.sin(Math.PI*Math.min(1,uu*1.15));c.drawImage(im,px*T-z/2,py*T-z/2,z,z);}
+    else if(p.glow){const w=(uu-1)/.45,z=T*p.sz*1.1;c.globalAlpha=.4*(1-w);c.drawImage(im,p.tx*T-z/2,p.ty*T-z/2,z,z);}}
+  c.restore();}
 
 // ===== Sunleaf: light shimmering over the leaves, pulses gathering to the heart and running out into the roots =====
 // The Sunleaf makes its 5 vigor all the time and has no other state, so this is a calm ambient rhythm, the same whatever happens.
@@ -3265,8 +3386,8 @@ function drawNodeUnder(c,a,b,lite){if(lite)return;const ph=b.id*2.17,A=[];let ma
     s.tc=cv;s.tm=mask;s.th=hi;}
   c.drawImage(s.tc,(b.x-1)*T,(b.y-1)*T,3*T,3*T);}
 // per-kind crowd limits: past these many on screen (or zoomed out) a kind draws its baked look plus what the player needs
-const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24,combustion:40,solar:40,bellows:16,wall:140,twall:140,wallL:48},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
-const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0,combustion:0,solar:0,bellows:0,wall:0,twall:0,wallL:0};
+const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24,combustion:40,solar:40,bellows:16,wall:140,twall:140,wallL:48,door:80,doorL:30,mender:40},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
+const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0,combustion:0,solar:0,bellows:0,wall:0,twall:0,wallL:0,door:0,doorL:0,mender:0};
 function organLite(t){const N=ORGAN_N;return (typeof cam!=='undefined'&&cam.z<ART_LOD_ZOOM)||N[t]>ORGAN_MAX[t]||((t==='router'||t==='sorter'||t==='node')&&N.router+N.sorter+N.node+N.press>ORGAN_ALL_MAX);}
 // a Splitter Bulb or Sorting Gland: vines run straight into its channels
 const organJoin=o=>(o.t==='router'||o.t==='sorter')&&organOpen(o.t);
@@ -3400,6 +3521,7 @@ function render(){
       if(b.t==='mender'){ctx.strokeStyle='rgba(127,208,106,.35)';ctx.beginPath();ctx.arc((b.x+.5)*T,(b.y+.5)*T,6*T,0,7);ctx.stroke();}}
     if(b.hp<b.max&&!B[b.t].belt){ctx.fillStyle='#000';ctx.fillRect(b.x*T+2,b.y*T-5,S-4,3);ctx.fillStyle=b.team===1?'#ee5a44':b.hp/b.max>.4?'#7fd06a':'#ee5a44';ctx.fillRect(b.x*T+2,b.y*T-5,(S-4)*b.hp/b.max,3);}
   }
+  if(PODFX.length)drawPodFx(ctx,time);
   for(const e of G.enemies)if(!E[e.t].air&&inView(e.x,e.y,1)&&fogVis(e.x,e.y))drawEnemy(ctx,e,time);
   for(const u of G.units)if(inView(u.x,u.y,1)){drawTank(ctx,u.t,u.x*T,u.y*T,u.ang,u.tang,0,u.hit>0);
     if(u.hp<u.max){const r=U[u.t].r*T;ctx.fillStyle='#000';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2,3);ctx.fillStyle='#7fd06a';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2*u.hp/u.max,3);}}

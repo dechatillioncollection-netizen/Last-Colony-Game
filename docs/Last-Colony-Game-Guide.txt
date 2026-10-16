@@ -61,6 +61,7 @@ The swarm has 26 growths, including the Bloom. All of them except the Bloom, Vin
 - Petal Gate (Bark, 1×1): A wall that opens for your ants. Too narrow for Bulwark Ants.
 - Maw Gate (Bark, 2×2): A wide gate that opens for every ant, Bulwarks included.
 - Healing Pod (Bark, 1×1): Mends your growths within 6 tiles. Uses 12 vigor.
+  Both gates are living passages that knit into the walls beside them: the Petal Gate's two petals fold back and the Maw Gate's membranes draw open like an iris whenever one of your ants comes through. A Healing Pod breathes quietly at rest, and each time it really mends something it squeezes and sends a pulse of green sap to each growth it healed.
 - Spawning Pod (Brood, 2×2): Grows Mite Ants from copper and lead. No vigor needed.
 - Brood Chamber (Brood, 3×3): Hatches Thornback and Bulwark Ants. Uses 30 vigor.
 
