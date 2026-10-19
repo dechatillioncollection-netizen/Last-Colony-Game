@@ -247,7 +247,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <button class="mode" id="m-load"><b>LOAD GAME</b><span>Continue a saved game, or import a save file from the web version or the Windows app.</span></button>
       <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics quality and fog of war.</span></button>
     </div>
-    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> rotate &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms &middot; <kbd>Space</kbd> pause.</p>
+    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> or the wheel rotates a Vine before you place it (during a drag, the whole line) &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms (with no Vine chosen) &middot; <kbd>Space</kbd> pause.</p>
   </div>
 </div>
 
@@ -266,7 +266,7 @@ const B={
   core:{name:'Bloom',size:3,hp:4000,cost:[],solid:true,
     desc:'The swarm\'s living headquarters on this ground. It stores everything your roots gather, keeps growing Rootweb around itself (over 30% of the map in Survival and Base Siege, a set reach in campaign sectors), and spits at anything close. If it dies, you lose.'},
   conveyor:{name:'Vine',size:1,hp:45,cost:[[CU,1]],rot:true,speed:4.2,belt:true,
-    desc:'Carries items the way it grows. Drag to lay a line that turns corners. Vines can reach up to 5 tiles past the Rootweb, and units walk over them.'},
+    desc:'Carries items the way it grows. Turn it with the mouse wheel or R. Drag to lay a line that turns corners; the wheel turns the whole line. Vines can reach up to 5 tiles past the Rootweb, and units walk over them.'},
   tconveyor:{name:'Swift Vine',size:1,hp:65,cost:[[CU,1],[PB,1],[TI,1]],rot:true,speed:8,belt:true,
     desc:'Carries items about twice as fast. Grow it over old vines to upgrade them.'},
   junction:{name:'Vine Knot',size:1,hp:60,cost:[[CU,3]],dist:true,desc:'Lets two vines cross without mixing.'},
@@ -1689,8 +1689,8 @@ function stairLine(a,b){const [ax,ay]=a,[bx,by]=b,pts=[[ax,ay]],L=Math.hypot(bx-
   const dev=(px,py)=>Math.abs((px-ax)*(by-ay)-(py-ay)*(bx-ax))/L;
   while((x!==bx||y!==by)&&pts.length<400){const sx=Math.sign(bx-x),sy=Math.sign(by-y);
     if(sx&&(!sy||dev(x+sx,y)<=dev(x,y+sy)))x+=sx;else y+=sy;pts.push([x,y]);}return pts;}
-function planVine(t,a,b,diag){
-  const [ax,ay]=a,[bx,by]=b;if(ax===bx&&ay===by)return [[ax,ay,G.rot]];
+function planVine(t,a,b,diag,er){
+  const [ax,ay]=a,[bx,by]=b;if(ax===bx&&ay===by)return [[ax,ay,er==null?G.rot:er]];
   const M=6,x0=Math.max(0,Math.min(ax,bx)-M),x1=Math.min(MW-1,Math.max(ax,bx)+M),y0=Math.max(0,Math.min(ay,by)-M),y1=Math.min(MH-1,Math.max(ay,by)+M);
   const W=x1-x0+1,H=y1-y0+1,n=W*H;let pts=null;
   if(n<=24000){const free=new Uint8Array(n),pass=new Uint8Array(n);
@@ -1713,7 +1713,8 @@ function planVine(t,a,b,diag){
   // a press or release on an existing structure or vine: route from or into it without touching it
   const occ=([x,y,r],k)=>!!G.bgrid[y*MW+x]&&!passOk(passKind(t,x,y),k);
   if(out.length>1&&occ(out[out.length-1],out[out.length-2][2]))out.pop();if(out.length>1&&occ(out[0],out[0][2]))out.shift();
-  return out.slice(0,240);}
+  const res=out.slice(0,240);if(er!=null&&!diag)for(const q of res)q[2]=er;   // a turned line: every vine faces the chosen way
+  return res;}
 // every tile of a planned line, with its verdict. Vines are counted for reach as one prospective route (existing and planned vines together);
 // they are paid for and grow in construction order, nearest the Rootweb first, and a route the Bloom cannot pay for in full is placed as far
 // as it can pay, every skipped tile shown and reported. Nothing here changes the game.
@@ -1741,15 +1742,39 @@ function placePlan(t,rows){const go=rows.filter(r=>!r.why).sort((a,b)=>a.ord-b.o
   try{for(const r of go){PLACE_DELAY=r.ord*.12;if(tryPlace(t,r.x,r.y,B[t].rot?r.r:0,true))ok++;else why.blocked=(why.blocked||0)+1;}}finally{PLACE_DELAY=0;VDIST=null;}
   return [ok,why];}
 let PLANC={k:'',rows:null,plan:null};
-function curPlan(t,md,b){const a=placeOrigin(t,md.w[0],md.w[1]),diag=keys.has('control')&&!!B[t].belt;
-  const k=[t,a,b,diag,G.nextId,G.blocks.size,G.webCount,G.items.join(','),G.rot].join('|');if(PLANC.k===k)return PLANC;
-  const plan=B[t].belt?planVine(t,a,b,diag):linePlan(t,a,b);PLANC={k,plan,rows:VINE[t]?planEval(t,plan):null,diag};return PLANC;}
+function canRotate(){return !!(G&&G.tool&&G.tool!=='remove'&&B[G.tool]&&B[G.tool].rot);}
+function dragging(){const md=mouse.down;return !!(md&&md.moved&&md.b===0&&!md.cancel);}
+// s: +1 clockwise, -1 anticlockwise
+function rotateTool(s){if(!canRotate())return false;const md=mouse.down,t=G.tool;
+  if(dragging()&&VINE[t]){let cur=md.er;   // the first turn starts from the drag's own direction, as in Mindustry
+    if(cur==null){const [wx,wy]=s2w(mouse.x,mouse.y),a=placeOrigin(t,md.w[0],md.w[1]),b=placeOrigin(t,wx,wy);cur=a[0]===b[0]&&a[1]===b[1]?G.rot:Math.abs(b[0]-a[0])>=Math.abs(b[1]-a[1])?(b[0]>a[0]?0:2):(b[1]>a[1]?1:3);}
+    md.er=(cur+s+4)%4;G.rot=md.er;}
+  else G.rot=(G.rot+s+4)%4;
+  return true;}
+// the wheel: a notched wheel turns one step a notch; a touchpad's small pixel deltas add up to a step every 60 px
+const WHEEL={acc:0,t:0};
+function wheelSteps(e){if(e.deltaMode)return e.deltaY>0?1:e.deltaY<0?-1:0;const now=performance.now();if(now-WHEEL.t>220)WHEEL.acc=0;WHEEL.t=now;
+  if(Math.abs(e.deltaY)>=50){WHEEL.acc=0;return Math.sign(e.deltaY);}WHEEL.acc+=e.deltaY;if(Math.abs(WHEEL.acc)>=60){const s=Math.sign(WHEEL.acc);WHEEL.acc=0;return s;}return 0;}
+// the end arrow eases round to its new direction so a turn reads at a glance
+const RANIM={k:'',a:0,t:0};
+function easedAng(x,y,r){const now=performance.now(),k=x===null?'line':x+','+y,tg=r*Math.PI/2;
+  if(RANIM.k!==k||now-RANIM.t>400){RANIM.k=k;RANIM.a=tg;}else{let d=tg-RANIM.a;d=Math.atan2(Math.sin(d),Math.cos(d));RANIM.a+=d*Math.min(1,(now-RANIM.t)/1000*22);if(Math.abs(d)<.01)RANIM.a=tg;}
+  RANIM.t=now;return RANIM.a;}
+// where the end of a route will feed: a soft green tip just past the last vine's growing edge
+function drawEndTip(c,x,y,r,ok,line){const a=line?easedAng(null,0,r):easedAng(x,y,r);c.save();c.translate((x+.5)*T,(y+.5)*T);c.rotate(a);
+  c.fillStyle=ok?'rgba(166,224,90,.75)':'rgba(238,90,68,.75)';c.strokeStyle='rgba(0,0,0,.45)';c.lineWidth=1;
+  c.beginPath();c.moveTo(T*.5+7,0);c.quadraticCurveTo(T*.5+2,-2,T*.5-1,-6);c.quadraticCurveTo(T*.5+1,0,T*.5-1,6);c.quadraticCurveTo(T*.5+2,2,T*.5+7,0);c.closePath();c.fill();c.stroke();c.restore();}
+function curPlan(t,md,b){const a=placeOrigin(t,md.w[0],md.w[1]),diag=keys.has('control')&&!!B[t].belt,er=md.er==null?null:md.er;
+  const k=[t,a,b,diag,G.nextId,G.blocks.size,G.webCount,G.items.join(','),G.rot,er].join('|');if(PLANC.k===k)return PLANC;
+  const plan=B[t].belt?planVine(t,a,b,diag,er):linePlan(t,a,b);PLANC={k,plan,rows:VINE[t]?planEval(t,plan):null,diag};return PLANC;}
 function drawPlanRows(c,t,rows,time,diag){const d=B[t];let n=0,bad=0,short=0,far=0;const many=rows.length>1;
   for(const r of rows){if(r.why==='same'&&many){c.strokeStyle='rgba(140,220,230,.55)';c.lineWidth=1;c.strokeRect(r.x*T+2.5,r.y*T+2.5,T-5,T-5);}
     if(r.why==='dup'||r.why==='same')continue;n++;const ok=!r.why;if(r.why==='short')short++;else if(!ok){if(isReachWhy(r.why))far++;else bad++;}
     c.globalAlpha=ok?.6:.28;drawBlock(c,t,r.x*T,r.y*T,d.rot?r.r:0,null,time,0);c.globalAlpha=1;
     c.strokeStyle=ok?'#a6e05a':r.why==='short'?'#f0b040':'#ee5a44';c.lineWidth=1.5;c.strokeRect(r.x*T+.5,r.y*T+.5,T-1,T-1);
-    if(d.rot){c.fillStyle=ok?'rgba(166,224,90,.9)':'rgba(238,90,68,.9)';c.save();c.translate((r.x+.5)*T,(r.y+.5)*T);c.rotate(r.r*Math.PI/2);c.beginPath();c.moveTo(8,0);c.lineTo(1,-5);c.lineTo(1,5);c.closePath();c.fill();c.restore();}
+    const isEnd=r===rows[rows.length-1],line=dragging()&&mouse.down.er!=null&&!diag;
+    if(d.rot){c.fillStyle=ok?'rgba(166,224,90,.9)':'rgba(238,90,68,.9)';c.save();c.translate((r.x+.5)*T,(r.y+.5)*T);c.rotate(line?easedAng(null,0,r.r):isEnd?easedAng(r.x,r.y,r.r):r.r*Math.PI/2);c.beginPath();c.moveTo(8,0);c.lineTo(1,-5);c.lineTo(1,5);c.closePath();c.fill();c.restore();}
+    if(d.rot&&(isEnd||line))drawEndTip(c,r.x,r.y,r.r,ok,line);
     const off=!territory(r.i);if(off&&(ok||r.why.startsWith('Too far'))){const lab=ok?String(r.dist):'✕';c.font='700 10px "Chakra Petch",sans-serif';c.textAlign='left';
       c.fillStyle='#000';c.fillText(lab,r.x*T+3,r.y*T+11);c.fillStyle=ok?(r.dist>=VREACH?'#f0d060':'#d8f5c0'):'#ff7a64';c.fillText(lab,r.x*T+2,r.y*T+10);}
     // construction order: the order the tiles are paid for and start growing (nearest the Rootweb first)
@@ -1758,7 +1783,7 @@ function drawPlanRows(c,t,rows,time,diag){const d=B[t];let n=0,bad=0,short=0,far
   if(rows.length===1){if(last.why&&last.why!=='same'){const w=last.why==='short'?'Not enough in the Bloom':last.why;c.font='600 12px "Chakra Petch",sans-serif';c.textAlign='center';
     c.fillStyle='#000';c.fillText(w,(last.x+.5)*T+1,last.y*T-7);c.fillStyle='#f0a080';c.fillText(w,(last.x+.5)*T,last.y*T-8);}return;}
   const tot=planCost(t,rows),cs=Object.keys(tot).map(i=>`${tot[i]} ${IT[i].n.toLowerCase()}`).join(', ');
-  const placed=n-bad-short;let txt=`${placed} ${placed===1?d.name:d.name+'s'}${cs?' · '+cs:''}`;if(short)txt+=` · ${short} not affordable`;if(far)txt+=` · ${far} beyond vine reach`;if(bad)txt+=` · ${bad} blocked`;if(diag)txt+=' · Ctrl: staircase';
+  const placed=n-bad-short;let txt=`${placed} ${placed===1?d.name:d.name+'s'}${cs?' · '+cs:''}`;if(short)txt+=` · ${short} not affordable`;if(far)txt+=` · ${far} beyond vine reach`;if(bad)txt+=` · ${bad} blocked`;if(dragging()&&mouse.down.er!=null&&!diag)txt+=' · line turned';if(diag)txt+=' · Ctrl: staircase';
   c.font='600 12px "Chakra Petch",sans-serif';c.textAlign='center';const lx=(last.x+.5)*T,ly=last.y*T-8;c.fillStyle='#000';c.fillText(txt,lx+1,ly+1);c.fillStyle=bad||short||far?'#f0d080':'#e6e8ec';c.fillText(txt,lx,ly);}
 
 // --- Alt: a fine grid over every tile that can physically take a structure: inside the map, not rock or deep water, nothing built or growing
@@ -2157,7 +2182,9 @@ cv.addEventListener('pointerup',e=>{
   if(sel.length&&!o){const i=tileAt(wx,wy);if(i>=0&&!solidTile(i,0)){sendAnts(sel,wx,wy);msg(sel.length>1?`${sel.length} ants moving out.`:`${U[sel[0].t].name} moving out.`);return;}}
   G.selU=0;G.selUs=[];G.sel=o?o.id:0;renderPanel(true);
 });
-cv.addEventListener('wheel',e=>{e.preventDefault();const [wx,wy]=s2w(e.offsetX,e.offsetY);
+cv.addEventListener('wheel',e=>{e.preventDefault();
+  if(canRotate()){const s=wheelSteps(e);if(s)rotateTool(s);return;}   // a directional growth chosen: the wheel rotates it, and never also zooms
+  const [wx,wy]=s2w(e.offsetX,e.offsetY);
   cam.z=clamp(cam.z*(e.deltaY<0?1.12:1/1.12),.5,2.5);cam.x=wx*T-e.offsetX/cam.z;cam.y=wy*T-e.offsetY/cam.z;clampCam();},{passive:false});
 window.addEventListener('keydown',e=>{
   if(e.key==='Alt'||e.key==='F4')e.preventDefault();
@@ -2170,7 +2197,7 @@ window.addEventListener('keydown',e=>{
   else if(k==='f4'){DBG.nav=!DBG.nav;DBG.inv=[];msg(DBG.nav?'Route debug view on (F4 to hide).':'Route debug view off.');}
   else if(k==='escape'&&mouse.down&&!mouse.down.cancel){mouse.down.cancel=true;msg('Placement cancelled.');}
   else if(k==='escape'){if(G.tool)setTool(null);else{G.sel=0;G.selU=0;G.selUs=[];renderPanel(true);}}
-  else if(k==='r'){G.rot=(G.rot+(e.shiftKey?3:1))%4;}
+  else if(k==='r'){if(!rotateTool(e.shiftKey?-1:1))G.rot=(G.rot+(e.shiftKey?3:1))%4;}
   else if(k==='c'){setCommand(G.command==='attack'?'defend':'attack');}
   else if(k==='q'){const [wx,wy]=s2w(mouse.x,mouse.y),o=blockAt(Math.floor(wx),Math.floor(wy));if(o&&o.team===0&&o.t!=='core'&&G.unlocked.has(o.t)){G.tool=null;selectTab(catOf(o.t));setTool(o.t);G.rot=o.rot;}}
   else if(k==='x'){setTool('remove');}
