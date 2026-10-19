@@ -318,7 +318,7 @@ const U={
     desc:'A small, cheap ant grown from copper and lead. Weak alone, but a pack can pick off outposts and scouts.'},
   tank:{name:'Thornback Ant',hp:260,spd:1.2,r:.38,range:8.5,dmg:11,reload:.5,bspd:14,cost:[[SI,10],[PB,10]],time:10,air:true,ground:true,
     desc:'A quick, cheap warrior ant that spits thorns at ground and air.'},
-  htank:{name:'Bulwark Ant',hp:800,spd:.75,r:.55,range:12,dmg:34,reload:1.3,bspd:12,splash:.9,cost:[[SI,25],[GRAPH,20],[TI,15]],time:20,air:false,ground:true,
+  htank:{name:'Bulwark Ant',hp:800,spd:.75,r:.55,large:true,range:12,dmg:34,reload:1.3,bspd:12,splash:.9,cost:[[SI,25],[GRAPH,20],[TI,15]],time:20,air:false,ground:true,
     desc:'A huge armoured ant that lobs acid seeds. Ground targets only, with splash.'},
 };
 const CATS=[
@@ -375,7 +375,10 @@ const ENAME={door:'Blast Door',doorL:'Heavy Blast Door',wallL:'Large Steel Wall'
 function bname(b){return b.team===1?(ENAME[b.t]||B[b.t].name):B[b.t].name;}
 function nameOf(id){return (B[id]||U[id]||EVO[id]).name;}
 const GATE={door:1,doorL:1};
-function solidFor(team,b){return !!(b&&B[b.t].solid&&!(GATE[b.t]&&b.team===team));}
+// a gate is open ground for its own side's units, except that a Petal Gate is too narrow for a large unit (the Bulwark Ant):
+// NARROW is set while such a unit moves or plans a path, so collision, A* and its own flow field all see the Petal Gate as solid
+let NARROW=0;
+function solidFor(team,b){return !!(b&&B[b.t].solid&&!(GATE[b.t]&&b.team===team&&!(NARROW&&b.t==='door')));}
 
 function Heap(){this.i=[];this.p=[];this.top=0;}
 Heap.prototype.push=function(v,pr){const I=this.i,P=this.p;let k=I.length;I.push(v);P.push(pr);
@@ -1333,8 +1336,10 @@ function recompute(){
   G.dirty=false;
   for(const b of G.blocks.values())b.prox=proximity(b);
   if(G.core)computeFlow(G.flow,G.flowNext,1,[G.core]);
-  if(G.mode==='siege'&&G.ecores.length)computeFlow(G.pflow,G.pflowNext,0,G.ecores);
+  if(G.mode==='siege'&&G.ecores.length){computeFlow(G.pflow,G.pflowNext,0,G.ecores);
+    if(!FLOWL.d||FLOWL.d.length!==N){FLOWL.d=new Float64Array(N);FLOWL.n=new Int32Array(N);}NARROW=1;try{computeFlow(FLOWL.d,FLOWL.n,0,G.ecores);}finally{NARROW=0;}}
 }
+const FLOWL={d:null,n:null};   // the large units' siege flow field (not saved; rebuilt with the others)
 // cost of a tile for units of `team`: walk around any solid block when possible; enemy blocks can be broken as a last resort
 function tileCost(i,team){
   const t=G.terrain[i];if(t===WATER||t===ROCK)return Infinity;
@@ -1582,7 +1587,7 @@ function separate(){
     const dx=ub.x-ua.x,dy=ub.y-ua.y,d2=dx*dx+dy*dy;if(d2>=rr*rr||d2===0)continue;const d=Math.sqrt(d2),push=(rr-d)*.3/d;
     nudge(ua,-dx*push,-dy*push,0);nudge(ub,dx*push,dy*push,0);}
 }
-function nudge(e,dx,dy,team){if(canStep(e.x,e.y,e.x+dx,e.y+dy,radOf(e,team),team)){e.x+=dx;e.y+=dy;}}
+function nudge(e,dx,dy,team){NARROW=team===0&&U[e.t]&&U[e.t].large?1:0;try{if(canStep(e.x,e.y,e.x+dx,e.y+dy,radOf(e,team),team)){e.x+=dx;e.y+=dy;}}finally{NARROW=0;}}
 function damageEnemy(e,dmg){if(e.dead||e.script||(G.test&&arenaAt(e.x,e.y)<0))return;e.hp-=dmg;e.hit=.1;if(e.hp<=0){e.dead=true;G.kills++;G.fx.push({k:'boom',x:e.x,y:e.y,r:E[e.t].r*1.6,life:.3,max:.3});G.decals.push({x:e.x,y:e.y,r:E[e.t].r*.9,scorch:true});}}
 
 // ---------- player tanks ----------
@@ -1595,7 +1600,8 @@ function rallyPoint(k){
   const row=Math.floor(k/6),col=k%6-2.5;
   return [cx+Math.cos(a)*(6+row*1.3)-Math.sin(a)*col*1.3,cy+Math.sin(a)*(6+row*1.3)+Math.cos(a)*col*1.3];
 }
-function stepUnit(u,dt,k){
+function stepUnit(u,dt,k){NARROW=U[u.t].large?1:0;try{stepUnitN(u,dt,k);}finally{NARROW=0;}}
+function stepUnitN(u,dt,k){
   const d=U[u.t];u.cd-=dt;u.think-=dt;if(u.hit>0)u.hit-=dt;unstick(u,0);
   if(u.think<=0){u.think=.25+rnd()*.1;
     let t=nearestEnemy(u.x,u.y,d.range+.5,d.air,d.ground);
@@ -1616,7 +1622,7 @@ function stepUnit(u,dt,k){
     if(u.target)return;
     const ox=u.x,oy=u.y;let blk;
     if(u.fstuck>.8&&G.ecores.length){const c=G.ecores[0];blk=navTo(u,c.x+c.size/2,c.y+c.size/2,d.spd,dt,0);u.fstuck-=dt*.5;}
-    else{blk=followFlow(u,G.pflowNext,d.spd,dt,0,null);u.nav=null;u.fstuck=Math.hypot(u.x-ox,u.y-oy)<d.spd*dt*.2?(u.fstuck||0)+dt:Math.max(0,(u.fstuck||0)-dt*2);}
+    else{blk=followFlow(u,d.large&&FLOWL.n?FLOWL.n:G.pflowNext,d.spd,dt,0,null);u.nav=null;u.fstuck=Math.hypot(u.x-ox,u.y-oy)<d.spd*dt*.2?(u.fstuck||0)+dt:Math.max(0,(u.fstuck||0)-dt*2);}
     if(blk)u.target=blockTarget(blk);
     if(!u.target)u.tang=u.ang;return;
   }
@@ -1705,7 +1711,7 @@ function updBlock(b,dt){
   case 'nest':case 'factory':{
     const u=U[b.unit];const ok=unitOk(b.unit)&&u.cost.every(([i,n])=>b.inv[i]>=n)&&G.units.length<UNIT_CAP;b.wants=ok;
     if(ok){b.prog+=dt*(d.power?G.powSat:1)/u.time;if(b.prog>=1){b.prog=0;for(const [i,n] of u.cost)b.inv[i]-=n;
-      const sp=exitTile(b);const nu=spawnUnit(b.unit,sp[0],sp[1]);nu.ang=nu.tang=b.ang;msg(`${u.name} hatched.`,'good');}}
+      NARROW=u.large?1:0;let sp;try{sp=exitTile(b);}finally{NARROW=0;}const nu=spawnUnit(b.unit,sp[0],sp[1]);nu.ang=nu.tang=b.ang;msg(`${u.name} hatched.`,'good');}}
     return;}
   case 'combustion':
     if(b.burn<=0&&b.inv[COAL]>0){b.inv[COAL]--;b.burn=2;}
@@ -2453,7 +2459,7 @@ function drawDust(){const now=performance.now()/1000,dt=Math.min(.1,now-(dustT||
   c.restore();}
 // gates open (smoothly) when a unit of their own side comes close
 function gateOpen(b,tt){if(!b)return 0;const [cx,cy]=bCenter(b),r=b.size/2+1.4,list=b.team===1?G.enemies:G.units;let near=false;
-  for(const u of list){if(Math.abs(u.x-cx)<r&&Math.abs(u.y-cy)<r){near=true;break;}}
+  for(const u of list){if(Math.abs(u.x-cx)<r&&Math.abs(u.y-cy)<r&&!(b.t==='door'&&b.team===0&&U[u.t]&&U[u.t].large)){near=true;break;}}
   b.op=(b.op||0)+((near?1:0)-(b.op||0))*.18;return b.op;}
 function drawOrgGate(c,t,x,y,b,tt,hd){const S=B[t].size*T,cx=x+S/2,cy=y+S/2,op=gateOpen(b,tt),n=t==='doorL'?7:5;
   if(hd)c.drawImage(hdSprite('ogate'+S,S,S,(cc)=>orgPod(cc,S,false,S>30?6:4,1,false)),x,y,S,S);else{c.fillStyle=OG.shell;blobPath(c,x+1,y+1,S-2,S-2,S*.25);c.fill();}
@@ -2532,6 +2538,11 @@ const WALL_LAYERS=['roots','join','base','wound1','wound2','sheen','mend','seep'
 const PETAL_LAYERS=['roots','join','floor','frame','petalL','petalR','wound1','wound2','mend','seep'];
 const MAW_LAYERS=['roots','join','throat','base','leaf0','leaf1','leaf2','leaf3','leaf4','leaf5','wound1','wound2','mend','seep'];
 const POD_LAYERS=['roots','base','petals','chamber','gloss','veins','glow','mote','pulse','wound1','wound2','seep'];
+// Spore Flak, Seed Mortar, Sunlance and Brood Chamber as painted by art/source/paint_weapons.js (drawn by drawFlak, drawMortar, drawSun, drawBrood)
+const FLAK_LAYERS=['roots','base','sac','neck','iris','veins','puff','spore','burst','mend','wound1','wound2','seep'];
+const MORT_LAYERS=['roots','base','chamber','lip','seed','puff','shell','half','frag','mend','wound1','wound2','seep'];
+const SUN_LAYERS=['roots','base','petal','web','lens','glow','veins','bpulse','impact','mend','wound1','wound2','seep'];
+const BROOD_LAYERS=['roots','base','vessels','cavity','sac','sacglow','embT','embB','flow','lipA','lipB','gap','mend','wound1','wound2','seep'];
 const ART={plant:{
   nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.018,period:4.2},
     layers:[{f:'base.png'},{f:'liquid.png',g:'dome'},{f:'seed.png',anim:'float',n:5,size:.2,g:'dome',lite:false},
@@ -2571,6 +2582,10 @@ const ART={plant:{
   door:{name:'Petal Gate',dir:'plant/petal-gate/',custom:(...a)=>drawGateP(...a),customUnder:(...a)=>drawGateUnder(...a),box:2,t:'door',layers:PETAL_LAYERS.map(n=>({f:n+'.png'}))},
   doorL:{name:'Maw Gate',dir:'plant/maw-gate/',custom:(...a)=>drawGateM(...a),customUnder:(...a)=>drawGateUnder(...a),box:3,t:'doorL',layers:MAW_LAYERS.map(n=>({f:n+'.png'}))},
   mender:{name:'Healing Pod',dir:'plant/healing-pod/',custom:(...a)=>drawPod(...a),customUnder:(...a)=>drawPodUnder(...a),box:2,t:'mender',layers:POD_LAYERS.map(n=>({f:n+'.png'}))},
+  scatter:{name:'Spore Flak',dir:'plant/spore-flak/',custom:(...a)=>drawFlak(...a),customUnder:(...a)=>orgUnder(...a),box:3,t:'scatter',layers:FLAK_LAYERS.map(n=>({f:n+'.png'}))},
+  hail:{name:'Seed Mortar',dir:'plant/seed-mortar/',custom:(...a)=>drawMortar(...a),customUnder:(...a)=>orgUnder(...a),box:2,t:'hail',layers:MORT_LAYERS.map(n=>({f:n+'.png'}))},
+  lancer:{name:'Sunlance',dir:'plant/sunlance/',custom:(...a)=>drawSun(...a),customUnder:(...a)=>orgUnder(...a),box:3,t:'lancer',layers:SUN_LAYERS.map(n=>({f:n+'.png'}))},
+  factory:{name:'Brood Chamber',dir:'plant/brood-chamber/',custom:(...a)=>drawBrood(...a),customUnder:(...a)=>orgUnder(...a),box:4,t:'factory',layers:BROOD_LAYERS.map(n=>({f:n+'.png'}))},
   node:{name:'Rootweb Node',dir:'plant/rootweb-node/',custom:(...a)=>drawNode(...a),customUnder:(...a)=>drawNodeUnder(...a),box:1,t:'node',layers:[{f:'root.png'},{f:'base.png'},{f:'petal.png'},{f:'fluid.png'},{f:'nucleus.png'},{f:'membrane.png'},{f:'ring.png'},{f:'pulse.png'}]},
   rootweb:{name:'Rootweb',dir:'plant/rootweb/',web:true,layers:[{f:'cells.png'},{f:'pulse.png'},{f:'sheen.png'},{f:'bud.png'}]},
   duo:{name:'Thorn Spitter',dir:'plant/thorn-spitter/',pad:.5,dome:[.5,.5,.094],breathe:{amp:.045,period:3.6},hurtShrink:.12,
@@ -3212,6 +3227,180 @@ function drawPod(c,a,x,y,b,tt,mode){const I=oSet(a),PX=256,o=T/2,CX=128,CY=124;
   if(live&&u>=0&&u<1.1){const v=u/1.1,px=128+(hash(b.id,s.n,3)*2-1)*30,py=128+(hash(b.id,s.n,5)*2-1)*30,z=128*(.13+.07*s.f)*Math.min(1,u/.12)*(1-v*.35);
     c.save();c.globalAlpha=Math.min(1,(1-v)*1.6);dI(c,I.seep,px-z/2,py-z/2+20*v*v,z,z);c.restore();}
   c.restore();}
+
+// ===== Spore Flak, Seed Mortar, Sunlance and Brood Chamber (v42): the hive's last four organs =====
+// Artwork only: every movement here reads what the game itself keeps and changes none of it.
+// Spore Flak and Seed Mortar: the aim is the game's own b.ang; a shot is the game's own b.shot (set only when a projectile really
+// leaves); the organ tightens only while it has a live target, ammunition and its next shot coming due (b.reload counting down).
+// Sunlance: it gathers only while the game is really charging it (a live target and vigor, G.powSat), as far as b.charge; it fires
+// only when the game adds its beam effect for this organ, and the beam is drawn from the lens along that effect's own line and timing.
+// Brood Chamber: the sac swells with the game's own production progress (b.prog) and shows the ant really being grown (b.unit); its
+// nutrients flow only while production is running (b.wants and vigor); the release opening sits on the side of the tile the game
+// would hatch onto now (exitTile, as the game calls it for that ant) and parts when the game really hatches one there.
+// Visual memory lives in OST and is never saved.
+const XDG={scatter:{flinch:.05,breath:.025},hail:{flinch:.06},lancer:{flinch:.04},factory:{flinch:.035,breath:.008}};
+const xCl=v=>v<0?0:v>1?1:v;
+function xFrame(c,a,x,y,n){const o=(a.box-n)/2*T;c.save();c.translate(x-o,y-o);c.scale(T/128,T/128);}
+function orgUnder(c,a,b){const o=(a.box-b.size)/2*T;dI(c,oSet(a).roots,b.x*T-o,b.y*T-o,a.box*T,a.box*T);}
+const xRot=(c,cx,cy,an)=>{c.translate(cx,cy);c.rotate(an);c.translate(-cx,-cy);};
+const xSc=(c,cx,cy,sx,sy)=>{c.translate(cx,cy);c.scale(sx,sy??sx);c.translate(-cx,-cy);};
+function xAdd(c,im,x,y,w,h,al){if(al<=.01)return;c.save();c.globalCompositeOperation='lighter';c.globalAlpha*=Math.min(1,al);dI(c,im,x,y,w,h);c.restore();}
+// the warning the old looks gave a turret with no ammunition left
+function xNoAmmo(c,b,x,y,tt){if(!B[b.t].tur.ammo||bestAmmo(b)>=0)return;const S=b.size*T;c.fillStyle=`rgba(238,90,68,${.5+.5*Math.sin(tt*6)})`;c.beginPath();c.arc(x+S-5,y+5,2.5,0,7);c.fill();}
+const xEng=b=>!!b.target&&alive(b.target);
+// health, hits and Healing Pod repairs read as on the walls and gates: the shared state for one organ this frame
+function xState(a,b,tt,mode,k){const s=ost(b);hTrack(b,s,tt);const live=mode==='full'&&!ART_RM,dt=Math.max(0,Math.min(.1,tt-(s.at??tt)));s.at=tt;
+  const q=Math.round(xCl(b.hp/b.max)*20),fl=live?XDG[k].flinch*(.45+.55*s.f)*sw(0,.34,tt-s.hurtT):0;return {s,live,dt,q,fl};}
+
+// ---- Spore Flak ----
+// a pressurised dispersal organ: five spore sacs feed a launching neck that turns to the aim. As the next real shot comes due the sacs
+// draw taut and their veins light; on the shot the launch membrane snaps shut over the mouth, the neck kicks back and a puff of spores
+// leaves the mouth; then it all relaxes. Resting, only the sacs move, slowly.
+const FLAK_SA=[0,1,2,3,4].map(k=>k/5*6.283+.6),FLAK_K=192,FLAK_MX=FLAK_K+30;
+function flakSacs(c,I,sq,br,ph){const K=FLAK_K;for(let k=0;k<5;k++){const a=FLAK_SA[k],r=48*(1-.05*sq),z=96*.62*(1+(br?br*Math.sin(ph+k*1.3):0)-.11*sq);
+  dI(c,I.sac,K+Math.cos(a)*r-z/2,K+Math.sin(a)*r-z*1.02/2,z,z*1.02);}}
+function flakNeck(c,I,P,ang,kick,iris){const K=FLAK_K,MX=FLAK_MX;c.save();xRot(c,K,K,ang);c.translate(-kick,0);dI(c,P('neck'),0,0,384,384);
+  c.save();xSc(c,MX,K,iris);dI(c,I.iris,0,0,384,384);c.restore();c.restore();}
+function drawFlak(c,a,x,y,b,tt,mode){const I=oSet(a),PX=384,K=FLAK_K;xFrame(c,a,x,y,2);
+  if(!b){dI(c,I.roots,0,0,PX,PX);dI(c,I.base,0,0,PX,PX);flakSacs(c,I,0,0,0);flakNeck(c,I,n=>I[n],-Math.PI/4,0,1);c.restore();return;}
+  const {s,live,dt,q,fl}=xState(a,b,tt,mode,'scatter'),P=n=>gPiece(a,n,q),ang=b.ang||0;
+  if(mode==='lite'){dI(c,wCache(a,'L'+q,cc=>{const J=oSet(a);cc.scale(T/128,T/128);dI(cc,gPiece(a,'base',q),0,0,PX,PX);flakSacs(cc,J,0,0,0);},a.box),0,0,PX,PX);
+    flakNeck(c,I,P,ang,0,1);c.restore();xNoAmmo(c,b,x,y,tt);return;}
+  const tu=B.scatter.tur,eng=xEng(b)&&bestAmmo(b)>=0,pr=eng?xCl(1-Math.max(0,b.reload)/tu.reload):0;
+  s.pr=(s.pr??0)+(pr-(s.pr??0))*Math.min(1,dt*14);
+  const sh=b.shot!=null?tt-b.shot:9,u=sh<0||!live?9:sh,fp=u<.03?u/.03:u<.4?Math.exp(-(u-.03)/.06):0,sq=s.pr*(1-fp);
+  c.save();xSc(c,K,K,1-fl);dI(c,P('base'),0,0,PX,PX);c.restore();
+  flakSacs(c,I,sq-.45*fp,live?XDG.scatter.breath*(1-s.pr):0,tt*6.283/4.6+b.id);
+  xAdd(c,I.veins,0,0,PX,PX,.1+.55*s.pr+.4*fp);
+  flakNeck(c,I,P,ang,7*fp,1+.05*sq-.6*fp);
+  if(u<.22){const v=u/.22,z=60*(.5+v),mx=K+Math.cos(ang)*(FLAK_MX-K+8+v*26),my=K+Math.sin(ang)*(FLAK_MX-K+8+v*26);
+    c.save();c.globalAlpha*=.85*(1-v);dI(c,I.puff,mx-z/2,my-z/2,z,z);c.restore();}
+  if(live)gAfter(c,a,I,b,s,tt,PX,2);
+  c.restore();xNoAmmo(c,b,x,y,tt);}
+
+// ---- Seed Mortar ----
+// a muscular chamber holding the next hardened seed in its opening. As the next real shot comes due the chamber draws in; on the shot
+// the opening flares, the seed is gone (it is now the game's projectile), the chamber kicks back and slowly restores its shape, and a
+// new seed slides up into the opening once it has ammunition again.
+const MORT_K=128,MORT_FX=MORT_K+34;
+function mortarArm(c,I,P,ang,sx,sy,rc,lo,seed){const K=MORT_K,FX=MORT_FX;c.save();xRot(c,K,K,ang);
+  c.save();c.translate(rc,0);xSc(c,K,K,sx,sy);dI(c,P('chamber'),0,0,256,256);c.restore();
+  if(seed!=null)dI(c,I.seed,seed+rc,0,256,256);
+  c.save();xSc(c,FX+rc,K,lo);dI(c,I.lip,rc,0,256,256);c.restore();c.restore();}
+function drawMortar(c,a,x,y,b,tt,mode){const I=oSet(a),PX=256,K=MORT_K;xFrame(c,a,x,y,1);
+  if(!b){dI(c,I.roots,0,0,PX,PX);dI(c,I.base,0,0,PX,PX);mortarArm(c,I,n=>I[n],-Math.PI/4,1,1,0,1,0);c.restore();return;}
+  const {s,live,dt,q,fl}=xState(a,b,tt,mode,'hail'),P=n=>gPiece(a,n,q),ang=b.ang||0,ammo=bestAmmo(b)>=0;
+  if(mode==='lite'){dI(c,P('base'),0,0,PX,PX);mortarArm(c,I,P,ang,1,1,0,1,ammo?0:null);c.restore();xNoAmmo(c,b,x,y,tt);return;}
+  const pre=xEng(b)&&ammo?sm01(1-Math.max(0,b.reload)/.4):0;s.pr=(s.pr??0)+(pre-(s.pr??0))*Math.min(1,dt*12);
+  const sh=b.shot!=null?tt-b.shot:9,u=sh<0||!live?9:sh,fp=u<.06?u/.06:u<.9?Math.exp(-(u-.06)/.16):0,dr=s.pr*(1-fp);
+  // the seed in the opening: gone with the shot, back once it has ammunition and the chamber has refilled
+  const sv=!ammo?null:u<.55?null:u<.9?(sm01((u-.55)/.35)-1)*18:2.5*dr;
+  c.save();xSc(c,K,K,1-fl);dI(c,P('base'),0,0,PX,PX);c.restore();
+  mortarArm(c,I,P,ang,1-.08*dr+.06*fp,1-.11*dr+.04*fp,-7*fp,1+.4*fp,sv);
+  if(u<.3){const v=u/.3,d=MORT_FX-K+6+v*22,z=44*(.6+v);c.save();c.globalAlpha*=.8*(1-v);dI(c,I.puff,K+Math.cos(ang)*d-z/2,K+Math.sin(ang)*d-z/2,z,z);c.restore();}
+  if(live)gAfter(c,a,I,b,s,tt,PX,1);
+  c.restore();xNoAmmo(c,b,x,y,tt);}
+
+// ---- Sunlance ----
+// a dish of focusing petals behind a lens of luminous fluid, turned to the aim. While the game charges it the petals close in round the
+// lens, the gold veins brighten and the lens lights; on the beam it flares, then the petals spring back open and the light fades.
+const SUN_K=192,SUN_PO=[-1.26,1.26,-.84,.84,-.42,.42,0],SUN_FXH={t:-1,m:new Map()};
+function sunDish(c,I,P,ang,ti){const K=SUN_K;c.save();xRot(c,K,K,ang);dI(c,I.web,0,0,384,384);
+  for(const o of SUN_PO){c.save();xRot(c,K,K,Math.PI+o*(1-.24*ti));xSc(c,K,K,1-.12*ti,1-.1*ti);dI(c,I.petal,0,0,384,384);c.restore();}
+  dI(c,P('lens'),0,0,384,384);c.restore();}
+function drawSun(c,a,x,y,b,tt,mode){const I=oSet(a),PX=384,K=SUN_K;xFrame(c,a,x,y,2);
+  if(!b){dI(c,I.roots,0,0,PX,PX);dI(c,I.base,0,0,PX,PX);sunDish(c,I,n=>I[n],-Math.PI/4,0);c.restore();return;}
+  const {s,live,dt,q,fl}=xState(a,b,tt,mode,'lancer'),P=n=>gPiece(a,n,q),ang=b.ang||0;
+  // charging is real only with a live target and vigor; otherwise the stored charge just waits and the organ relaxes
+  const g=xEng(b)&&G.powSat>0?xCl(b.charge||0):0;s.g=(s.g??0)+(g-(s.g??0))*Math.min(1,dt*(g>(s.g??0)?10:1.6));
+  if(SUN_FXH.t!==tt){SUN_FXH.t=tt;SUN_FXH.m.clear();for(const f of G.fx)if(f.k==='laser'&&!f.team)SUN_FXH.m.set(f.x1*8192+f.y1,f);}
+  const [cx,cy]=bCenter(b),f=SUN_FXH.m.get(cx*8192+cy);if(f&&f!==s.fx){s.fx=f;if(f.max-f.life<.2){s.fireT=tt-(f.max-f.life);s.g=0;}}
+  const fu=s.fireT!=null&&live?tt-s.fireT:9,fp=fu<0?0:fu<.05?1:fu<.8?Math.exp(-(fu-.05)/.18):0,ti=Math.max(s.g,fp)-.25*sw(.2,.9,fu);
+  if(mode==='lite'){dI(c,P('base'),0,0,PX,PX);c.save();xRot(c,K,K,ang);dI(c,wCache(a,'D'+q,cc=>{cc.scale(T/128,T/128);sunDish(cc,oSet(a),P,0,0);},a.box),0,0,PX,PX);c.restore();
+    xAdd(c,I.glow,0,0,PX,PX,s.g*.7+fp);c.restore();return;}
+  c.save();xSc(c,K,K,1-fl);dI(c,P('base'),0,0,PX,PX);c.restore();
+  sunDish(c,I,P,ang,ti);
+  const lit=Math.max(s.g,fp);xAdd(c,I.veins,0,0,PX,PX,.06+.75*lit);
+  if(lit>.01){c.save();xRot(c,K,K,ang);xAdd(c,I.glow,0,0,PX,PX,s.g*.7+fp);c.restore();}
+  if(live)gAfter(c,a,I,b,s,tt,PX,2);
+  c.restore();}
+// the beam itself, in place of the plain laser line: from the lens front along the game's own beam, for the game's own 0.25 s
+function drawLanceBeam(c,f,tt){const I=oSet(ART.plant.lancer),a=f.life/f.max,dx=f.x2-f.x1,dy=f.y2-f.y1,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,S0=.31;
+  const x0=(f.x1+ux*S0)*T,y0=(f.y1+uy*S0)*T,x1=f.x2*T,y1=f.y2*T,al=a*Math.min(1,(f.max-f.life)/.03+.3);
+  c.save();c.globalCompositeOperation='lighter';c.lineCap='round';c.beginPath();c.moveTo(x0,y0);c.lineTo(x1,y1);
+  c.strokeStyle=`rgba(170,100,220,${.32*al})`;c.lineWidth=T*.42*(.6+.4*a);c.stroke();
+  c.strokeStyle=`rgba(255,214,130,${.6*al})`;c.lineWidth=T*.15;c.stroke();
+  c.strokeStyle=`rgba(255,252,236,${.95*al})`;c.lineWidth=T*.055;c.stroke();
+  const D=(L-S0)*T,z=T*.5;for(let j=0;j<3;j++){const d=(((1-a)*1.6+j/3)%1)*D;c.globalAlpha=.8*al;dI(c,I.bpulse,x0+ux*d-z/2,y0+uy*d-z/2,z,z);}
+  const zi=T*1.1*(.7+.3*a);c.globalAlpha=.55*al;dI(c,I.impact,x1-zi/2,y1-zi/2,zi,zi);c.restore();}
+
+// ---- Brood Chamber ----
+// three incubation sacs round a brood cavity. The ring of sacs turns so the gap between two of them faces the release opening, and the
+// opening sits on the side the game would hatch onto. While production runs, nutrients flow along the vessels into the sac in use;
+// that sac swells with the progress and the ant being grown shows inside it, stirring more as it nears completion. When the game
+// hatches it the opening parts, the sac empties and the chamber settles; the next ant grows in the other sac beside the opening.
+const BROOD_K=256,BROOD_SA=[-Math.PI/2,Math.PI/6,Math.PI*5/6],BROOD_R=96;
+function broodExit(b,s,tt,fresh){if(fresh||s.et===undefined||tt-s.et>.5||tt<s.et){NARROW=U[b.unit]&&U[b.unit].large?1:0;let p;try{p=exitTile(b);}finally{NARROW=0;}s.ex=p;s.et=tt;}return s.ex;}
+function broodSac(c,I,i,phi,sw0){const K=BROOD_K,a=BROOD_SA[i]+phi,sx=K+Math.cos(a)*BROOD_R,sy=K+Math.sin(a)*BROOD_R,z=160*sw0;dI(c,I.sac,sx-z/2,sy-z/2,z,z);return [sx,sy,a,z];}
+function broodLips(c,I,th,op){const K=BROOD_K;c.save();c.translate(K+Math.cos(th)*100,K+Math.sin(th)*100);c.rotate(th);c.scale(1.3,1.3);
+  if(op>.01){c.save();c.globalAlpha*=op;dI(c,I.gap,-40,-80,160,160);c.restore();}
+  c.save();c.translate(0,-op*16);c.rotate(-op*.26);dI(c,I.lipA,-40,-80,160,160);c.restore();
+  c.save();c.translate(0,op*16);c.rotate(op*.26);dI(c,I.lipB,-40,-80,160,160);c.restore();c.restore();}
+function drawBrood(c,a,x,y,b,tt,mode){const I=oSet(a),PX=512,K=BROOD_K;xFrame(c,a,x,y,3);
+  if(!b){dI(c,I.roots,0,0,PX,PX);dI(c,I.base,0,0,PX,PX);dI(c,I.vessels,0,0,PX,PX);dI(c,I.cavity,0,0,PX,PX);for(let i=0;i<3;i++)broodSac(c,I,i,0,1);broodLips(c,I,Math.PI/2,0);c.restore();return;}
+  const {s,live,dt,q,fl}=xState(a,b,tt,mode,'factory'),P=n=>gPiece(a,n,q);
+  const [ex,ey]=broodExit(b,s,tt),th0=Math.atan2(ey-(b.y+b.size/2),ex-(b.x+b.size/2));
+  if(s.th===undefined||!live)s.th=th0;else s.th+=(((th0-s.th+Math.PI*3)%(Math.PI*2))-Math.PI)*Math.min(1,dt*4);
+  const th=s.th,phi=th-Math.PI/2,prog=b.prog||0,act=!!b.wants&&G.powSat>0;
+  // a hatching the game really made: progress back to nothing with a fresh ant of that kind on the exit tile (not a change of order)
+  if(s.pg!==undefined&&s.pg>.5&&prog<s.pg-.3&&s.un===b.unit){const sp=broodExit(b,s,tt,true);
+    if(G.units.some(u=>u.t===b.unit&&Math.hypot(u.x-sp[0],u.y-sp[1])<1.2)){s.relT=tt;s.relS=1+(s.ns||0)%2;s.ns=(s.ns||0)+1;}}
+  s.pg=prog;s.un=b.unit;s.act=(s.act??0)+((act?1:0)-(s.act??0))*Math.min(1,dt*3);if(!live)s.act=act?1:0;
+  const ru=live&&s.relT!=null?tt-s.relT:9,op=ru<.9?Math.pow(sw(0,.9,ru),.6):0,cur=1+(s.ns||0)%2;
+  c.save();xSc(c,K,K,1-fl);dI(c,P('base'),0,0,PX,PX);c.restore();
+  c.save();xRot(c,K,K,phi);dI(c,I.vessels,0,0,PX,PX);c.restore();
+  // nutrients running along the two vessels into the sac in use, faster as the ant nears completion
+  if(live&&act&&s.act>.03&&mode==='full'){const ac=BROOD_SA[cur]+phi,sx=K+Math.cos(ac)*BROOD_R,sy=K+Math.sin(ac)*BROOD_R;c.save();c.globalCompositeOperation='lighter';
+    for(const sg of [-1,1])for(let j=0;j<2;j++){const v=((tt*(.45+.8*prog)+j*.5+(sg>0?.25:0))%1),w=1-v,
+      p0=[K+Math.cos(ac+sg*.55)*150,K+Math.sin(ac+sg*.55)*150],p1=[K+Math.cos(ac+sg*.35)*128,K+Math.sin(ac+sg*.35)*128],p2=[sx+Math.cos(ac+sg*1.2)*30,sy+Math.sin(ac+sg*1.2)*30],
+      px=w*w*p0[0]+2*w*v*p1[0]+v*v*p2[0],py=w*w*p0[1]+2*w*v*p1[1]+v*v*p2[1],z=30;c.globalAlpha=.75*s.act*Math.sin(Math.PI*v);dI(c,I.flow,px-z/2,py-z/2,z,z);}c.restore();}
+  {const cs=1+.05*sw(0,.5,ru);c.save();xSc(c,K,K,cs);dI(c,P('cavity'),0,0,PX,PX);c.restore();}
+  const br=live?XDG.factory.breath:0;
+  for(let i=0;i<3;i++){const isCur=i===cur,rel=i===s.relS&&ru<.9,sw0=1+br*Math.sin(tt*6.283/5+i*2.1+b.id)+(isCur?.14*prog:0)-(rel?.12*sw(0,.9,ru):0),
+      [sx,sy,an,z]=broodSac(c,I,i,phi,sw0);
+    if(isCur&&prog>.02){const e=I[b.unit==='htank'?'embB':'embT'],es=(.4+.6*prog)*sw0,wr=live&&act?.14*prog*Math.sin(tt*(3+4*prog)+b.id):0,ez=128*es;
+      c.save();c.globalAlpha*=Math.min(1,prog*1.6)*.9;c.translate(sx,sy);c.rotate(an+Math.PI/2+wr);dI(c,e,-ez/2,-ez/2,ez,ez);c.restore();
+      c.save();c.globalAlpha*=.25;dI(c,I.sac,sx-z/2,sy-z/2,z,z);c.restore();
+      xAdd(c,I.sacglow,sx-z/2,sy-z/2,z,z,prog*(.2+.45*s.act)+(live&&act&&prog>.75?.12*Math.sin(tt*9):0));}}
+  broodLips(c,I,th,op);
+  if(live)gAfter(c,a,I,b,s,tt,PX,3);
+  c.restore();}
+
+// ---- projectiles and impacts of the Spore Flak and Seed Mortar ----
+// drawn from the game's own bullets (position, velocity, the mortar's arc); the impact art replaces the plain burst the game adds where
+// such a bullet ended, matched to it by place and size, and is purely a picture: the game's damage and splash are untouched
+const XFXK=new WeakMap();let XB_prev=[],XB_cur=[];
+function drawSporeShot(c,p,tt){const I=oSet(ART.plant.scatter),z=T*.55,sp=Math.hypot(p.vx,p.vy)||1;
+  c.save();c.globalCompositeOperation='lighter';c.strokeStyle='rgba(210,250,150,.3)';c.lineWidth=T*.14;c.lineCap='round';c.beginPath();c.moveTo(p.x*T,p.y*T);c.lineTo((p.x-p.vx/sp*.45)*T,(p.y-p.vy/sp*.45)*T);c.stroke();c.restore();
+  c.save();c.translate(p.x*T,p.y*T);c.rotate(tt*5+(p.x+p.y)*.7);dI(c,I.spore,-z/2,-z/2,z,z);c.restore();
+  XB_cur.push({k:'s',x:p.x,y:p.y,vx:p.vx,vy:p.vy,r:p.splash*.6});}
+function drawSeedShell(c,p){const I=oSet(ART.plant.hail),k=Math.min(1,p.t/p.fl),dx=p.tx-p.sx,dy=p.ty-p.sy;
+  XB_cur.push({k:'m',x:p.tx,y:p.ty,r:p.splash});
+  if(Math.hypot(p.x-p.sx,p.y-p.sy)<.3)return;   // still inside the chamber's opening
+  const hgt=Math.sin(k*Math.PI)*p.fl*18,an=Math.atan2(dy*T-Math.cos(k*Math.PI)*Math.PI*p.fl*18,dx*T),z=T*.6;
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(p.x*T,p.y*T,3.2,2,0,0,7);c.fill();
+  c.save();c.translate(p.x*T,p.y*T-hgt);c.rotate(an);dI(c,I.shell,-z/2,-z/2,z,z);c.restore();}
+// after the bullets are drawn: name each new burst that ended one of last frame's spore clusters or seeds
+function xClassify(){if(XB_prev.length)for(const f of G.fx){if(f.k!=='boom'||XFXK.has(f))continue;let k='n';
+    for(const p of XB_prev){if(p.k==='m'?Math.abs(f.x-p.x)<1e-6&&Math.abs(f.y-p.y)<1e-6&&f.r===p.r:Math.abs(f.r-p.r)<1e-9&&Math.hypot(f.x-p.x,f.y-p.y)<2.2){k=p.k;break;}}
+    XFXK.set(f,k);}
+  else for(const f of G.fx)if(f.k==='boom'&&!XFXK.has(f))XFXK.set(f,'n');
+  XB_prev=XB_cur;XB_cur=[];}
+function drawXBoom(c,f,k){const a=f.life/f.max,R=f.r*T;
+  if(k==='s'){const I=oSet(ART.plant.scatter),z=R*2.4*(1.25-a*.5);c.save();c.globalAlpha=a;dI(c,I.burst,f.x*T-z/2,f.y*T-z/2,z,z);c.restore();return;}
+  const I=oSet(ART.plant.hail),v=1-a,z=R*2.2*(.75+v*.45);c.save();c.globalAlpha=Math.min(1,a*1.4);dI(c,I.frag,f.x*T-z/2,f.y*T-z/2,z,z);
+  const hz=T*.42;for(const sg of [-1,1]){c.save();c.translate(f.x*T+sg*v*T*.5,f.y*T-Math.sin(v*Math.PI)*T*.35);c.rotate(sg*v*2.2+(sg<0?Math.PI:0));dI(c,I.half,-hz/2,-hz/2,hz,hz);c.restore();}
+  c.restore();}
 // the sap a pod sends: a soft pulse running out to each growth it really mended, after every building is drawn; walls and gates
 // show their own mend light when it lands, anything else gets a brief soft glow
 function drawPodFx(c,tt){const a=ART.plant.mender;if(!a||a.state!=='ready'||!SET.art){PODFX.length=0;return;}const im=oSet(a).pulse;
@@ -3386,8 +3575,8 @@ function drawNodeUnder(c,a,b,lite){if(lite)return;const ph=b.id*2.17,A=[];let ma
     s.tc=cv;s.tm=mask;s.th=hi;}
   c.drawImage(s.tc,(b.x-1)*T,(b.y-1)*T,3*T,3*T);}
 // per-kind crowd limits: past these many on screen (or zoomed out) a kind draws its baked look plus what the player needs
-const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24,combustion:40,solar:40,bellows:16,wall:140,twall:140,wallL:48,door:80,doorL:30,mender:40},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
-const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0,combustion:0,solar:0,bellows:0,wall:0,twall:0,wallL:0,door:0,doorL:0,mender:0};
+const ORGAN_MAX={router:60,sorter:60,node:40,press:24,drill:32,pdrill:32,smelter:24,combustion:40,solar:40,bellows:16,wall:140,twall:140,wallL:48,door:80,doorL:30,mender:40,scatter:40,hail:60,lancer:30,factory:16},ORGAN_ALL_MAX=90;   // and past this many of the first four together (the Resin Gland keeps its detail up to its own limit)
+const ORGAN_N={router:0,sorter:0,node:0,press:0,drill:0,pdrill:0,smelter:0,combustion:0,solar:0,bellows:0,wall:0,twall:0,wallL:0,door:0,doorL:0,mender:0,scatter:0,hail:0,lancer:0,factory:0};
 function organLite(t){const N=ORGAN_N;return (typeof cam!=='undefined'&&cam.z<ART_LOD_ZOOM)||N[t]>ORGAN_MAX[t]||((t==='router'||t==='sorter'||t==='node')&&N.router+N.sorter+N.node+N.press>ORGAN_ALL_MAX);}
 // a Splitter Bulb or Sorting Gland: vines run straight into its channels
 const organJoin=o=>(o.t==='router'||o.t==='sorter')&&organOpen(o.t);
@@ -3530,24 +3719,28 @@ function render(){
   if(G.test)testDrawWorld(ctx,time);
   for(const su of selAnts()){ctx.strokeStyle='#a6e05a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(su.x*T,su.y*T,U[su.t].r*T+5,0,7);ctx.stroke();
     if(su.hold){ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(su.x*T,su.y*T);ctx.lineTo(su.hold[0]*T,su.hold[1]*T);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(su.hold[0]*T,su.hold[1]*T,4,0,7);ctx.stroke();}}
-  const thornArt=!!artFor('duo',0);
+  const thornArt=!!artFor('duo',0),sporeArt=!!artFor('scatter',0),seedArt=!!artFor('hail',0),lanceArt=!!artFor('lancer',0);
   for(const p of G.bullets){
     if(thornArt&&p.ox!=null&&!p.team){drawThornShot(ctx,p);continue;}
+    if(sporeArt&&p.flak&&!p.team){drawSporeShot(ctx,p,time);continue;}
+    if(seedArt&&p.art&&!p.team){drawSeedShell(ctx,p);continue;}
     if(p.art){const k=Math.min(1,p.t/p.fl),hgt=Math.sin(k*Math.PI)*p.fl*18;ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(p.x*T-2,p.y*T-2,4,4);
       ctx.fillStyle=p.team?'#ff8a5c':(p.col||'#fff');ctx.beginPath();ctx.arc(p.x*T,p.y*T-hgt,3.5,0,7);ctx.fill();continue;}
     ctx.strokeStyle=p.team?'#ff7a55':(p.col||'#ffe7a8');ctx.lineWidth=p.team?2:2.5;ctx.beginPath();ctx.moveTo(p.x*T,p.y*T);ctx.lineTo((p.x-p.vx*.03)*T,(p.y-p.vy*.03)*T);ctx.stroke();}
+  if(sporeArt||seedArt)xClassify();else XB_prev=XB_cur=[];
   for(const e of G.enemies)if(E[e.t].air&&inView(e.x,e.y,2)&&fogVis(e.x,e.y))drawEnemy(ctx,e,time);
   if(SET.hd){ctx.save();ctx.globalCompositeOperation='lighter';const pu=.5+.5*Math.sin(time*2.6);
     for(const b of G.blocks.values()){if(!inView(b.x,b.y,4))continue;const [cx,cy]=bCenter(b);
       if(b.t==='core'&&b.team===0)hdGlow(ctx,cx*T,cy*T,T*3.2,'rgba(150,230,90,A)',.18+pu*.12);
       else if(b.t==='node'&&b.team===0)hdGlow(ctx,cx*T,cy*T,T*1.4,'rgba(200,120,255,A)',.18+pu*.1);
       else if(b.t==='combustion'&&b.burn>0)hdGlow(ctx,cx*T,cy*T,T*1.2,'rgba(255,150,60,A)',.25);
-      else if(b.t==='lancer'&&b.charge>.2)hdGlow(ctx,cx*T,cy*T,T*1.6,b.team?'rgba(140,200,255,A)':'rgba(255,240,170,A)',b.charge*.3);}
+      else if(b.t==='lancer'&&b.charge>.2&&(b.team||!lanceArt))hdGlow(ctx,cx*T,cy*T,T*1.6,b.team?'rgba(140,200,255,A)':'rgba(255,240,170,A)',b.charge*.3);}
     for(const p of G.bullets)if(!p.art)hdGlow(ctx,p.x*T,p.y*T,7,p.team?'rgba(255,120,80,A)':'rgba(190,255,140,A)',.35);
-    for(const f of G.fx)if(f.k==='boom')hdGlow(ctx,f.x*T,f.y*T,f.r*T*2,'rgba(255,170,90,A)',f.life/f.max*.5);
+    for(const f of G.fx)if(f.k==='boom'){const k=sporeArt&&XFXK.get(f);hdGlow(ctx,f.x*T,f.y*T,f.r*T*2,k==='s'?'rgba(200,250,140,A)':'rgba(255,170,90,A)',f.life/f.max*(k==='s'?.3:.5));}
     ctx.restore();}
   for(const f of G.fx){const a=f.life/f.max;
-    if(f.k==='boom'){ctx.fillStyle=`rgba(255,${170+a*60|0},90,${a*.6})`;ctx.beginPath();ctx.arc(f.x*T,f.y*T,f.r*T*(1.2-a*.5),0,7);ctx.fill();}
+    if(f.k==='boom'){const k=XFXK.get(f);if((k==='s'&&sporeArt)||(k==='m'&&seedArt)){drawXBoom(ctx,f,k);continue;}ctx.fillStyle=`rgba(255,${170+a*60|0},90,${a*.6})`;ctx.beginPath();ctx.arc(f.x*T,f.y*T,f.r*T*(1.2-a*.5),0,7);ctx.fill();}
+    else if(f.k==='laser'&&!f.team&&lanceArt)drawLanceBeam(ctx,f,time);
     else if(f.k==='laser'){ctx.strokeStyle=f.team?`rgba(255,140,120,${a})`:`rgba(150,210,255,${a})`;ctx.lineWidth=6*a+1;ctx.beginPath();ctx.moveTo(f.x1*T,f.y1*T);ctx.lineTo(f.x2*T,f.y2*T);ctx.stroke();
       ctx.strokeStyle=`rgba(255,255,255,${a})`;ctx.lineWidth=2*a;ctx.stroke();}
     else if(f.k==='flame'){ctx.strokeStyle=`rgba(255,140,50,${a*.8})`;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(f.x1*T,f.y1*T);ctx.lineTo(f.x2*T,f.y2*T);ctx.stroke();}

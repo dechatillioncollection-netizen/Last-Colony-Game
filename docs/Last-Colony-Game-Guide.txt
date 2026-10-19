@@ -38,9 +38,9 @@ The swarm has 26 growths, including the Bloom. All of them except the Bloom, Vin
 
 - Bloom (Heart, 3×3): The swarm's headquarters on each map. Stores everything gathered, grows Rootweb toward 30% of the map and spits at nearby enemies. Lose it and you lose the map.
 - Thorn Spitter (Spitters, 1×1): Twin thorns at ground and air. Fed copper, resin or chitin.
-- Spore Flak (Spitters, 2×2): Spore bursts against flyers only. Fed lead or chitin.
-- Seed Mortar (Spitters, 1×1): Long-range exploding seed pods against ground targets. Fed resin or chitin.
-- Sunlance (Spitters, 2×2): A piercing beam of light against ground targets. Uses 40 vigor.
+- Spore Flak (Spitters, 2×2): Spore bursts against flyers only. Fed lead or chitin. Its spore sacs draw taut as each shot comes due, and its launching neck puffs out a cluster of spores that bursts among the flyers.
+- Seed Mortar (Spitters, 1×1): Long-range exploding seed pods against ground targets. Fed resin or chitin. Its muscular chamber clenches and throws a hardened seed that splits apart where it lands; an empty opening means it is reloading or out of ammunition.
+- Sunlance (Spitters, 2×2): A piercing beam of light against ground targets. Uses 40 vigor. Its petals close round the lens and its veins glow gold while it gathers; a dark lens means it has no target or not enough vigor.
 - Root Tap (Roots, 2×2): Mines copper, lead, coal or sand and pushes it into adjacent vines. Its tendrils pulse once for every piece mined, and grains of the ore gather in its sac; a tap that has stopped pulsing is backed up or has nothing to mine.
 - Deep Root (Roots, 2×2): A faster tap that can also break down titanium. Heavier, slower pulses through its pressure chamber.
 - Vine (Vines, 1×1): Carries items in the direction it grows. Units can walk over it.
@@ -58,12 +58,12 @@ The swarm has 26 growths, including the Bloom. All of them except the Bloom, Vin
 - Great Bark (Bark, 2×2): Four bark walls in one. Overlapping bark plates bound by two great root bundles.
 - Ironbark (Bark, 1×1): A much tougher wall hardened with titanium. Near-black, mineral-flecked plates.
   All three walls flinch and bleed sap when hit, crack and split as their health falls, and glow green while a Healing Pod mends them.
-- Petal Gate (Bark, 1×1): A wall that opens for your ants. Too narrow for Bulwark Ants.
+- Petal Gate (Bark, 1×1): A wall that opens for your ants. Too narrow for Bulwark Ants: they will not squeeze through and go round to a Maw Gate or another way instead, and the gate stays shut for them.
 - Maw Gate (Bark, 2×2): A wide gate that opens for every ant, Bulwarks included.
 - Healing Pod (Bark, 1×1): Mends your growths within 6 tiles. Uses 12 vigor.
   Both gates are living passages that knit into the walls beside them: the Petal Gate's two petals fold back and the Maw Gate's membranes draw open like an iris whenever one of your ants comes through. A Healing Pod breathes quietly at rest, and each time it really mends something it squeezes and sends a pulse of green sap to each growth it healed.
 - Spawning Pod (Brood, 2×2): Grows Mite Ants from copper and lead. No vigor needed.
-- Brood Chamber (Brood, 3×3): Hatches Thornback and Bulwark Ants. Uses 30 vigor.
+- Brood Chamber (Brood, 3×3): Hatches Thornback and Bulwark Ants. Uses 30 vigor. The ant you ordered grows inside one of its sacs as nutrients flow in, and its release opening parts on the side the new ant comes out.
 
 Evolutions that aren't buildings: Rapid Rooting makes Rootweb spread 60% faster, and Spore Winds adds another 60% and gives Rootweb Nodes 2 more tiles of reach.
 
@@ -98,7 +98,7 @@ Ants hatch from your Spawning Pods and Brood Chambers. HDF machines arrive in wa
 
 - Mite Ant (Nymbri Hive, hits ground): Small and cheap, grown from copper and lead. Weak alone, dangerous in packs.
 - Thornback Ant (Nymbri Hive, hits ground and air): Quick warrior that spits thorns. Grown from chitin and lead.
-- Bulwark Ant (Nymbri Hive, hits ground): Huge armoured ant that lobs acid seeds with splash. Grown from chitin, resin and titanium.
+- Bulwark Ant (Nymbri Hive, hits ground): Huge armoured ant that lobs acid seeds with splash. Grown from chitin, resin and titanium. Too big for Petal Gates, so give your walls a Maw Gate.
 - Scout Tank (HDF, hits ground): Light tank and the backbone of every wave.
 - Rammer Drone (HDF, hits ground): Fast drone that rams a target and explodes.
 - Flame Tank (HDF, hits ground): Slow, tough tank with a short-range flamethrower.
