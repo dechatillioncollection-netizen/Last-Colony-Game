@@ -82,6 +82,18 @@ const HELP=()=>{
    for(let x=X0-6;x<=X0-3;x++)tryPlace('conveyor',x,Y+1,0,true);tryPlace('conveyor',X0-2,Y+1,0,true);__done();for(let x=X0-6;x<=X0-3;x++)blockAt(x,Y).belt.push({i:CU,p:0});__run(60);
    let top=0,below=0;for(let x=X0-6;x<=X0-3;x++){top+=blockAt(x,Y).belt.length;}for(let x=X0-6;x<=X0-2;x++)below+=blockAt(x,Y+1).belt.length;return {rots:[...Array(4)].map((_,k)=>blockAt(X0-6+k,Y).rot).join(''),top,below};});
  ok(r.rots==='1111'&&r.top===0&&r.below===4,'items leave each turned vine through the side it faces, not the way the drag ran',r);
+ // a route with corners keeps them: the wheel turns the end vine; turning the end back reverses the flow (the reported bug: one notch broke the corner)
+ const bent=async(n,shotName)=>{const S=await p.evaluate(()=>{const {X0,Y}=__strip();return {X0,Y};});await tool('conveyor');
+   await at(S.X0-1.5,S.Y+4.5);await p.mouse.down();const A=await p.evaluate(([x,y])=>__scr(x,y),[S.X0-1.5,S.Y+4.5]),M=await p.evaluate(([x,y])=>__scr(x,y),[S.X0-1.5,S.Y-2.5]),E=await p.evaluate(([x,y])=>__scr(x,y),[S.X0-7.5,S.Y-2.5]);
+   await p.mouse.move(M[0],M[1],{steps:6});await p.mouse.move(E[0],E[1],{steps:6});await p.evaluate(()=>render());const before=await p.evaluate(()=>PLANC.rows.map(r=>r.r).join(''));
+   await wheel(n);const after=await p.evaluate(()=>({rs:PLANC.rows.map(r=>r.r).join(''),ok:PLANC.rows.every(r=>!r.why),turn:PLANC.plan.turn}));if(shotName){await p.waitForTimeout(150);await shot(shotName);}await release();
+   const built=await p.evaluate(()=>{__run(150);const L=__vines();let open=0,into=0;for(const b of L){const f=frontOf(b,b.rot);if(f&&VINE[f.t])into++;else open++;}return {n:L.length,open,into,sites:L.filter(b=>isSite(b)).length};});
+   return {before,...after,built};};
+ r=await bent(1,'drag_corner_end_turned');
+ const nb=r.before.length,f=+r.before[nb-1];ok(new Set(r.before).size===2&&r.rs===r.before.slice(0,-1)+((f+1)%4)&&r.turn==='end'&&r.ok&&r.built.n===nb&&r.built.open===1&&r.built.sites===0,'a route with a corner: one wheel notch turns only the end vine; the corner stays joined',r);
+ r=await bent(-2,'drag_corner_reversed');
+ const rev=[...r.before].map((c,k)=>String(((k?+r.before[k-1]:+c)+2)%4)).join('');ok(r.rs===rev&&r.turn==='reverse'&&r.built.n===r.before.length&&r.built.open===1&&r.built.into===r.before.length-1,'turning the end of a bent route back reverses the whole flow, corner and all',r);
+ r=await bent(4);ok(r.rs===r.before&&!r.turn,'four notches bring a bent route back to how it was drawn',r);
  // ===== 5. the five-vine reach still holds =====
  S=await p.evaluate(()=>{const {X0,Y}=__strip();return {X0,Y};});await tool('conveyor');
  await hold([S.X0-2.5,S.Y+.5],[S.X0+7.5,S.Y+.5]);r={pre:await p.evaluate(()=>PLANC.rows.map(r=>r.why?'x':'o').join(''))};
@@ -131,8 +143,8 @@ const HELP=()=>{
  await p.mouse.move(...await p.evaluate(([x,y])=>__scr(x,y),[S.X0-1.4,S.Y+.6]));await p.evaluate(()=>render());const zc=await p.evaluate(()=>cam.z);await wheel(1);
  r={stair:await p.evaluate(()=>new Set(PLANC.rows.map(r=>r.r)).size),diag:await p.evaluate(()=>PLANC.diag),zoom:await p.evaluate(z=>cam.z===z,zc)};
  await p.keyboard.up('Control');await p.mouse.move(...await p.evaluate(([x,y])=>__scr(x,y),[S.X0-1.5,S.Y+.5]));await p.evaluate(()=>render());r.free=await p.evaluate(()=>PLANC.rows.map(r=>r.r).join(''));await release();
- r.turns=await p.evaluate(()=>new Set(__vines().map(b=>b.rot)).size);
- ok(r.diag&&r.stair===2&&r.zoom&&/^1+$/.test(r.free)&&r.turns===1,'with Ctrl the staircase keeps its own turns (no zoom either); letting go of Ctrl applies the turned direction',r);
+ r.joined=await p.evaluate(()=>{const L=__vines();let open=0;for(const b of L){const n=frontOf(b,b.rot);if(!(n&&VINE[n.t]))open++;}return {n:L.length,open};});
+ ok(r.diag&&r.stair===2&&r.zoom&&r.free.length>6&&new Set(r.free.slice(0,-1)).size===2&&r.joined.open===1,'with Ctrl the staircase keeps its own turns (no zoom either); after letting go of Ctrl the turn applies to the end only, and every corner stays joined',r);
  r=await p.evaluate(()=>{const {G,X0,Y}=__strip();tryPlace('conveyor',X0-3,Y,1,true);__done();G.items[CU]=100;const i0=G.items[CU];setTool('conveyor');return {X0,Y,i0};});
  await at(r.X0-2.5,r.Y+.5);await p.mouse.down({button:'right'});await p.mouse.up({button:'right'});
  r.click=await p.evaluate(()=>({n:__vines().length,tool:window.__game().tool}));

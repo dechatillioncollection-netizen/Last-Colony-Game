@@ -247,7 +247,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <button class="mode" id="m-load"><b>LOAD GAME</b><span>Continue a saved game, or import a save file from the web version or the Windows app.</span></button>
       <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics quality and fog of war.</span></button>
     </div>
-    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> or the wheel rotates a Vine before you place it (during a drag, the whole line) &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms (with no Vine chosen) &middot; <kbd>Space</kbd> pause.</p>
+    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> or the wheel rotates a Vine before you place it (during a drag: a straight line turns whole; a line with corners keeps them and turns its end, or reverses) &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms (with no Vine chosen) &middot; <kbd>Space</kbd> pause.</p>
   </div>
 </div>
 
@@ -266,7 +266,7 @@ const B={
   core:{name:'Bloom',size:3,hp:4000,cost:[],solid:true,
     desc:'The swarm\'s living headquarters on this ground. It stores everything your roots gather, keeps growing Rootweb around itself (over 30% of the map in Survival and Base Siege, a set reach in campaign sectors), and spits at anything close. If it dies, you lose.'},
   conveyor:{name:'Vine',size:1,hp:45,cost:[[CU,1]],rot:true,speed:4.2,belt:true,
-    desc:'Carries items the way it grows. Turn it with the mouse wheel or R. Drag to lay a line that turns corners; the wheel turns the whole line. Vines can reach up to 5 tiles past the Rootweb, and units walk over them.'},
+    desc:'Carries items the way it grows. Turn it with the mouse wheel or R. Drag to lay a line that turns corners; the wheel turns a straight line, or the end of one with corners. Vines can reach up to 5 tiles past the Rootweb, and units walk over them.'},
   tconveyor:{name:'Swift Vine',size:1,hp:65,cost:[[CU,1],[PB,1],[TI,1]],rot:true,speed:8,belt:true,
     desc:'Carries items about twice as fast. Grow it over old vines to upgrade them.'},
   junction:{name:'Vine Knot',size:1,hp:60,cost:[[CU,3]],dist:true,desc:'Lets two vines cross without mixing.'},
@@ -1713,7 +1713,11 @@ function planVine(t,a,b,diag,er){
   // a press or release on an existing structure or vine: route from or into it without touching it
   const occ=([x,y,r],k)=>!!G.bgrid[y*MW+x]&&!passOk(passKind(t,x,y),k);
   if(out.length>1&&occ(out[out.length-1],out[out.length-2][2]))out.pop();if(out.length>1&&occ(out[0],out[0][2]))out.shift();
-  const res=out.slice(0,240);if(er!=null&&!diag)for(const q of res)q[2]=er;   // a turned line: every vine faces the chosen way
+  const res=out.slice(0,240);
+  if(er!=null&&!diag&&res.length>1){const n=res.length,fin=res[n-1][2],straight=res.every(q=>q[0]===res[0][0])||res.every(q=>q[1]===res[0][1]);
+    if(straight){for(const q of res)q[2]=er;res.turn=er===fin?'':'line';}                             // a straight line turns whole
+    else if(er===(fin+2)%4){const d0=res[0][2];for(let k=n-1;k>0;k--)res[k][2]=dirTo(res[k][0],res[k][1],res[k-1][0],res[k-1][1]);res[0][2]=(d0+2)%4;res.turn='reverse';}  // corners kept, flow reversed
+    else{res[n-1][2]=er;res.turn=er===fin?'':'end';}}                                                    // corners kept, the end vine turns
   return res;}
 // every tile of a planned line, with its verdict. Vines are counted for reach as one prospective route (existing and planned vines together);
 // they are paid for and grow in construction order, nearest the Rootweb first, and a route the Bloom cannot pay for in full is placed as far
@@ -1747,7 +1751,7 @@ function dragging(){const md=mouse.down;return !!(md&&md.moved&&md.b===0&&!md.ca
 // s: +1 clockwise, -1 anticlockwise
 function rotateTool(s){if(!canRotate())return false;const md=mouse.down,t=G.tool;
   if(dragging()&&VINE[t]){let cur=md.er;   // the first turn starts from the drag's own direction, as in Mindustry
-    if(cur==null){const [wx,wy]=s2w(mouse.x,mouse.y),a=placeOrigin(t,md.w[0],md.w[1]),b=placeOrigin(t,wx,wy);cur=a[0]===b[0]&&a[1]===b[1]?G.rot:Math.abs(b[0]-a[0])>=Math.abs(b[1]-a[1])?(b[0]>a[0]?0:2):(b[1]>a[1]?1:3);}
+    if(cur==null){const [wx,wy]=s2w(mouse.x,mouse.y),a=placeOrigin(t,md.w[0],md.w[1]),b=placeOrigin(t,wx,wy);const pl=curPlan(t,md,b).plan;cur=a[0]===b[0]&&a[1]===b[1]||!pl.length?G.rot:pl[pl.length-1][2];}
     md.er=(cur+s+4)%4;G.rot=md.er;}
   else G.rot=(G.rot+s+4)%4;
   return true;}
@@ -1772,7 +1776,7 @@ function drawPlanRows(c,t,rows,time,diag){const d=B[t];let n=0,bad=0,short=0,far
     if(r.why==='dup'||r.why==='same')continue;n++;const ok=!r.why;if(r.why==='short')short++;else if(!ok){if(isReachWhy(r.why))far++;else bad++;}
     c.globalAlpha=ok?.6:.28;drawBlock(c,t,r.x*T,r.y*T,d.rot?r.r:0,null,time,0);c.globalAlpha=1;
     c.strokeStyle=ok?'#a6e05a':r.why==='short'?'#f0b040':'#ee5a44';c.lineWidth=1.5;c.strokeRect(r.x*T+.5,r.y*T+.5,T-1,T-1);
-    const isEnd=r===rows[rows.length-1],line=dragging()&&mouse.down.er!=null&&!diag;
+    const isEnd=r===rows[rows.length-1],line=!!(PLANC.plan&&PLANC.plan.turn==='line'&&!diag);
     if(d.rot){c.fillStyle=ok?'rgba(166,224,90,.9)':'rgba(238,90,68,.9)';c.save();c.translate((r.x+.5)*T,(r.y+.5)*T);c.rotate(line?easedAng(null,0,r.r):isEnd?easedAng(r.x,r.y,r.r):r.r*Math.PI/2);c.beginPath();c.moveTo(8,0);c.lineTo(1,-5);c.lineTo(1,5);c.closePath();c.fill();c.restore();}
     if(d.rot&&(isEnd||line))drawEndTip(c,r.x,r.y,r.r,ok,line);
     const off=!territory(r.i);if(off&&(ok||r.why.startsWith('Too far'))){const lab=ok?String(r.dist):'✕';c.font='700 10px "Chakra Petch",sans-serif';c.textAlign='left';
@@ -1783,7 +1787,7 @@ function drawPlanRows(c,t,rows,time,diag){const d=B[t];let n=0,bad=0,short=0,far
   if(rows.length===1){if(last.why&&last.why!=='same'){const w=last.why==='short'?'Not enough in the Bloom':last.why;c.font='600 12px "Chakra Petch",sans-serif';c.textAlign='center';
     c.fillStyle='#000';c.fillText(w,(last.x+.5)*T+1,last.y*T-7);c.fillStyle='#f0a080';c.fillText(w,(last.x+.5)*T,last.y*T-8);}return;}
   const tot=planCost(t,rows),cs=Object.keys(tot).map(i=>`${tot[i]} ${IT[i].n.toLowerCase()}`).join(', ');
-  const placed=n-bad-short;let txt=`${placed} ${placed===1?d.name:d.name+'s'}${cs?' · '+cs:''}`;if(short)txt+=` · ${short} not affordable`;if(far)txt+=` · ${far} beyond vine reach`;if(bad)txt+=` · ${bad} blocked`;if(dragging()&&mouse.down.er!=null&&!diag)txt+=' · line turned';if(diag)txt+=' · Ctrl: staircase';
+  const placed=n-bad-short;let txt=`${placed} ${placed===1?d.name:d.name+'s'}${cs?' · '+cs:''}`;if(short)txt+=` · ${short} not affordable`;if(far)txt+=` · ${far} beyond vine reach`;if(bad)txt+=` · ${bad} blocked`;const tn=!diag&&PLANC.plan&&PLANC.plan.turn;if(tn)txt+=tn==='line'?' · line turned':tn==='end'?' · end turned':' · flow reversed';if(diag)txt+=' · Ctrl: staircase';
   c.font='600 12px "Chakra Petch",sans-serif';c.textAlign='center';const lx=(last.x+.5)*T,ly=last.y*T-8;c.fillStyle='#000';c.fillText(txt,lx+1,ly+1);c.fillStyle=bad||short||far?'#f0d080':'#e6e8ec';c.fillText(txt,lx,ly);}
 
 // --- Alt: a fine grid over every tile that can physically take a structure: inside the map, not rock or deep water, nothing built or growing
