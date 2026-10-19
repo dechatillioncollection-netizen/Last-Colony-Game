@@ -159,7 +159,7 @@ No fields were added. Visual memory (flinch, fire pulse, gathering, sac state, e
 
 ## Follow-up: root colour
 
-The roots under every painted growth (19 layers, the Bloom's included) are now a clear blue, made with `art/source/recolor_roots.py` (see *Root colour* in the art guide). Only the colour changed.
+The roots under every painted growth (19 layers, the Bloom's included) are now a turquoise with a slight purple lean, near the Bloom's centre, made with `art/source/recolor_roots.py` (see *Root colour* in the art guide). Only the colour changed.
 
 ![Roots before and after](screenshots/v42/roots_recolour.jpg)
 ![Roots at zoom 4](screenshots/v42/roots_recolour_close.jpg)

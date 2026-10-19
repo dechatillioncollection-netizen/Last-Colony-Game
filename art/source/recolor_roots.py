@@ -1,12 +1,12 @@
-# Recolours the painted root layers (art/plant/*/roots.png) to a clear blue, the pale blue of the Brood Chamber's sacs made bluer.
-# Each pixel keeps its alpha and its light and shade; its colour comes from the blue ramp below at the same brightness, with the
+# Recolours the painted root layers (art/plant/*/roots.png) to a turquoise with a slight purple lean, near the Bloom's centre.
+# Each pixel keeps its alpha and its light and shade; its colour comes from the turquoise ramp below at the same brightness, with the
 # layer's lit roots brightened into the ramp's middle (shadows stay dark). Usage: python3 recolor_roots.py <src dir> <out dir>
 # where both hold one folder per structure (art/plant). Run it on freshly painted roots, not on already recoloured ones.
 import sys,os
 from PIL import Image
 src,out=sys.argv[1],sys.argv[2]
 lum=lambda p:.299*p[0]+.587*p[1]+.114*p[2]
-STOPS=[(0,(0,0,0)),(28,(14,30,66)),(70,(34,78,150)),(115,(64,130,214)),(165,(120,180,246)),(210,(184,222,255)),(255,(240,250,255))]
+STOPS=[(0,(0,0,0)),(28,(26,30,62)),(70,(44,92,124)),(115,(66,158,170)),(165,(118,206,210)),(210,(188,236,236)),(255,(244,252,252))]
 lut=[]
 for L in range(256):
     j=next(k for k in range(1,len(STOPS)) if STOPS[k][0]>=L);(l0,c0),(l1,c1)=STOPS[j-1],STOPS[j];t=(L-l0)/(l1-l0)
