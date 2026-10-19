@@ -156,3 +156,10 @@ No fields were added. Visual memory (flinch, fire pulse, gathering, sac state, e
 - A Bulwark with no way to its goal waits at the nearest reachable point rather than finding a new task.
 - HDF turrets and factories keep their colony look; only the hive's are painted.
 - The rendering times are from headless Chromium with software drawing.
+
+## Follow-up: root colour
+
+The roots under every painted growth (19 layers, the Bloom's included) are now a clear blue, made with `art/source/recolor_roots.py` (see *Root colour* in the art guide). Only the colour changed.
+
+![Roots before and after](screenshots/v42/roots_recolour.jpg)
+![Roots at zoom 4](screenshots/v42/roots_recolour_close.jpg)
