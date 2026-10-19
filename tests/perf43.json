@@ -1,0 +1,201 @@
+{
+ "sim": [
+  {
+   "N": 40,
+   "v42": {
+    "mean": 0.351,
+    "p90": 0.6,
+    "max": 5.5,
+    "alive": 40,
+    "flows": null
+   },
+   "v43": {
+    "mean": 0.507,
+    "p90": 0.8,
+    "max": 5.2,
+    "alive": 40,
+    "flows": 16
+   }
+  },
+  {
+   "N": 100,
+   "v42": {
+    "mean": 0.427,
+    "p90": 0.7,
+    "max": 4.9,
+    "alive": 100,
+    "flows": null
+   },
+   "v43": {
+    "mean": 0.485,
+    "p90": 0.7,
+    "max": 3.7,
+    "alive": 100,
+    "flows": 35
+   }
+  },
+  {
+   "N": 160,
+   "v42": {
+    "mean": 0.563,
+    "p90": 0.9,
+    "max": 3.9,
+    "alive": 160,
+    "flows": null
+   },
+   "v43": {
+    "mean": 0.711,
+    "p90": 1.1,
+    "max": 6.1,
+    "alive": 160,
+    "flows": 43
+   }
+  }
+ ],
+ "plan": [
+  {
+   "vines": 0,
+   "L": 20,
+   "diag": false,
+   "tiles": 29,
+   "ms": 1.55
+  },
+  {
+   "vines": 0,
+   "L": 20,
+   "diag": true,
+   "tiles": 29,
+   "ms": 0.71
+  },
+  {
+   "vines": 0,
+   "L": 60,
+   "diag": false,
+   "tiles": 69,
+   "ms": 2.1
+  },
+  {
+   "vines": 0,
+   "L": 60,
+   "diag": true,
+   "tiles": 71,
+   "ms": 1.64
+  },
+  {
+   "vines": 0,
+   "L": 120,
+   "diag": false,
+   "tiles": 106,
+   "ms": 1.86
+  },
+  {
+   "vines": 0,
+   "L": 120,
+   "diag": true,
+   "tiles": 112,
+   "ms": 1.26
+  },
+  {
+   "vines": 0,
+   "reachCount": 0.01
+  },
+  {
+   "vines": 500,
+   "L": 20,
+   "diag": false,
+   "tiles": 29,
+   "ms": 0.51
+  },
+  {
+   "vines": 500,
+   "L": 20,
+   "diag": true,
+   "tiles": 29,
+   "ms": 0.34
+  },
+  {
+   "vines": 500,
+   "L": 60,
+   "diag": false,
+   "tiles": 69,
+   "ms": 0.78
+  },
+  {
+   "vines": 500,
+   "L": 60,
+   "diag": true,
+   "tiles": 71,
+   "ms": 0.94
+  },
+  {
+   "vines": 500,
+   "L": 120,
+   "diag": false,
+   "tiles": 106,
+   "ms": 1.12
+  },
+  {
+   "vines": 500,
+   "L": 120,
+   "diag": true,
+   "tiles": 112,
+   "ms": 1.17
+  },
+  {
+   "vines": 500,
+   "reachCount": 0.04
+  },
+  {
+   "vines": 1453,
+   "L": 20,
+   "diag": false,
+   "tiles": 29,
+   "ms": 0.62
+  },
+  {
+   "vines": 1453,
+   "L": 20,
+   "diag": true,
+   "tiles": 29,
+   "ms": 0.5
+  },
+  {
+   "vines": 1453,
+   "L": 60,
+   "diag": false,
+   "tiles": 69,
+   "ms": 0.9
+  },
+  {
+   "vines": 1453,
+   "L": 60,
+   "diag": true,
+   "tiles": 71,
+   "ms": 1.14
+  },
+  {
+   "vines": 1453,
+   "L": 120,
+   "diag": false,
+   "tiles": 106,
+   "ms": 1.41
+  },
+  {
+   "vines": 1453,
+   "L": 120,
+   "diag": true,
+   "tiles": 112,
+   "ms": 1.29
+  },
+  {
+   "vines": 1453,
+   "reachCount": 0.2
+  }
+ ],
+ "frame": {
+  "base": 10.5,
+  "drag": 9.8,
+  "alt": 9.6,
+  "dbg": 11.9
+ }
+}

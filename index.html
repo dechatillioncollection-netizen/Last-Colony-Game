@@ -247,7 +247,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <button class="mode" id="m-load"><b>LOAD GAME</b><span>Continue a saved game, or import a save file from the web version or the Windows app.</span></button>
       <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics quality and fog of war.</span></button>
     </div>
-    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine, or with nothing chosen to box-select ants &middot; <kbd>R</kbd> rotate &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms &middot; <kbd>Space</kbd> pause.</p>
+    <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> rotate &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms &middot; <kbd>Space</kbd> pause.</p>
   </div>
 </div>
 
@@ -266,7 +266,7 @@ const B={
   core:{name:'Bloom',size:3,hp:4000,cost:[],solid:true,
     desc:'The swarm\'s living headquarters on this ground. It stores everything your roots gather, keeps growing Rootweb around itself (over 30% of the map in Survival and Base Siege, a set reach in campaign sectors), and spits at anything close. If it dies, you lose.'},
   conveyor:{name:'Vine',size:1,hp:45,cost:[[CU,1]],rot:true,speed:4.2,belt:true,
-    desc:'Carries items the way it grows. Drag to lay a line that turns corners. Vines can reach out past the Rootweb, and units walk over them.'},
+    desc:'Carries items the way it grows. Drag to lay a line that turns corners. Vines can reach up to 5 tiles past the Rootweb, and units walk over them.'},
   tconveyor:{name:'Swift Vine',size:1,hp:65,cost:[[CU,1],[PB,1],[TI,1]],rot:true,speed:8,belt:true,
     desc:'Carries items about twice as fast. Grow it over old vines to upgrade them.'},
   junction:{name:'Vine Knot',size:1,hp:60,cost:[[CU,3]],dist:true,desc:'Lets two vines cross without mixing.'},
@@ -274,9 +274,9 @@ const B={
   sorter:{name:'Sorting Gland',size:1,hp:60,cost:[[CU,2],[PB,2]],dist:true,
     desc:'The chosen item passes straight through; everything else goes left or right. Select it to choose the item.'},
   drill:{name:'Root Tap',size:2,hp:120,cost:[[CU,12]],tier:1,rate:.15,solid:true,
-    desc:'Roots into copper, lead, coal or sand and pushes it into adjacent vines. More ore under it, faster gathering.'},
+    desc:'Roots into copper, lead, coal or sand and pushes it into adjacent vines. More ore under it, faster gathering. Grows on ore even outside the Rootweb.'},
   pdrill:{name:'Deep Root',size:2,hp:160,cost:[[CU,18],[GRAPH,10]],tier:2,rate:.22,solid:true,
-    desc:'A faster root that can also break down titanium.'},
+    desc:'A faster root that can also break down titanium. Grows on ore even outside the Rootweb.'},
   press:{name:'Resin Gland',size:2,hp:180,cost:[[CU,75],[PB,30]],input:[[COAL,2]],out:GRAPH,time:1.5,solid:true,
     desc:'Digests 2 coal into 1 resin. Resin leaves on any vine that is not growing into it.'},
   smelter:{name:'Chitin Vat',size:2,hp:200,cost:[[CU,30],[PB,25]],input:[[COAL,1],[SAND,2]],out:SI,time:.8,power:30,solid:true,
@@ -378,7 +378,7 @@ const GATE={door:1,doorL:1};
 // a gate is open ground for its own side's units, except that a Petal Gate is too narrow for a large unit (the Bulwark Ant):
 // NARROW is set while such a unit moves or plans a path, so collision, A* and its own flow field all see the Petal Gate as solid
 let NARROW=0;
-function solidFor(team,b){return !!(b&&B[b.t].solid&&!(GATE[b.t]&&b.team===team&&!(NARROW&&b.t==='door')));}
+function solidFor(team,b){return !!(b&&B[b.t].solid&&!(GATE[b.t]&&b.team===team&&!isSite(b)&&!(NARROW&&b.t==='door')));}
 
 function Heap(){this.i=[];this.p=[];this.top=0;}
 Heap.prototype.push=function(v,pr){const I=this.i,P=this.p;let k=I.length;I.push(v);P.push(pr);
@@ -626,10 +626,10 @@ const miniWeb=document.createElement('canvas');miniWeb.width=MW;miniWeb.height=M
 // Campaign sectors made since v34 set G.reach instead: the Bloom covers only the ground within that many tiles, and Rootweb Nodes do the rest
 const WEB_SHARE=.3;function coreWebCap(){return G.reach?N:Math.floor(WEB_SHARE*N);}
 function webRadius(b){return b.t==='core'?(G.reach||Math.ceil(Math.sqrt(coreWebCap()/Math.PI)*(G.mode==='siege'?1.9:1.6))):(B[b.t].web||0)+(G.unlocked.has('root2')?2:0);}
-function bloomFull(){const L=G.core&&G.core.wlist;return G.reach?!!L&&G.core.wi>=L.length:G.webCount>=coreWebCap();}
+function bloomFull(){const L=G.core&&G.core.wlist,done=!!L&&G.core.wi>=L.length;return G.reach?done:done||G.webCount>=coreWebCap();}
 function webRate(){return 2.5*(G.unlocked.has('root1')?1.6:1)*(G.unlocked.has('root2')?1.6:1);}
-function bellowsNear(b){if(G.powSat<.25)return false;const [x,y]=bCenter(b);for(const o of G.blocks.values())if(o.t==='bellows'&&o.team===0&&Math.hypot(o.x+1-x,o.y+1-y)<=12)return true;return false;}
-function webSources(){const r=[];for(const b of G.blocks.values())if(b.team===0&&(b.t==='core'||B[b.t].web))r.push(b);return r;}
+function bellowsNear(b){if(G.powSat<.25)return false;const [x,y]=bCenter(b);for(const o of G.blocks.values())if(o.t==='bellows'&&o.team===0&&!isSite(o)&&Math.hypot(o.x+1-x,o.y+1-y)<=12)return true;return false;}
+function webSources(){const r=[];for(const b of G.blocks.values())if(b.team===0&&(b.t==='core'||B[b.t].web)&&!isSite(b))r.push(b);return r;}
 function webList(b){const R=webRadius(b);if(b.wr===R&&b.wlist)return b.wlist;const [cx,cy]=bCenter(b);const L=[];
   const core=b.t==='core',xmax=core&&G.mode==='siege'?MW/2-2:MW;
   for(let y=Math.floor(cy-R);y<=cy+R;y++)for(let x=Math.floor(cx-R);x<=cx+R;x++){if(!inMap(x,y)||x>=xmax||blockedT(y*MW+x))continue;
@@ -690,14 +690,14 @@ function webSupTick(dt){if(!G||!G.web)return;
   if(ch)WSUP.gpu=true;WSUP.fading=moving;WSUP.snap=false;}
 function initWeb(){webSupReset();G.web=new Uint8Array(N);G.webCount=0;G.webCov=null;G.webSig='';G.recede=[];webClearAll();mwctx.clearRect(0,0,MW,MH);
   webBorn.clear();webNod.clear();WFX.length=0;webQ.clear();webChan=[];
-  const L=webList(G.core);for(let k=0;k<Math.min(L.length,120);k++)setWeb(L[k],1);}
+  const L=webList(G.core);for(let k=0,n=0;k<L.length&&n<120;k++)if(G.ore[L[k]]<0){setWeb(L[k],1);n++;}}
 function stepWeb(dt){
   const src=webSources();const sig=src.map(b=>b.id+':'+webRadius(b)).join(',');
   if(sig!==G.webSig||!G.webCov){G.webSig=sig;const cov=new Uint8Array(N);for(const b of src){for(const i of webList(b))cov[i]=1;b.wi=0;}G.webCov=cov;
     G.recede=[];for(let i=0;i<N;i++)if(G.web[i]&&!cov[i])G.recede.push(i);}
   const rate=webRate();
   for(const b of src){const L=webList(b);b.wacc=Math.min(6,(b.wacc||0)+rate*(b.t==='core'?5:1)*(bellowsNear(b)?2:1)*dt);
-    while(b.wacc>=1&&b.wi<L.length){const i=L[b.wi++];if(!G.web[i]){setWeb(i,1);b.wacc-=1;}}}
+    while(b.wacc>=1&&b.wi<L.length){const i=L[b.wi++];if(!G.web[i]&&G.ore[i]<0){setWeb(i,1);b.wacc-=1;}}}
   // ground that no source covers any more withers away
   G.recAcc=(G.recAcc||0)+dt*4;while(G.recAcc>=1&&G.recede.length){G.recAcc-=1;const k=(rnd()*G.recede.length)|0;const i=G.recede[k];G.recede[k]=G.recede[G.recede.length-1];G.recede.pop();if(!G.webCov[i])setWeb(i,0);}
   if(!G.recede.length)G.recAcc=0;
@@ -1237,11 +1237,11 @@ function addBlock(t,x,y,rot,team){
   if(d.tier){const o=drillOre(t,x,y);b.oreItem=o.item;b.oreCount=o.count;}
   if(b.team===1)b.ang=Math.PI;
   for(let yy=y;yy<y+d.size;yy++)for(let xx=x;xx<x+d.size;xx++)G.bgrid[yy*MW+xx]=id;
-  G.blocks.set(id,b);G.dirty=true;webArtNear(b);return b;
+  G.blocks.set(id,b);G.dirty=true;webArtNear(b);if(DBG.nav)DBG.inv.push({x,y,s:d.size,t:G.time});return b;
 }
 function removeBlock(b){
   for(let yy=b.y;yy<b.y+b.size;yy++)for(let xx=b.x;xx<b.x+b.size;xx++)G.bgrid[yy*MW+xx]=0;
-  G.blocks.delete(b.id);G.dirty=true;webArtNear(b);
+  G.blocks.delete(b.id);G.dirty=true;webArtNear(b);if(DBG.nav)DBG.inv.push({x:b.x,y:b.y,s:b.size,t:G.time});
   if(G.sel===b.id){G.sel=0;renderPanel(true);}
 }
 function destroyBlock(b){
@@ -1282,7 +1282,7 @@ function proximity(b){
 function unitOk(k){return G.unlocked.has(k==='tank'?'factory':k==='mite'?'nest':k);}
 function factoryNeeds(b,item){const c=U[b.unit].cost.find(([i])=>i===item);return c&&b.inv[item]<c[1]*2;}
 function accepts(b,item,src){
-  if(src&&src.team!==b.team)return false;
+  if(src&&src.team!==b.team)return false;if(b.bt&&b.built<1)return false;
   const d=B[b.t];
   if(b.t==='core')return b.team===0?G.items[item]<G.cap:G.eitems[item]<G.ecap;
   if(d.belt){
@@ -1335,6 +1335,10 @@ function updBelt(b,dt){
 function recompute(){
   G.dirty=false;
   for(const b of G.blocks.values())b.prox=proximity(b);
+  if(FLOWG===G&&G.time>=FLOWT&&G.time-FLOWT<.25){G.flowDue=1;return;}
+  recomputeFlow();
+}
+function recomputeFlow(){G.flowDue=0;FLOWG=G;FLOWT=G.time;FLOWN++;
   if(G.core)computeFlow(G.flow,G.flowNext,1,[G.core]);
   if(G.mode==='siege'&&G.ecores.length){computeFlow(G.pflow,G.pflowNext,0,G.ecores);
     if(!FLOWL.d||FLOWL.d.length!==N){FLOWL.d=new Float64Array(N);FLOWL.n=new Int32Array(N);}NARROW=1;try{computeFlow(FLOWL.d,FLOWL.n,0,G.ecores);}finally{NARROW=0;}}
@@ -1515,15 +1519,8 @@ function distToBlock(e,b){const px=clamp(e.x,b.x,b.x+b.size),py=clamp(e.y,b.y,b.
 function bCenter(b){return [b.x+b.size/2,b.y+b.size/2];}
 function enemyThink(e){
   const d=E[e.t];
-  if(d.air){
-    let best=null,bd=1e9;
-    for(const b of G.blocks.values()){if(b.team!==0||(d.bomb&&B[b.t].wall)||(G.test&&(b.arenaWall||arenaAt(b.x,b.y)!==arenaAt(e.x,e.y))))continue;const [cx,cy]=bCenter(b);const dd=(cx-e.x)**2+(cy-e.y)**2;if(dd<bd){bd=dd;best=b;}}
-    e.target=best;if(!d.bomb){const u=nearestUnit(e.x,e.y,Math.sqrt(bd));if(u){e.tu=u;}else e.tu=null;}
-    return;
-  }
-  const r=d.explode?2:d.range;
-  e.tu=nearestUnit(e.x,e.y,r+.6);
-  if(!e.target||!G.blocks.has(e.target.id)||distToBlock(e,e.target)>r+.5)e.target=nearestBlockOf(0,e.x,e.y,r+.5);
+  if(d.air){thinkAir(e,d);return;}
+  thinkGround(e,d);
 }
 function enemyFireAt(e,tx,ty,tgtBlock,tgtUnit){
   const d=E[e.t];e.cd=d.reload;e.ang=Math.atan2(ty-e.y,tx-e.x);const dm=d.dmg*(e.boss?1.5:1);
@@ -1574,9 +1571,9 @@ function stepEnemy(e,dt){
   if(G.test){testEnemyMove(e,d,dt);return;}
   if(!G.core)return;
   const fireAng=e.ang,shooting=!d.explode&&(tu||tg);unstick(e,1);
-  const blk=followFlow(e,G.flowNext,d.spd,dt,1,[G.core.x+1.5,G.core.y+1.5]);
+  const blk=enemyMove(e,d,dt);
   if(shooting)e.ang=fireAng;
-  if(blk){if(d.explode){explode(e);return;}e.target=blk;}
+  if(blk){if(d.explode){explode(e);return;}e.target=blk;e.tgT=G.time;}
 }
 function separate(){
   for(const c of hcells){if(c.length<2)continue;const n=Math.min(c.length,30);
@@ -1635,6 +1632,212 @@ function stepUnitN(u,dt,k){
   if(blk&&!u.target)u.target=blockTarget(blk);
 }
 
+// ===== v43: ore-safe Rootweb, extractors and short vine runs beyond it, timed growth, vine route planning, enemy tactics, Alt grid =====
+// --- territory: Rootweb, plus exposed ore it has grown round. New Rootweb never covers ore, so an ore tile inside a source's reach that
+// touches Rootweb counts as the hive's ground for building (and as Rootweb for the vine reach), without being covered.
+function territory(i){if(G.web[i])return true;if(G.ore[i]<0||!G.webCov||!G.webCov[i])return false;const x=i%MW,y=(i/MW)|0;
+  for(let yy=y-1;yy<=y+1;yy++)for(let xx=x-1;xx<=x+1;xx++)if(inMap(xx,yy)&&G.web[yy*MW+xx])return true;return false;}
+// --- vine reach: vines (Vine, Swift Vine, Vine Knot) may run up to VREACH tiles past the hive's ground, counted along the shortest chain of
+// vine tiles that touch edge to edge, back to a Rootweb tile (distance 0). Nothing else (Root Taps, Deep Roots, other organs) restarts the count.
+var VREACH=5,VEXTRA=null,VDIST=null,NOREACH=0,PLACE_DELAY=0;
+function isVineTile(i){if(VEXTRA&&VEXTRA.has(i))return true;const id=G.bgrid[i];if(!id)return false;const b=G.blocks.get(id);return !!b&&b.team===0&&!!VINE[b.t];}
+function vineDist(extra){const prev=VEXTRA;VEXTRA=extra||null;
+  try{const D=new Map(),q=[],tiles=new Set();
+    for(const b of G.blocks.values())if(b.team===0&&VINE[b.t])tiles.add(b.y*MW+b.x);
+    if(extra)for(const i of extra)tiles.add(i);
+    for(const i of tiles)if(territory(i))D.set(i,0);
+    for(const i of tiles){if(D.has(i))continue;const x=i%MW,y=(i/MW)|0;
+      for(let k=0;k<4;k++){const nx=x+D4X[k],ny=y+D4Y[k];if(inMap(nx,ny)&&territory(ny*MW+nx)){D.set(i,1);q.push(i);break;}}}
+    for(let h=0;h<q.length;h++){const i=q[h],d=D.get(i),x=i%MW,y=(i/MW)|0;
+      for(let k=0;k<4;k++){const nx=x+D4X[k],ny=y+D4Y[k];if(!inMap(nx,ny))continue;const j=ny*MW+nx;if(!D.has(j)&&isVineTile(j)){D.set(j,d+1);q.push(j);}}}
+    return D;}finally{VEXTRA=prev;}}
+var REACH_JOIN='Vines past the Rootweb must join it, or join a vine that does';
+function reachFar(d){return `Too far from Rootweb: vines reach ${VREACH} tiles past it (this would be tile ${d})`;}
+function isReachWhy(w){return w===REACH_JOIN||w.startsWith('Too far from Rootweb');}
+function vineReachWhy(i){if(territory(i))return '';const D=VDIST||vineDist(new Set([i])),d=D.get(i);
+  if(d===undefined)return REACH_JOIN;if(d>VREACH)return reachFar(d);return '';}
+// --- timed growth: a placed structure is paid for at once and then grows on its own for its build time. Until it is grown it works for
+// nothing (no gathering, moving items, vigor, firing, healing or hatching), it can be damaged and starts at a tenth of its health.
+// b.bt (build time) marks a timed site; blocks from older saves, pre-placed structures and the colony's own never have it.
+const BUILD_T={conveyor:.5,tconveyor:.8,junction:.8,router:1,sorter:1.2,drill:4,pdrill:6,press:8,smelter:8,combustion:4,solar:3,
+  wall:1.5,wallL:5,twall:3,door:2.5,doorL:7,mender:4,duo:3,scatter:7,hail:4,lancer:10,node:3,bellows:7,nest:7,factory:12};
+function buildTime(t){return BUILD_T[t]||3;}
+function isSite(b){return !!b&&!!b.bt&&b.built<1;}
+function startSite(b,delay){if(G.test||b.team!==0||b.t==='core')return;b.bt=buildTime(b.t);b.built=-(delay||0)/b.bt;b.hp=Math.max(1,Math.round(b.max*.1));}
+function growSite(b,dt){const p0=Math.max(0,b.built);b.built=Math.min(1,b.built+dt/b.bt);const p1=Math.max(0,b.built);
+  if(p1>p0)b.hp=Math.min(b.max,b.hp+b.max*.9*(p1-p0));if(b.built>=1){b.built=1;if(GATE[b.t])G.dirty=true;if(!VINE[b.t])G.fx.push({k:'grown',x:b.x+b.size/2,y:b.y+b.size/2,r:b.size*.7,life:.45,max:.45});}}
+function bAlpha(b){return isSite(b)?.2+.45*Math.max(0,b.built):.4+.6*b.built;}
+// a site: a membrane outline closing round it, roots reaching in from the corners as it grows, and a growth bar
+function drawSite(c,b){const p=Math.max(0,b.built),S=b.size*T,x=b.x*T,y=b.y*T;c.save();
+  c.strokeStyle='rgba(120,214,214,.75)';c.lineWidth=1.5;c.setLineDash([3,3]);c.lineDashOffset=-(G.time*12)%6;c.strokeRect(x+1.5,y+1.5,S-3,S-3);c.setLineDash([]);
+  if(!VINE[b.t]){c.strokeStyle='rgba(110,200,206,.8)';c.lineWidth=Math.max(1.2,S/22);c.lineCap='round';const L=S*.45*p;
+    for(const [cx,cy,dx,dy] of [[x+2,y+2,1,1],[x+S-2,y+2,-1,1],[x+2,y+S-2,1,-1],[x+S-2,y+S-2,-1,-1]]){c.beginPath();c.moveTo(cx,cy);c.quadraticCurveTo(cx+dx*L*.7,cy+dy*L*.2,cx+dx*L*.7,cy+dy*L*.7);c.stroke();}}
+  const bw=Math.max(8,S-6);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(x+(S-bw)/2,y+S-4,bw,3);c.fillStyle='#7fe0d8';c.fillRect(x+(S-bw)/2,y+S-4,bw*p,3);c.restore();}
+
+// --- vine route planning (a placement solver, separate from unit pathing). A drag with a Vine or Swift Vine runs a bounded A* over free
+// tiles from the press to the release: one per step, a turn costs extra so the route keeps few bends, a little extra off the Rootweb so it
+// prefers the hive's ground. With Ctrl held the turn cost is dropped and straying from the straight line costs instead, so the route steps
+// diagonally as a stair of orthogonal vines. Other structures are never routed over. An existing vine can be run along (to upgrade it to a
+// Swift Vine or turn it round) but not turned on or crossed side-on, and a Vine Knot can be passed straight through either way; a press or
+// release on anything else is left as is, so a drag that ends on a vine feeds into it.
+// what an existing own tile allows a route to do: 0 nothing, 1 run along it east-west, 2 north-south, 3 straight through either way (Vine Knot)
+function passKind(t,x,y){const o=blockAt(x,y);if(!o||o.team!==0||!B[t].belt)return 0;if(o.t==='junction')return 3;if(!B[o.t].belt||!replaceable(o,t))return 0;return o.rot%2===0?1:2;}
+function passOk(pk,k){return pk===3||pk===1+(k%2);}
+function nearDrop(x,y){return !G.held&&Math.hypot(x+.5-G.spawn.x,y+.5-G.spawn.y)<(G.mode==='siege'?Math.min(12,G.ezone):7);}
+function dirTo(ax,ay,bx,by){return bx>ax?0:bx<ax?2:by>ay?1:3;}
+function stairLine(a,b){const [ax,ay]=a,[bx,by]=b,pts=[[ax,ay]],L=Math.hypot(bx-ax,by-ay)||1;let x=ax,y=ay;
+  const dev=(px,py)=>Math.abs((px-ax)*(by-ay)-(py-ay)*(bx-ax))/L;
+  while((x!==bx||y!==by)&&pts.length<400){const sx=Math.sign(bx-x),sy=Math.sign(by-y);
+    if(sx&&(!sy||dev(x+sx,y)<=dev(x,y+sy)))x+=sx;else y+=sy;pts.push([x,y]);}return pts;}
+function planVine(t,a,b,diag){
+  const [ax,ay]=a,[bx,by]=b;if(ax===bx&&ay===by)return [[ax,ay,G.rot]];
+  const M=6,x0=Math.max(0,Math.min(ax,bx)-M),x1=Math.min(MW-1,Math.max(ax,bx)+M),y0=Math.max(0,Math.min(ay,by)-M),y1=Math.min(MH-1,Math.max(ay,by)+M);
+  const W=x1-x0+1,H=y1-y0+1,n=W*H;let pts=null;
+  if(n<=24000){const free=new Uint8Array(n),pass=new Uint8Array(n);
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const gi=y*MW+x,c=(y-y0)*W+x-x0;free[c]=!blockedT(gi)&&!G.bgrid[gi]&&!nearDrop(x,y)?1:0;if(!free[c]&&G.bgrid[gi])pass[c]=passKind(t,x,y);}
+    const si=(ay-y0)*W+ax-x0,ti=(by-y0)*W+bx-x0;free[si]=1;free[ti]=1;
+    const L=Math.hypot(bx-ax,by-ay)||1,turn=diag?0:.75,devK=diag?.9:0,offK=.12;
+    const g=new Float32Array(n*5).fill(Infinity),par=new Int32Array(n*5).fill(-1),cl=new Uint8Array(n*5),h=new Heap();
+    const s0=si*5+4;g[s0]=0;h.push(s0,Math.abs(bx-ax)+Math.abs(by-ay));let got=-1,cnt=0;
+    while(h.i.length&&cnt<9000){const s=h.pop();if(cl[s])continue;cl[s]=1;cnt++;const c=(s/5)|0,pd=s%5;if(c===ti){got=s;break;}
+      const cx=c%W+x0,cy=((c/W)|0)+y0;
+      for(let k=0;k<4;k++){const nx=cx+D4X[k],ny=cy+D4Y[k];if(nx<x0||nx>x1||ny<y0||ny>y1)continue;const nc=(ny-y0)*W+nx-x0;
+        if(pass[c]&&c!==si&&k!==pd)continue;     // along an existing vine: no turning on it
+        if(!free[nc]&&!(pass[nc]&&passOk(pass[nc],k)))continue;
+        const ns=nc*5+k;if(cl[ns])continue;
+        const cost=1+(pass[nc]?.3:0)+(pd!==4&&pd!==k?turn:0)+(devK?devK*Math.abs((nx-ax)*(by-ay)-(ny-ay)*(bx-ax))/L:0)+(territory(ny*MW+nx)?0:offK);
+        const ng=g[s]+cost;if(ng<g[ns]){g[ns]=ng;par[ns]=s;h.push(ns,ng+Math.abs(bx-nx)+Math.abs(by-ny));}}}
+    if(got>=0){pts=[];for(let s=got;s>=0;s=par[s]){const c=(s/5)|0;pts.push([c%W+x0,((c/W)|0)+y0]);}pts.reverse();}}
+  if(!pts)pts=diag?stairLine(a,b):linePlan(t,a,b).map(p=>[p[0],p[1]]);
+  const out=[];for(let k=0;k<pts.length;k++){const [x,y]=pts[k];const r=k<pts.length-1?dirTo(x,y,pts[k+1][0],pts[k+1][1]):out.length?out[out.length-1][2]:G.rot;out.push([x,y,r]);}
+  // a press or release on an existing structure or vine: route from or into it without touching it
+  const occ=([x,y,r],k)=>!!G.bgrid[y*MW+x]&&!passOk(passKind(t,x,y),k);
+  if(out.length>1&&occ(out[out.length-1],out[out.length-2][2]))out.pop();if(out.length>1&&occ(out[0],out[0][2]))out.shift();
+  return out.slice(0,240);}
+// every tile of a planned line, with its verdict. Vines are counted for reach as one prospective route (existing and planned vines together);
+// they are paid for and grow in construction order, nearest the Rootweb first, and a route the Bloom cannot pay for in full is placed as far
+// as it can pay, every skipped tile shown and reported. Nothing here changes the game.
+function planEval(t,plan){const d=B[t],rows=plan.map(([x,y,r],k)=>({x,y,r,k,i:y*MW+x,why:'',dist:0,ord:-1})),seen=new Set();
+  NOREACH=1;try{for(const r of rows){if(seen.has(r.i)){r.why='dup';continue;}seen.add(r.i);r.why=placeCheck(t,r.x,r.y);
+    const o=blockAt(r.x,r.y);if(!r.why&&o&&o.team===0){
+      if(o.t===t&&(o.rot===r.r||!d.rot))r.why='same';
+      else if(o.t==='junction'&&t!=='junction'&&rows.length>1)r.why='same';                       // a Vine Knot passed through stays
+      else if(o.t==='tconveyor'&&t==='conveyor'&&o.rot===r.r)r.why='same';                        // a Swift Vine is never downgraded
+      else if(B[o.t].belt&&d.belt&&rows.length>1&&o.rot%2!==r.r%2&&r.k<rows.length-1)r.why='Crosses a vine side-on (a Vine Knot lets vines cross)';}}}finally{NOREACH=0;}
+  const reach=VINE[t]&&!G.webFree;
+  const pass=()=>{if(!reach)return;const S=new Set(rows.filter(r=>!r.why).map(r=>r.i)),D=vineDist(S);
+    for(const r of rows){if(r.why)continue;if(territory(r.i)){r.dist=0;continue;}const dd=D.get(r.i);
+      if(dd===undefined)r.why=REACH_JOIN;else if(dd>VREACH)r.why=reachFar(dd);else r.dist=dd;}};
+  pass();
+  const ok=rows.filter(r=>!r.why).sort((a,b)=>a.dist-b.dist||a.k-b.k),budget=G.items.slice();let ord=0;
+  for(const r of ok){const o=blockAt(r.x,r.y);const cost=o&&o.t===t?[]:d.cost;
+    if(cost.every(([i,n])=>budget[i]>=n)){cost.forEach(([i,n])=>budget[i]-=n);r.ord=ord++;}else r.why='short';}
+  pass();return rows;}
+function planCost(t,rows){const tot={};for(const r of rows)if(!r.why){const o=blockAt(r.x,r.y);if(o&&o.t===t)continue;for(const [i,n] of B[t].cost)tot[i]=(tot[i]||0)+n;}return tot;}
+// place an evaluated plan in construction order; returns [placed, skipped by reason]
+function placePlan(t,rows){const go=rows.filter(r=>!r.why).sort((a,b)=>a.ord-b.ord);let ok=0;const why={};
+  for(const r of rows)if(r.why&&r.why!=='same'&&r.why!=='dup'){const k=r.why==='short'?'short':isReachWhy(r.why)?'reach':'blocked';why[k]=(why[k]||0)+1;}
+  VDIST=VINE[t]&&!G.webFree?vineDist(new Set(go.map(r=>r.i))):null;
+  try{for(const r of go){PLACE_DELAY=r.ord*.12;if(tryPlace(t,r.x,r.y,B[t].rot?r.r:0,true))ok++;else why.blocked=(why.blocked||0)+1;}}finally{PLACE_DELAY=0;VDIST=null;}
+  return [ok,why];}
+let PLANC={k:'',rows:null,plan:null};
+function curPlan(t,md,b){const a=placeOrigin(t,md.w[0],md.w[1]),diag=keys.has('control')&&!!B[t].belt;
+  const k=[t,a,b,diag,G.nextId,G.blocks.size,G.webCount,G.items.join(','),G.rot].join('|');if(PLANC.k===k)return PLANC;
+  const plan=B[t].belt?planVine(t,a,b,diag):linePlan(t,a,b);PLANC={k,plan,rows:VINE[t]?planEval(t,plan):null,diag};return PLANC;}
+function drawPlanRows(c,t,rows,time,diag){const d=B[t];let n=0,bad=0,short=0,far=0;const many=rows.length>1;
+  for(const r of rows){if(r.why==='same'&&many){c.strokeStyle='rgba(140,220,230,.55)';c.lineWidth=1;c.strokeRect(r.x*T+2.5,r.y*T+2.5,T-5,T-5);}
+    if(r.why==='dup'||r.why==='same')continue;n++;const ok=!r.why;if(r.why==='short')short++;else if(!ok){if(isReachWhy(r.why))far++;else bad++;}
+    c.globalAlpha=ok?.6:.28;drawBlock(c,t,r.x*T,r.y*T,d.rot?r.r:0,null,time,0);c.globalAlpha=1;
+    c.strokeStyle=ok?'#a6e05a':r.why==='short'?'#f0b040':'#ee5a44';c.lineWidth=1.5;c.strokeRect(r.x*T+.5,r.y*T+.5,T-1,T-1);
+    if(d.rot){c.fillStyle=ok?'rgba(166,224,90,.9)':'rgba(238,90,68,.9)';c.save();c.translate((r.x+.5)*T,(r.y+.5)*T);c.rotate(r.r*Math.PI/2);c.beginPath();c.moveTo(8,0);c.lineTo(1,-5);c.lineTo(1,5);c.closePath();c.fill();c.restore();}
+    const off=!territory(r.i);if(off&&(ok||r.why.startsWith('Too far'))){const lab=ok?String(r.dist):'✕';c.font='700 10px "Chakra Petch",sans-serif';c.textAlign='left';
+      c.fillStyle='#000';c.fillText(lab,r.x*T+3,r.y*T+11);c.fillStyle=ok?(r.dist>=VREACH?'#f0d060':'#d8f5c0'):'#ff7a64';c.fillText(lab,r.x*T+2,r.y*T+10);}
+    // construction order: the order the tiles are paid for and start growing (nearest the Rootweb first)
+    if(ok&&many&&r.ord>=0){const o=String(r.ord+1);c.font='600 7px "Chakra Petch",sans-serif';c.textAlign='right';c.fillStyle='rgba(0,0,0,.8)';c.fillText(o,r.x*T+T-1,r.y*T+T-1);c.fillStyle='rgba(220,235,255,.85)';c.fillText(o,r.x*T+T-2,r.y*T+T-2);}}
+  const last=rows[rows.length-1];if(!last)return;
+  if(rows.length===1){if(last.why&&last.why!=='same'){const w=last.why==='short'?'Not enough in the Bloom':last.why;c.font='600 12px "Chakra Petch",sans-serif';c.textAlign='center';
+    c.fillStyle='#000';c.fillText(w,(last.x+.5)*T+1,last.y*T-7);c.fillStyle='#f0a080';c.fillText(w,(last.x+.5)*T,last.y*T-8);}return;}
+  const tot=planCost(t,rows),cs=Object.keys(tot).map(i=>`${tot[i]} ${IT[i].n.toLowerCase()}`).join(', ');
+  const placed=n-bad-short;let txt=`${placed} ${placed===1?d.name:d.name+'s'}${cs?' · '+cs:''}`;if(short)txt+=` · ${short} not affordable`;if(far)txt+=` · ${far} beyond vine reach`;if(bad)txt+=` · ${bad} blocked`;if(diag)txt+=' · Ctrl: staircase';
+  c.font='600 12px "Chakra Petch",sans-serif';c.textAlign='center';const lx=(last.x+.5)*T,ly=last.y*T-8;c.fillStyle='#000';c.fillText(txt,lx+1,ly+1);c.fillStyle=bad||short||far?'#f0d080':'#e6e8ec';c.fillText(txt,lx,ly);}
+
+// --- Alt: a fine grid over every tile that can physically take a structure: inside the map, not rock or deep water, nothing built or growing
+// there, and not hidden by fog of war. Ore stays gridded (extractors stand on it); Rootweb, reach and cost are left to the placement preview.
+// Drawn for the visible tiles only.
+function drawBuildGrid(c,tx0,ty0,tx1,ty1,z){c.save();c.strokeStyle='rgba(214,236,255,.32)';c.lineWidth=Math.max(.6,1/z);c.beginPath();
+  for(let y=Math.max(0,ty0);y<=Math.min(MH-1,ty1);y++)for(let x=Math.max(0,tx0);x<=Math.min(MW-1,tx1);x++){const i=y*MW+x;if(blockedT(i)||G.bgrid[i]||!fogSeen(x,y))continue;c.rect(x*T+1,y*T+1,T-2,T-2);}
+  c.stroke();c.restore();}
+
+// --- enemy tactics. Waves still share one cached route field to the Bloom (rebuilt when structures appear, grow or fall, at most four times a
+// second); a unit leaves it only for a nearby objective its role cares about, reached by a short local A*, and goes back to it afterwards.
+// Roles: Scout Tanks probe for exposed logistics, extractors and growing sites; Flame Tanks go for the nearest living structure they can reach;
+// Siege Tanks press fortifications and guns; Rammer Drones ram what blocks them. Targets are held for a while (no frame-to-frame switching)
+// unless a clearly better one appears. Scripted units (story scenes) never use any of this.
+const ROLE={dagger:'scout',crawler:'ram',mace:'flame',fortress:'siege',flare:'fighter',horizon:'bomber'};
+function roleWeight(role,b){const d=B[b.t],wall=!!d.wall,site=isSite(b),log=!!(d.belt||d.dist),ext=!!d.tier,tur=!!d.tur,core=b.t==='core';
+  switch(role){
+  case 'scout':return site||log||ext?0:tur?2:core?3:wall?7:2.5;
+  case 'flame':return core?1.5:wall?6:site?0:0.5;
+  case 'siege':return tur?0:wall?3:core?2:1.5;
+  case 'ram':return wall?0:1;
+  case 'bomber':return wall?99:site||ext||log?0:tur?1:core?1.5:.5;
+  case 'fighter':return site||ext||log?0:tur?3:core?2:1;}
+  return 1;}
+function blockScore(e,role,b){return distToBlock(e,b)+3*roleWeight(role,b);}
+// scouts, flame tanks and rammers leave bark alone while the route field still has an open way to the Bloom (they go through gaps);
+// once it has none (they are sealed out), or a wall stands in their path, the wall is a real blocker and fair game
+function roleTarget(e,role,R){const ti=tileAt(e.x,e.y),open=(role==='scout'||role==='flame'||role==='ram')&&!G.test&&ti>=0&&G.flow[ti]<SOLID_COST;const x0=Math.floor(e.x-R),x1=Math.floor(e.x+R),y0=Math.floor(e.y-R),y1=Math.floor(e.y+R);let best=null,bs=1e9;const seen=new Set();
+  for(let ty=y0;ty<=y1;ty++)for(let tx=x0;tx<=x1;tx++){if(!inMap(tx,ty))continue;const id=G.bgrid[ty*MW+tx];if(!id||seen.has(id))continue;seen.add(id);const b=G.blocks.get(id);
+    if(!b||b.team!==0||testShielded(b)||distToBlock(e,b)>R||open&&B[b.t].wall)continue;const s=blockScore(e,role,b);if(s<bs){bs=s;best=b;}}
+  return best;}
+const SENSE={scout:9,flame:7};
+// an objective is only taken when a short ground route reaches it without breaking through any other structure
+function objPathOk(e,b){const [cx,cy]=bCenter(b),p=findPath(e.x,e.y,cx,cy,1,700);if(!p||!p.length)return false;
+  const last=p[p.length-1];if(G.bgrid[last]!==b.id&&distToBlock({x:last%MW+.5,y:((last/MW)|0)+.5},b)>1.2)return false;
+  for(const i of p){const id=G.bgrid[i];if(id&&id!==b.id&&solidFor(1,G.blocks.get(id)))return false;}return true;}
+function roleObjective(e,role){const S=SENSE[role];if(!S)return 0;const b=roleTarget(e,role,S);if(!b||roleWeight(role,b)>.5||!objPathOk(e,b))return 0;return b.id;}
+// ground targets: keep the current one while it is alive and in reach; after 1.5 s switch only to one that scores clearly better (below 70%)
+function thinkGround(e,d){const role=ROLE[e.t]||'scout',r=d.explode?2:d.range;
+  e.tu=nearestUnit(e.x,e.y,r+.6);
+  const cur=e.target&&G.blocks.has(e.target.id)&&distToBlock(e,e.target)<=r+.5?e.target:null,best=roleTarget(e,role,r+.5);
+  if(!cur){e.target=best;e.tgT=G.time;}
+  else if(best&&best!==cur&&G.time-(e.tgT||0)>1.5&&blockScore(e,role,best)<.7*blockScore(e,role,cur)){e.target=best;e.tgT=G.time;}
+  if(e.obj&&!G.blocks.has(e.obj))e.obj=0;
+  if(!(e.objT>G.time)){e.objT=G.time+2+rnd();e.obj=roleObjective(e,role);if(!e.obj)e.nav=null;}}
+// air targets: the whole map, scored by distance and role, with the same hold
+function thinkAir(e,d){const role=ROLE[e.t]||'fighter';let best=null,bs=1e9;const sc=b=>{const [cx,cy]=bCenter(b);return Math.hypot(cx-e.x,cy-e.y)+3*roleWeight(role,b);};
+  for(const b of G.blocks.values()){if(b.team!==0||(d.bomb&&B[b.t].wall)||(G.test&&(b.arenaWall||arenaAt(b.x,b.y)!==arenaAt(e.x,e.y))))continue;const s=sc(b);if(s<bs){bs=s;best=b;}}
+  const cur=e.target&&G.blocks.has(e.target.id)?e.target:null;
+  if(!cur||(best&&best!==cur&&G.time-(e.tgT||0)>1.5&&bs<.7*sc(cur))){e.target=best;e.tgT=G.time;}
+  if(!d.bomb){const tg=e.target,R=tg?Math.hypot(bCenter(tg)[0]-e.x,bCenter(tg)[1]-e.y):1e9;e.tu=nearestUnit(e.x,e.y,R)||null;}}
+// ground movement: an objective by a local A* route, otherwise the shared route field to the Bloom. A unit that has not moved for two
+// seconds with nothing to shoot attacks the structure pressing on it, or sidesteps; the stall count shows in the route debug view
+function enemyMove(e,d,dt){const ob=e.obj&&G.blocks.get(e.obj);
+  if(ob){if(!d.explode&&distToBlock(e,ob)<=d.range-.3){e.target=ob;return null;}
+    const [cx,cy]=bCenter(ob);const blk=navTo(e,cx,cy,d.spd,dt,1);if(e.nav&&(e.nav.stuck>1.2||(!e.nav.path.length&&!e.nav.reach))){e.obj=0;e.nav=null;e.objT=G.time+4;}return blk;}
+  const blk=followFlow(e,G.flowNext,d.spd,dt,1,[G.core.x+1.5,G.core.y+1.5]);
+  e.sw=(e.sw||0)+dt;if(e.sw>=1){const m=e.swx===undefined?1:Math.hypot(e.x-e.swx,e.y-e.swy);const busy=!!(e.target&&G.blocks.has(e.target.id)&&distToBlock(e,e.target)<=(d.explode?2:d.range)+.5);e.stk=m<d.spd*.15&&!busy?(e.stk||0)+1:0;e.swx=e.x;e.swy=e.y;e.sw=0;
+    if(e.stk>=2&&!blk){const nb=nearestSolidOurs(e,1.6);if(nb)return nb;
+      const a=e.ang+((e.id||0)&1?1.57:-1.57);moveGround(e,Math.cos(a),Math.sin(a),d.spd*.5,1);}}
+  return blk;}
+function nearestSolidOurs(e,r){let best=null,bd=r;for(let ty=Math.floor(e.y-r);ty<=e.y+r;ty++)for(let tx=Math.floor(e.x-r);tx<=e.x+r;tx++){if(!inMap(tx,ty))continue;
+    const id=G.bgrid[ty*MW+tx];if(!id)continue;const b=G.blocks.get(id);if(!b||b.team!==0||!solidFor(1,b)||testShielded(b))continue;const dd=distToBlock(e,b);if(dd<bd){bd=dd;best=b;}}return best;}
+var FLOWN=0,FLOWT=-9,FLOWG=null,DBG={nav:false,inv:[]};
+function drawNavDebug(c,tx0,ty0,tx1,ty1,z){if(!G.core)return;c.save();c.lineWidth=1/z;
+  if(z>=.7)for(let y=Math.max(0,ty0);y<=Math.min(MH-1,ty1);y++)for(let x=Math.max(0,tx0);x<=Math.min(MW-1,tx1);x++){const i=y*MW+x,nx=G.flowNext[i];
+    const cst=tileCost(i,1);if(cst>=SOLID_COST&&cst<Infinity){c.fillStyle=`rgba(255,80,60,${Math.min(.5,.12+(cst-SOLID_COST)/400)})`;c.fillRect(x*T,y*T,T,T);}
+    if(nx<0)continue;const d=G.flow[i];c.strokeStyle=d>=SOLID_COST?'rgba(255,120,90,.9)':`hsla(${Math.max(0,200-d*1.5)},85%,68%,.8)`;c.lineWidth=1.4/z;
+    c.beginPath();c.moveTo((x+.5)*T,(y+.5)*T);c.lineTo(((nx%MW)+.5)*T*.45+(x+.5)*T*.55,(((nx/MW)|0)+.5)*T*.45+(y+.5)*T*.55);c.stroke();}
+  for(const e of G.enemies){if(e.dead||e.script)continue;const tg=e.target&&G.blocks.get(e.target.id),ob=e.obj&&G.blocks.get(e.obj);
+    if(tg){const [x,y]=bCenter(tg);c.strokeStyle='rgba(255,70,60,.9)';c.lineWidth=1.6/z;c.beginPath();c.moveTo(e.x*T,e.y*T);c.lineTo(x*T,y*T);c.stroke();}
+    if(ob){const [x,y]=bCenter(ob);c.strokeStyle='rgba(255,215,90,.9)';c.setLineDash([4,3]);c.lineWidth=1.2/z;c.beginPath();c.moveTo(e.x*T,e.y*T);c.lineTo(x*T,y*T);c.stroke();c.setLineDash([]);}
+    if(e.nav&&e.nav.path&&e.nav.path.length){c.strokeStyle='rgba(255,170,70,.7)';c.lineWidth=1/z;c.beginPath();c.moveTo(e.x*T,e.y*T);for(let k=e.nav.pi;k<e.nav.path.length;k++){const w=e.nav.path[k];c.lineTo((w%MW+.5)*T,(((w/MW)|0)+.5)*T);}c.stroke();}
+    c.font=`${10/z}px sans-serif`;c.fillStyle='#ffd';c.textAlign='center';c.fillText((ROLE[e.t]||'')+(e.stk>1?' stuck':''),e.x*T,(e.y-.7)*T);}
+  for(const v of DBG.inv){const a=Math.max(0,1-(G.time-v.t)/1.5);if(a<=0)continue;c.strokeStyle=`rgba(120,220,255,${a})`;c.lineWidth=2/z;c.strokeRect(v.x*T,v.y*T,v.s*T,v.s*T);}
+  DBG.inv=DBG.inv.filter(v=>G.time-v.t<1.5);c.restore();}
+function drawNavDebugHud(c){c.save();c.setTransform(DPR,0,0,DPR,0,0);c.font='600 12px "Chakra Petch",sans-serif';c.textAlign='left';const s=`ROUTE DEBUG (F4) · route field rebuilt ${FLOWN}× · last ${Math.max(0,G.time-FLOWT).toFixed(1)} s ago · red: target · yellow: objective · orange: local path`;
+  c.fillStyle='rgba(0,0,0,.6)';c.fillRect(8,80,c.measureText(s).width+12,20);c.fillStyle='#bfe8ff';c.fillText(s,14,94);c.restore();}
+
 // ---------- block updates ----------
 function bestAmmo(b){const am=B[b.t].tur.ammo;let best=-1,bd=-1;for(const k in b.ammo){if(b.ammo[k]>0&&am[k].dmg>bd){bd=am[k].dmg;best=+k;}}return best;}
 function turretAcquire(b,tu,cx,cy){
@@ -1686,7 +1889,7 @@ function updTurret(b,dt,d){
   if(b.t==='duo'){const p=G.bullets[G.bullets.length-1];p.ox=px;p.oy=py;}  // visual only: lets the painted thorn appear from its opening
 }
 function updBlock(b,dt){
-  const d=B[b.t];if(b.hit>0)b.hit-=dt;if(b.built<1)b.built=Math.min(1,b.built+dt*4);
+  const d=B[b.t];if(b.hit>0)b.hit-=dt;if(b.bt&&b.built<1){growSite(b,dt);return;}if(b.built<1)b.built=Math.min(1,b.built+dt*4);
   if(d.belt){updBelt(b,dt);return;}
   switch(b.t){
   case 'junction':
@@ -1719,7 +1922,7 @@ function updBlock(b,dt){
     return;
   case 'mender':
     b.prog+=dt*G.powSat;if(b.prog>=2){b.prog=0;let any=false;
-      for(const o of G.blocks.values()){if(o.team!==b.team||o.hp>=o.max)continue;const [ox,oy]=bCenter(o);if(Math.hypot(ox-b.x-.5,oy-b.y-.5)<=6){o.hp=Math.min(o.max,o.hp+o.max*.12);any=true;}}
+      for(const o of G.blocks.values()){if(o.team!==b.team||o.hp>=o.max||isSite(o))continue;const [ox,oy]=bCenter(o);if(Math.hypot(ox-b.x-.5,oy-b.y-.5)<=6){o.hp=Math.min(o.max,o.hp+o.max*.12);any=true;}}
       if(any)G.fx.push({k:'heal',x:b.x+.5,y:b.y+.5,r:6,life:.5,max:.5});}
     return;
   case 'core':updTurret(b,dt,{tur:{range:7.5,reload:.5,air:true,ground:true}});return;
@@ -1734,8 +1937,8 @@ function exitTile(b){
 }
 function computePower(){
   let gen=0,use=0,damaged=false;
-  for(const b of G.blocks.values())if(b.team===0&&b.hp<b.max){damaged=true;break;}
-  for(const b of G.blocks.values()){if(b.team!==0)continue;const d=B[b.t];
+  for(const b of G.blocks.values())if(b.team===0&&b.hp<b.max&&!isSite(b)){damaged=true;break;}
+  for(const b of G.blocks.values()){if(b.team!==0||isSite(b))continue;const d=B[b.t];
     if(b.t==='combustion'&&b.burn>0)gen+=d.gen;else if(b.t==='solar')gen+=d.gen;
     if((b.t==='smelter'||b.t==='factory')&&b.wants)use+=d.power;
     if(b.t==='lancer'&&alive(b.target))use+=d.power;
@@ -1778,7 +1981,7 @@ function step(dt){
   G.time+=dt;G.tick++;
   if(G.story)storyTick(dt);
   if(G.tick%30===0)evTick();
-  if(G.dirty)recompute();
+  if(G.dirty)recompute();else if(G.flowDue&&G.time-FLOWT>=.25)recomputeFlow();
   if(G.tick%3===0){stepWeb(dt*3);webSupTick(dt*3);}
   if(G.mode==='siege'&&G.ecores.length&&G.tick%15===0)enemyEconomy(dt*15);
   if(!G.held&&!G.test&&!(G.story&&G.story.hold)&&(G.mode==='siege'||G.wave<G.winWave)){G.countdown-=dt;if(G.countdown<=0)launchWave();}
@@ -1839,11 +2042,12 @@ function placeCheck(t,x,y){
   for(let yy=y;yy<y+d.size;yy++)for(let xx=x;xx<x+d.size;xx++){
     if(!inMap(xx,yy))return 'Out of bounds';const i=yy*MW+xx;
     if(blockedT(i))return 'Cannot grow on rock or deep water';
-    if(!VINE[t]&&!G.web[i]&&!G.webFree)return 'Needs Rootweb under it. Plant Rootweb Nodes to spread it';
+    if(!VINE[t]&&!d.tier&&!territory(i)&&!G.webFree)return 'Needs Rootweb under it. Plant Rootweb Nodes to spread it';
     const o=G.bgrid[i];
     if(o){const ob=G.blocks.get(o);if(!replaceable(ob,t))return ob.team===1?'That is an enemy block':'Something is already there';}
     if(!G.held&&Math.hypot(xx+.5-G.spawn.x,yy+.5-G.spawn.y)<(G.mode==='siege'?Math.min(12,G.ezone):7))return G.mode==='siege'?'Too close to the colony':'Too close to the drop zone';
   }
+  if(VINE[t]&&!G.webFree&&!NOREACH){const w=vineReachWhy(y*MW+x);if(w)return w;}
   if(d.tier){const o=drillOre(t,x,y);if(o.item<0)return d.tier<2&&hasOre(t,x,y,TI)?'Titanium needs a Deep Root':'No ore under it';}
   if(d.solid){for(const e of G.enemies)if(!E[e.t].air&&e.x>x-.3&&e.x<x+d.size+.3&&e.y>y-.3&&e.y<y+d.size+.3)return 'An enemy is in the way';
     for(const u of G.units)if(u.x>x-.3&&u.x<x+d.size+.3&&u.y>y-.3&&u.y<y+d.size+.3&&!GATE[t])return 'An ant is in the way';}
@@ -1863,12 +2067,12 @@ function tryPlace(t,x,y,rot,quiet){
     if(old.t===t&&d.belt){old.rot=rot;G.dirty=true;return true;}
     if(!canAfford(d.cost)){if(!quiet)msg('Not enough in the Bloom');return false;}
     refund(B[old.t].cost);pay(d.cost);
-    const items=old.belt?old.belt.map(o=>o.i):[];removeBlock(old);const nb=addBlock(t,x,y,rot,0);
+    const items=old.belt?old.belt.map(o=>o.i):[];removeBlock(old);const nb=addBlock(t,x,y,rot,0);startSite(nb,PLACE_DELAY);
     if(nb.belt)nb.belt=items.slice(0,4).map((i,k)=>({i,p:k*.3}));else for(const i of items)if(G.items[i]<G.cap)G.items[i]++;
     return true;
   }
   if(!canAfford(d.cost)){if(!quiet)msg('Not enough in the Bloom');return false;}
-  pay(d.cost);addBlock(t,x,y,rot,0);return true;
+  pay(d.cost);startSite(addBlock(t,x,y,rot,0),PLACE_DELAY);return true;
 }
 function deconstruct(b){
   if(!b||b.t==='core'||b.team!==0)return false;
@@ -1912,7 +2116,7 @@ function sendAnts(list,wx,wy){const spots=[];
   const ord=[...list].sort((a,b)=>Math.hypot(a.x-wx,a.y-wy)-Math.hypot(b.x-wx,b.y-wy));
   ord.forEach((u,j)=>{u.hold=spots[j]||[wx,wy];u.nav=null;});}
 cv.addEventListener('pointerup',e=>{
-  const md=mouse.down;mouse.down=null;if(!md||!G||G.over)return;
+  const md=mouse.down;mouse.down=null;if(!md||!G||G.over||md.cancel)return;
   const [wx,wy]=s2w(e.offsetX,e.offsetY);
   if(md.b===1)return;
   if(md.b===2&&!md.moved){const sb=G.blocks.get(G.sel);if(sb&&sb.t==='factory'&&!G.tool){}}
@@ -1925,6 +2129,13 @@ cv.addEventListener('pointerup',e=>{
   if(G.tool){
     if(md.type==='touch'&&md.moved&&!B[G.tool].belt)return;
     const t=G.tool,a=placeOrigin(t,md.w[0],md.w[1]),b=placeOrigin(t,wx,wy);
+    if(VINE[t]){const P=curPlan(t,md.moved?md:{w:md.w},md.moved?b:a),rows=P.rows;
+      if(rows.length===1&&rows[0].why){const w=rows[0].why;if(w!=='same'&&w!=='dup')msg(w==='short'?'Not enough in the Bloom':w);return;}
+      const [ok,why]=placePlan(t,rows),skip=(why.short||0)+(why.reach||0)+(why.blocked||0);
+      if(skip){const parts=[];if(why.short)parts.push(`${why.short} not affordable`);if(why.reach)parts.push(`${why.reach} out of vine reach`);if(why.blocked)parts.push(`${why.blocked} blocked`);
+        msg(ok?`${ok} ${B[t].name}${ok===1?'':'s'} placed; ${parts.join(', ')}.`:`Nothing placed: ${parts.join(', ')}.`);}
+      if(md.moved&&P.plan.length&&B[t].rot)G.rot=P.plan[P.plan.length-1][2];
+      return;}
     const plan=md.moved?linePlan(t,a,b):[[a[0],a[1],G.rot]];
     let ok=0,last='';for(const [x,y,r] of plan){const why=placeCheck(t,x,y)||(canAfford(B[t].cost)?'':'Not enough in the Bloom');
       if(why){last=why;continue;}if(tryPlace(t,x,y,B[t].rot?r:0,true))ok++;}
@@ -1949,12 +2160,15 @@ cv.addEventListener('pointerup',e=>{
 cv.addEventListener('wheel',e=>{e.preventDefault();const [wx,wy]=s2w(e.offsetX,e.offsetY);
   cam.z=clamp(cam.z*(e.deltaY<0?1.12:1/1.12),.5,2.5);cam.x=wx*T-e.offsetX/cam.z;cam.y=wy*T-e.offsetY/cam.z;clampCam();},{passive:false});
 window.addEventListener('keydown',e=>{
+  if(e.key==='Alt'||e.key==='F4')e.preventDefault();
   if(DLG.open){dlgKey(e);return;}
   if(!G||G.over)return;const k=e.key.toLowerCase();
   if(k==='t'){toggleTech();return;}
   if(!document.getElementById('tech').hidden){if(k==='escape')toggleTech(false);return;}
   keys.add(k);
   if(k===' '){e.preventDefault();setSpeed(G.paused?G.speed:0);}
+  else if(k==='f4'){DBG.nav=!DBG.nav;DBG.inv=[];msg(DBG.nav?'Route debug view on (F4 to hide).':'Route debug view off.');}
+  else if(k==='escape'&&mouse.down&&!mouse.down.cancel){mouse.down.cancel=true;msg('Placement cancelled.');}
   else if(k==='escape'){if(G.tool)setTool(null);else{G.sel=0;G.selU=0;G.selUs=[];renderPanel(true);}}
   else if(k==='r'){G.rot=(G.rot+(e.shiftKey?3:1))%4;}
   else if(k==='c'){setCommand(G.command==='attack'?'defend':'attack');}
@@ -1965,7 +2179,7 @@ window.addEventListener('keydown',e=>{
   else if(HOTKEYS[k]&&G.unlocked.has(HOTKEYS[k])){selectTab(catOf(HOTKEYS[k]));setTool(HOTKEYS[k]);}
   if(k.startsWith('arrow'))e.preventDefault();
 });
-window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+window.addEventListener('keyup',e=>{if(e.key==='Alt')e.preventDefault();keys.delete(e.key.toLowerCase());});
 window.addEventListener('blur',()=>keys.clear());
 
 const mini=document.getElementById('mini'),mctx=mini.getContext('2d');
@@ -2810,7 +3024,7 @@ function drawVinesPass(c,inView,time,z){const L=[];for(const b of G.blocks.value
   vineLite=z<ART_LOD_ZOOM||L.length>VINE_LOD_MAX;c.imageSmoothingEnabled=true;
   // vessels first, then their film and pulses, then the Vine Knots (each with its own items, since one passage runs over the other),
   // then every item in every vessel, so nothing covers a resource
-  const each=(f,k)=>{for(const b of L)if(k(b)){if(b.built<1){c.save();c.globalAlpha=.4+.6*b.built;}f(b);if(b.built<1)c.restore();}};
+  const each=(f,k)=>{for(const b of L)if(k(b)){if(b.built<1){c.save();c.globalAlpha=bAlpha(b);}f(b);if(b.built<1)c.restore();}};
   each(b=>drawVine(c,b.t,b.x*T,b.y*T,b.rot,b,time),b=>b.t!=='junction');
   if(!vineLite&&!ART_RM)each(b=>drawVineFx(c,b.t,b,time),b=>b.t!=='junction'&&b.belt.length);
   each(b=>drawKnot(c,b.x*T,b.y*T,b,time),b=>b.t==='junction');
@@ -3696,14 +3910,15 @@ function render(){
   {let n=0;const und=[];for(const k in ORGAN_N)ORGAN_N[k]=0;if(SET.art)for(const b of G.blocks.values()){const A=!b.team&&ART.plant[b.t];if(A&&inView(b.x,b.y,3)){if(A.custom)ORGAN_N[b.t]++;else if(!A.priority)n++;if(A.under&&b!==G.core)und.push(b);}}
    artLite=z<ART_LOD_ZOOM||n>ART_LOD_MAX;artMid=!artLite&&n>ART_MID_MAX;artDrawn=0;
    // roots that reach past a building's own tile go down before any building, so neighbours always sit on top of them
-   for(const b of und){if(b.built<1){ctx.save();ctx.globalAlpha=.4+.6*b.built;}drawArtUnder(ctx,b,time);if(b.built<1)ctx.restore();}}
+   for(const b of und){if(b.built<1){ctx.save();ctx.globalAlpha=bAlpha(b);}drawArtUnder(ctx,b,time);if(b.built<1)ctx.restore();}}
   // painted vessels: all bodies, then all their items, before any other building
   const vineP=vineArtOn()?(drawVinesPass(ctx,inView,time,z),1):0;
   for(const b of G.blocks.values()){if(!inView(b.x,b.y,3))continue;if(b.team===1&&!fogSeen(b.x,b.y))continue;
     const S=b.size*T;
-    if(b.built<1){ctx.save();ctx.globalAlpha=.4+.6*b.built;}
+    if(b.built<1){ctx.save();ctx.globalAlpha=bAlpha(b);}
     if(!(vineP&&!b.team&&VINE[b.t])){if(SET.hd)ctx.imageSmoothingEnabled=true;drawBlock(ctx,b.t,b.x*T,b.y*T,b.rot,b,time,b.team);if(SET.hd)ctx.imageSmoothingEnabled=false;}
     if(b.built<1)ctx.restore();
+    if(b.bt&&b.built<1)drawSite(ctx,b);
     if(b.hit>0){ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(b.x*T,b.y*T,S,S);}
     if(G.sel===b.id){ctx.strokeStyle=TEAM_COL[b.team];ctx.lineWidth=2;ctx.strokeRect(b.x*T-1,b.y*T-1,S+2,S+2);
       const tu=B[b.t].tur;if(tu){ctx.strokeStyle='rgba(166,224,90,.35)';ctx.beginPath();ctx.arc((b.x+b.size/2)*T,(b.y+b.size/2)*T,tu.range*T,0,7);ctx.stroke();}
@@ -3751,7 +3966,9 @@ function render(){
   if(G.tool&&G.tool!=='remove'&&mouse.in){
     const t=G.tool,d=B[t],[wx,wy]=s2w(mouse.x,mouse.y),md=mouse.down;
     const b=placeOrigin(t,wx,wy);
-    const plan=md&&md.moved&&md.b===0?linePlan(t,placeOrigin(t,md.w[0],md.w[1]),b):[[b[0],b[1],G.rot]];
+    const drag=md&&md.moved&&md.b===0&&!md.cancel;
+    if(VINE[t]){const P=curPlan(t,drag?md:{w:[wx,wy]},b);drawPlanRows(ctx,t,P.rows,time,P.diag);}else{
+    const plan=drag?linePlan(t,placeOrigin(t,md.w[0],md.w[1]),b):[[b[0],b[1],G.rot]];
     const budget=G.items.slice();
     for(const [x,y,r] of plan){
       let bad=!!placeCheck(t,x,y);if(!bad){if(d.cost.every(([i,n])=>budget[i]>=n))d.cost.forEach(([i,n])=>budget[i]-=n);else bad=true;}
@@ -3765,7 +3982,8 @@ function render(){
     if(d.tier){const o=drillOre(t,x,y);ctx.font='600 12px "Chakra Petch",sans-serif';ctx.textAlign='center';
       const label=o.item>=0?`${(o.count*d.rate*(o.item===TI?.7:1)*60).toFixed(0)} ${IT[o.item].n.toLowerCase()}/min`:'no ore';
       ctx.fillStyle='#000';ctx.fillText(label,cx+1,y*T-5);ctx.fillStyle=o.item>=0?'#e6e8ec':'#ee5a44';ctx.fillText(label,cx,y*T-6);}
-  }
+  }}
+  if(keys.has('alt')||DBG.nav){ctx.setTransform(DPR*z,0,0,DPR*z,-cam.x*DPR*z,-cam.y*DPR*z);if(keys.has('alt'))drawBuildGrid(ctx,tx0,ty0,tx1,ty1,z);if(DBG.nav){drawNavDebug(ctx,tx0,ty0,tx1,ty1,z);drawNavDebugHud(ctx);}}
   if(SET.hd){ctx.setTransform(DPR,0,0,DPR,0,0);if(SET.hq)drawDust();const vg=ctx.createRadialGradient(VW/2,VH/2,Math.min(VW,VH)*.35,VW/2,VH/2,Math.max(VW,VH)*.75);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(8,4,14,.55)');ctx.fillStyle=vg;ctx.fillRect(0,0,VW,VH);
     ctx.setTransform(DPR*z,0,0,DPR*z,-cam.x*DPR*z,-cam.y*DPR*z);
     if(G.tool&&G.tool!=='remove'){ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1/z;ctx.beginPath();for(let x=tx0;x<=tx1+1;x++){ctx.moveTo(x*T,ty0*T);ctx.lineTo(x*T,(ty1+1)*T);}for(let y=ty0;y<=ty1+1;y++){ctx.moveTo(tx0*T,y*T);ctx.lineTo((tx1+1)*T,y*T);}ctx.stroke();}}
@@ -3917,6 +4135,7 @@ function updatePanel(){
   if(!b){const t=$('p-time');if(t)t.textContent=fmtTime(G.time);const k=$('p-k');if(k)k.textContent=G.kills;const u=$('p-u');if(u)u.textContent=`${G.units.length} / ${UNIT_CAP}`;const ec=$('p-ec');if(ec)ec.textContent=G.ecores.length;const pw=$('p-web');if(pw)pw.textContent=`${(100*G.webCount/N).toFixed(0)}% of map${G.reach?` (Bloom reach ${G.reach} tiles${bloomFull()?', plant nodes':''})`:bloomFull()?' (Bloom limit, plant nodes)':''}`;const es=$('p-es');if(es)es.innerHTML=stockRows();return;}
   const d=B[b.t];const hp=$('p-hp');if(hp){hp.style.width=(100*b.hp/b.max)+'%';hp.style.background=b.team?'var(--red)':'';}const ht=$('p-hpt');if(ht)ht.textContent=`${Math.ceil(b.hp)} / ${b.max}`;
   const dyn=$('p-dyn');if(!dyn)return;let h='';
+  if(isSite(b)&&!b.team){const p=Math.max(0,b.built);dyn.innerHTML=`<div class="row">Growing <b>${Math.round(p*100)}%</b></div><div class="row">Ready in <b>${Math.ceil((1-b.built)*b.bt)} s</b></div><div class="row" style="opacity:.8">Not working until fully grown. Reabsorbing it returns its full cost.</div>`;return;}
   if(b.team===1){let eh='';if(d.tur&&d.tur.ammo){const am=Object.keys(b.ammo).filter(k=>b.ammo[k]>0).map(k=>`${b.ammo[k]} ${IT[k].n.toLowerCase()}`);eh+=`<div class="row">Ammo <b>${am.length?am.join(', '):'empty'}</b></div>`;}
     if(b.t==='core')eh+=stockRows();if(b.t==='lancer'||b.t==='smelter')eh+=`<div class="row">Colony power <b>${Math.round(G.epow*100)}%</b></div>`;dyn.innerHTML=eh;return;}
   if(d.tier)h+=b.oreItem>=0?`<div class="row">Gathering <b>${(b.oreCount*d.rate*(b.oreItem===TI?.7:1)*60).toFixed(0)} ${IT[b.oreItem].n.toLowerCase()}/min</b></div>`+(b.out>=10?`<div class="row">Status <b style="color:var(--red)">Output blocked</b></div>`:''):'';
@@ -4483,7 +4702,7 @@ function snapGame(){
   const blocks=[];for(const b of G.blocks.values()){const o={};for(const k in b){if(BLOCK_SKIP[k])continue;o[k]=packVal(b[k]);}blocks.push(o);}
   const ents=(L,skip)=>L.filter(e=>!e.dead).map(e=>{const o={};for(const k in e)if(!skip[k])o[k]=e[k];return o;});
   return {v:1,MW,g,blocks,core:G.core?G.core.id:0,ecores:G.ecores.map(c=>c.id),
-    enemies:ents(G.enemies,{target:1,tu:1}),units:ents(G.units,{target:1,chase:1,nav:1}),bullets:G.bullets.filter(p=>!p.dead),cam:{x:cam.x,y:cam.y,z:cam.z}};
+    enemies:ents(G.enemies,{target:1,tu:1,nav:1}),units:ents(G.units,{target:1,chase:1,nav:1}),bullets:G.bullets.filter(p=>!p.dead),cam:{x:cam.x,y:cam.y,z:cam.z}};
 }
 async function gz(str,dir){const s=new Blob([str]).stream().pipeThrough(dir?new CompressionStream('gzip'):new DecompressionStream('gzip'));return new Uint8Array(await new Response(s).arrayBuffer());}
 async function encodeSave(){const j=JSON.stringify(snapGame());return 'LC1:'+b64(await gz(j,true));}
@@ -4498,7 +4717,7 @@ function applySave(S){webSupReset();
   for(const o of S.blocks){const b={};for(const k in o)b[k]=unpackVal(o[k]);b.target=null;G.blocks.set(b.id,b);
     for(let yy=b.y;yy<b.y+b.size;yy++)for(let xx=b.x;xx<b.x+b.size;xx++)G.bgrid[yy*MW+xx]=b.id;}
   G.core=G.blocks.get(S.core)||null;G.ecores=S.ecores.map(id=>G.blocks.get(id)).filter(Boolean);
-  G.enemies=S.enemies.map(e=>Object.assign(e,{target:null,tu:null}));G.units=S.units.map(u=>Object.assign(u,{target:null,chase:null,nav:null}));G.bullets=S.bullets||[];
+  G.enemies=S.enemies.map(e=>Object.assign(e,{target:null,tu:null,nav:null}));G.units=S.units.map(u=>Object.assign(u,{target:null,chase:null,nav:null}));G.bullets=S.bullets||[];
   let wc=0;for(let i=0;i<N;i++)if(G.web[i])wc++;G.webCount=wc;
   if(!G.seen||G.seen.length!==N)G.seen=new Uint8Array(N);
   recompute();drawTerrainAll();repaintAllWeb();
