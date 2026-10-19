@@ -1589,7 +1589,7 @@ function damageEnemy(e,dmg){if(e.dead||e.script||(G.test&&arenaAt(e.x,e.y)<0))re
 
 // ---------- player tanks ----------
 function spawnUnit(t,x,y){const u={t,x,y,hp:U[t].hp,max:U[t].hp,cd:0,think:0,target:null,chase:null,ang:0,tang:0,dead:false,vx:0,vy:0,id:G.nextId++};G.units.push(u);return u;}
-function hurtUnit(u,dmg){if(u.dead||(G.test&&arenaAt(u.x,u.y)<0))return;u.hp-=dmg;u.hit=.1;if(u.hp<=0){u.dead=true;G.fx.push({k:'boom',x:u.x,y:u.y,r:.8,life:.35,max:.35});G.decals.push({x:u.x,y:u.y,r:.4,scorch:true});}}
+function hurtUnit(u,dmg){if(u.dead||(G.test&&arenaAt(u.x,u.y)<0))return;u.hp-=dmg;u.hit=.1;if(u.hp<=0){u.dead=true;antDied(u);G.fx.push({k:'boom',x:u.x,y:u.y,r:.8,life:.35,max:.35});G.decals.push({x:u.x,y:u.y,r:.4,scorch:true});}}
 function rallyPoint(k){
   if(G.test){const u=G.units[k];if(u&&u.home)return u.home;}
   if(!G.core)return [MW/2,MH/2];
@@ -2237,29 +2237,155 @@ const C={frame:'#2b2e36',body:'#4b505c',light:'#6c7280',dark:'#1d1f25',amber:'#a
 function frameRect(c,x,y,w,h){c.fillStyle=C.dark;c.fillRect(x,y,w,h);c.fillStyle=C.body;c.fillRect(x+2,y+2,w-4,h-4);c.fillStyle='rgba(255,255,255,.07)';c.fillRect(x+2,y+2,w-4,2);}
 function drawItem(c,i,x,y,s){c.fillStyle='rgba(0,0,0,.55)';c.fillRect(x-s/2+1,y-s/2+1,s,s);c.fillStyle=IT[i].c;c.fillRect(x-s/2,y-s/2,s,s);
   if(i===COAL||i===SI){c.strokeStyle='rgba(255,255,255,.35)';c.lineWidth=1;c.strokeRect(x-s/2+.5,y-s/2+.5,s-1,s-1);}}
-// Brood warriors are plant-like ants: abdomen, thorax and head, six legs, a leaf on the back and a spitting gland that aims on its own
-function drawTank(c,t,x,y,ang,tang,team,hit){
-  const d=U[t],r=d.r*T,big=t==='htank',tm=(G?G.time:0)*14+x*.37+y*.21;
-  const shell=hit?'#ffffff':big?'#3f6a2c':'#5e9a38',dark=big?'#24401a':'#33561f',leaf=big?'#7cba48':'#9bdb5a';
-  c.save();c.translate(x,y);c.rotate(ang);
-  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(2,3,r*1.2,r*.75,0,0,7);c.fill();
-  c.strokeStyle=dark;c.lineWidth=big?2.2:1.6;c.lineCap='round';
-  for(let k=-1;k<=1;k++){const sw=Math.sin(tm+k*2.1)*r*.25,lx=k*r*.38;
-    c.beginPath();c.moveTo(lx,0);c.lineTo(lx+sw-r*.15,-r*.95);c.moveTo(lx,0);c.lineTo(lx-sw-r*.15,r*.95);c.stroke();}
-  c.fillStyle=shell;
-  c.beginPath();c.ellipse(-r*.7,0,r*.62,r*.48,0,0,7);c.fill();
-  c.beginPath();c.ellipse(0,0,r*.36,r*.3,0,0,7);c.fill();
-  c.beginPath();c.ellipse(r*.62,0,r*.34,r*.32,0,0,7);c.fill();
-  c.fillStyle=leaf;c.beginPath();c.moveTo(-r*1.15,0);c.quadraticCurveTo(-r*.7,-r*.5,-r*.2,0);c.quadraticCurveTo(-r*.7,r*.5,-r*1.15,0);c.fill();
-  c.strokeStyle='rgba(30,60,20,.6)';c.lineWidth=1;c.beginPath();c.moveTo(-r*1.1,0);c.lineTo(-r*.25,0);c.stroke();
-  c.strokeStyle=dark;c.lineWidth=1.3;c.beginPath();c.moveTo(r*.85,-r*.15);c.lineTo(r*1.15,-r*.35);c.moveTo(r*.85,r*.15);c.lineTo(r*1.15,r*.35);c.stroke();
-  c.fillStyle='#c46ee0';c.beginPath();c.arc(r*.72,-r*.13,r*.08,0,7);c.arc(r*.72,r*.13,r*.08,0,7);c.fill();
-  c.restore();
-  c.save();c.translate(x,y);c.rotate(tang);
-  if(big){c.fillStyle='#6d4a2c';c.beginPath();c.arc(-r*.1,0,r*.34,0,7);c.fill();c.fillStyle='#e0a43a';c.beginPath();c.arc(-r*.1,0,r*.16,0,7);c.fill();c.fillStyle='#6d4a2c';c.fillRect(0,-r*.12,r*.75,r*.24);}
-  else{c.fillStyle='#a6e05a';c.beginPath();c.moveTo(r*.1,-r*.1);c.lineTo(r*.95,0);c.lineTo(r*.1,r*.1);c.closePath();c.fill();}
-  c.restore();
+// v45 Brood ants. Each kind is drawn once, procedurally, into a set of frames (an 8-step tripod walk, 4 idle breaths and a death pose),
+// at ANT_K times screen size, so a swarm costs two or three drawImage calls per ant. The spitting gland is its own small sprite that
+// turns to its target (tang) and kicks back when it fires. The shapes separate the roles: the Mite is small and round-bodied with a big
+// head and a leaf bud; the Thornback is long-legged and wasp-waisted with a crest of thorns; the Bulwark is broad and armoured in bark
+// plates with crushing mandibles and a glowing seed pod. Nothing here changes the game: walk phase, eased facing and deaths are kept in
+// render-only state (a WeakMap and a list), with no random numbers. vis draws the small kinds a little larger than their hit circle so
+// they read at normal zoom; hit areas are unchanged.
+const ANT_K=6,ANT_WALK=8,ANT_IDLE=4;
+const ANTD={
+  mite:{vis:1.14,fill:'#8ccc50',dark:'#4f8a2c',lite:'#d4f59a',leg:'#5f9a36',out:'#1a2e12',cyc:.42,
+    abd:[-.62,.53,.44],pet:[-.13,.11],tho:[.08,.28,.22],head:[.53,.34,.32],mand:[.2,.07,.55],reach:.74,lw:.9,ant:.75,gx:.06,
+    gland:{bulb:.17,len:.42,w:.08,col:'#a8e060',tip:'#e6ffb8'}},
+  tank:{vis:1.06,fill:'#5ea53c',dark:'#2f5e21',lite:'#acdf78',leg:'#3d7228',out:'#13240e',cyc:.66,
+    abd:[-.76,.54,.37],pet:[-.22,.09],tho:[.06,.31,.19],head:[.58,.27,.24],mand:[.32,.055,.8],reach:.95,lw:1.1,ant:1.15,gx:.02,
+    gland:{bulb:.17,len:.66,w:.075,col:'#e9e1b2',tip:'#fff8d8'}},
+  htank:{vis:1,fill:'#557f39',dark:'#2a4520',lite:'#9ccf62',leg:'#3a5724',out:'#0c140a',cyc:.85,
+    abd:[-.6,.62,.54],pet:[-.04,.13],tho:[.2,.33,.31],head:[.66,.31,.32],mand:[.27,.12,.42],reach:.8,lw:1.3,ant:.8,gx:-.32,
+    gland:{bulb:.3,len:.5,w:.17,col:'#6b4528',tip:'#ffb640'}},
+};
+const ANTSPR={};
+function antSprites(t){if(ANTSPR[t])return ANTSPR[t];
+  const d=ANTD[t],r=U[t].r*T*d.vis,h=Math.ceil(r*1.62),W=h*2*ANT_K,mk=f=>{const cv=document.createElement('canvas');cv.width=cv.height=W;const c=cv.getContext('2d');
+    c.translate(W/2,W/2);c.scale(ANT_K,ANT_K);c.lineCap='round';c.lineJoin='round';f(c);return cv;};
+  const S={h,r,walk:[],idle:[],dead:null,gland:null,gh:0,white:new Map()};
+  for(let f=0;f<ANT_WALK;f++)S.walk.push(mk(c=>antBody(c,t,d,r,{walk:f/ANT_WALK})));
+  for(let f=0;f<ANT_IDLE;f++)S.idle.push(mk(c=>antBody(c,t,d,r,{idle:f/ANT_IDLE})));
+  S.dead=mk(c=>antBody(c,t,d,r,{dead:true}));
+  const g=d.gland,gh=Math.ceil(r*(g.len+g.bulb+.2));S.gh=gh;const GW=gh*2*ANT_K;
+  const gc=document.createElement('canvas');gc.width=gc.height=GW;const c=gc.getContext('2d');c.translate(GW/2,GW/2);c.scale(ANT_K,ANT_K);c.lineCap='round';c.lineJoin='round';antGland(c,t,d,r);S.gland=gc;
+  return ANTSPR[t]=S;}
+// a white copy of a frame for the hit flash, made the first time it is needed
+function antWhite(S,cv){let w=S.white.get(cv);if(w)return w;w=document.createElement('canvas');w.width=cv.width;w.height=cv.height;const c=w.getContext('2d');
+  c.drawImage(cv,0,0);c.globalCompositeOperation='source-atop';c.fillStyle='#fff';c.fillRect(0,0,w.width,w.height);S.white.set(cv,w);return w;}
+function antSeg(c,x,y,rx,ry,d,out,lw){const g=c.createRadialGradient(x+rx*.1,y,0,x,y,Math.max(rx,ry));g.addColorStop(0,d.lite);g.addColorStop(.55,d.fill);g.addColorStop(1,d.dark);
+  c.fillStyle=g;c.beginPath();c.ellipse(x,y,rx,ry,0,0,7);c.fill();c.strokeStyle=out;c.lineWidth=lw;c.stroke();}
+function antBody(c,t,d,r,o){
+  const R=v=>v*r,out=o.dead?'#1c1a14':d.out,LW=Math.max(.8,r*.09)*(t==='htank'?1.15:1);
+  const [ax,arx,ary]=d.abd,[px,pr]=d.pet,[tx,trx,try_]=d.tho,[hx,hrx,hry]=d.head;
+  const ph=o.walk!==undefined?o.walk*Math.PI*2:0,br=o.idle!==undefined?Math.sin(o.idle*Math.PI*2):0;
+  // under-glow: a soft hive-green halo so ants read on any ground, and a contact shadow
+  if(!o.dead){const gg=c.createRadialGradient(R(-.1),0,0,R(-.1),0,R(1.45));gg.addColorStop(0,'rgba(166,224,90,.3)');gg.addColorStop(.6,'rgba(166,224,90,.12)');gg.addColorStop(1,'rgba(166,224,90,0)');
+    c.fillStyle=gg;c.beginPath();c.arc(R(-.1),0,R(1.45),0,7);c.fill();}
+  c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(R(-.1)+1.2,1.6,R(1.12),R(.6),0,0,7);c.fill();
+  // legs: three pairs from the thorax, femur out and tibia down to the foot; a tripod gait (front and hind on one side with the middle
+  // on the other) when walking, a slight settle when idle, curled in when dead
+  const hips=[tx+trx*.55,tx+trx*.05,tx-trx*.5],feet=[hx+.22,tx-.02,ax*.8-.1],kn=[.13,.02,-.12];
+  for(let i=0;i<3;i++)for(const s of [-1,1]){const A=(i===1)===(s>0);const phi=ph+(A?0:Math.PI);
+    const hipx=R(hips[i]),hipy=s*R(try_*.62);let fx=feet[i],fy=d.reach*[.78,1,.86][i],lift=0;
+    if(o.walk!==undefined){fx+=Math.sin(phi)*(t==='htank'?.17:.22);lift=Math.max(0,Math.cos(phi));fy-=lift*.1;}
+    else if(o.idle!==undefined){fx+=br*.02*(i-1);}
+    if(o.dead){fx=hips[i]+[.18,0,-.18][i];fy=try_*.62+.32;}
+    const footx=R(fx),footy=s*R(fy),kx=hipx+(footx-hipx)*.45+R(kn[i]),ky=s*(Math.abs(hipy)+(Math.abs(footy)-Math.abs(hipy))*(o.dead?.95:.78)+R(o.dead?.12:.05));
+    const lw=Math.max(.8,R(.068))*d.lw*(1-lift*.15);
+    c.strokeStyle=out;c.lineWidth=lw+LW*.75;c.beginPath();c.moveTo(hipx,hipy);c.lineTo(kx,ky);c.lineTo(footx,footy);c.stroke();
+    c.strokeStyle=d.leg;c.lineWidth=lw;c.stroke();
+    c.fillStyle=d.dark;c.beginPath();c.arc(kx,ky,lw*.32,0,7);c.fill();}
+  const bob=o.idle!==undefined?br*.025:0;
+  // abdomen (gaster), with its segment bands and the role's back
+  antSeg(c,R(ax),0,R(arx*(1+bob)),R(ary*(1+bob)),d,out,LW);
+  c.strokeStyle='rgba(10,24,8,.45)';c.lineWidth=Math.max(.6,LW*.7);
+  for(const k of [.35,-.2])c.beginPath(),c.ellipse(R(ax+arx*k),0,R(arx*.22),R(ary*.92*Math.sqrt(1-k*k)),0,-Math.PI/2,Math.PI/2),c.stroke();
+  if(t==='mite'){ // a leaf bud along the spine
+    c.fillStyle='#e2fbab';c.strokeStyle=out;c.lineWidth=LW*.6;c.beginPath();c.moveTo(R(ax-arx*.95),0);c.quadraticCurveTo(R(ax-arx*.2),R(-ary*.75),R(ax+arx*.65),0);c.quadraticCurveTo(R(ax-arx*.2),R(ary*.75),R(ax-arx*.95),0);c.fill();c.stroke();
+    c.strokeStyle='rgba(40,80,20,.7)';c.lineWidth=LW*.6;c.beginPath();c.moveTo(R(ax-arx*.75),0);c.lineTo(R(ax+arx*.45),0);c.stroke();}
+  if(t==='tank'){ // a tail thorn and a crest of thorns raked back along the body: the silhouette that says "warrior"
+    const thorn=(x,y,dx,dy,w)=>{c.fillStyle='#f2ead0';c.strokeStyle=out;c.lineWidth=LW*.6;c.beginPath();c.moveTo(R(x-w),R(y));c.lineTo(R(x+dx),R(y+dy));c.lineTo(R(x+w),R(y));c.closePath();c.fill();c.stroke();};
+    thorn(ax-arx*.88,0,-.5,0,.17);
+    for(const s of [-1,1]){thorn(ax+arx*.25,s*ary*.7,-.36,s*.46,.18);thorn(ax-arx*.45,s*ary*.65,-.36,s*.36,.15);thorn(tx-trx*.2,s*try_*.7,-.26,s*.42,.14);}}
+  if(t==='htank'){ // bark armour plates across the gaster, each overlapping the one behind it, mossy along the front edge
+    c.save();c.beginPath();c.ellipse(R(ax),0,R(arx*.97),R(ary*.97),0,0,7);c.clip();
+    for(let k=2;k>=0;k--){const x=ax-arx*.62+k*arx*.52;
+      c.fillStyle=k%2?'#6e4b2d':'#80593a';c.strokeStyle=out;c.lineWidth=LW;c.beginPath();c.ellipse(R(x),0,R(arx*.42),R(ary*1.2),0,0,7);c.fill();c.stroke();
+      c.strokeStyle='#8fc457';c.lineWidth=LW*.9;c.beginPath();c.ellipse(R(x),0,R(arx*.36),R(ary*1.05),0,-Math.PI*.42,Math.PI*.42);c.stroke();}
+    c.restore();c.strokeStyle=out;c.lineWidth=LW;c.beginPath();c.ellipse(R(ax),0,R(arx),R(ary),0,0,7);c.stroke();}
+  // petiole (the waist node), thorax, head
+  antSeg(c,R(px),0,R(pr),R(pr*.85),d,out,LW);
+  antSeg(c,R(tx),0,R(trx),R(try_),d,out,LW);
+  if(t==='htank'){c.fillStyle='#7d5734';c.strokeStyle=out;c.lineWidth=LW;c.beginPath();c.ellipse(R(tx-.02),0,R(trx*.72),R(try_*.75),0,0,7);c.fill();c.stroke();
+    c.strokeStyle='#8fc457';c.lineWidth=LW*.7;c.beginPath();c.moveTo(R(tx-trx*.55),0);c.lineTo(R(tx+trx*.55),0);c.stroke();}
+  // mandibles: open a little on each idle breath, shut when dead
+  const [ml,mw,mc]=d.mand,open=o.dead?-.05:o.idle!==undefined?.04+.05*(br+1)/2:.06;
+  for(const s of [-1,1]){const bx=R(hx+hrx*.72),by=s*R(hry*.42),tipx=R(hx+hrx+ml),tipy=s*R(hry*(.12+open*2));
+    c.strokeStyle=out;c.lineWidth=R(mw)+LW*1.6;c.beginPath();c.moveTo(bx,by);c.quadraticCurveTo(R(hx+hrx+ml*mc),s*R(hry*.85),tipx,tipy);c.stroke();
+    c.strokeStyle='#d6be72';c.lineWidth=R(mw);c.stroke();}
+  antSeg(c,R(hx),0,R(hrx),R(hry),d,out,LW);
+  if(t==='htank'){c.strokeStyle='#7d5734';c.lineWidth=LW*1.4;c.beginPath();c.moveTo(R(hx-hrx*.5),0);c.lineTo(R(hx+hrx*.55),0);c.stroke();}
+  // compound eyes with the hive's violet glint
+  for(const s of [-1,1]){c.fillStyle='#160d1c';c.beginPath();c.ellipse(R(hx+hrx*.3),s*R(hry*.6),R(.085),R(.065),0,0,7);c.fill();
+    if(!o.dead){c.fillStyle='#cf92f2';c.beginPath();c.arc(R(hx+hrx*.36),s*R(hry*.56),Math.max(.45,R(.03)),0,7);c.fill();}}
+  // elbowed antennae: swept back while walking, feeling the air when idle, limp when dead
+  const sw=o.walk!==undefined?Math.sin(ph*2)*.04-.06:o.idle!==undefined?Math.sin(o.idle*Math.PI*2+1)*.08:-.3;
+  for(const s of [-1,1]){const x0=R(hx+hrx*.6),y0=s*R(hry*.4),ex=R(hx+hrx*.95+.08),ey=s*R(hry*1.05+.12),tx2=R(hx+hrx*.95+.08+.42*d.ant),ty2=s*R(hry*1.05+.12+(s>0?sw:-sw*.7)*d.ant+.06);
+    c.strokeStyle=out;c.lineWidth=Math.max(.55,R(.035))+LW*.8;c.beginPath();c.moveTo(x0,y0);c.lineTo(ex,ey);c.lineTo(tx2,ty2);c.stroke();
+    c.strokeStyle=d.leg;c.lineWidth=Math.max(.45,R(.035));c.stroke();c.fillStyle=d.lite;c.beginPath();c.arc(tx2,ty2,Math.max(.45,R(.04)),0,7);c.fill();}
 }
+function antGland(c,t,d,r){const g=d.gland,R=v=>v*r,out=d.out,LW=Math.max(.8,r*.09);
+  if(t==='htank'){ // a seed pod: bark husk, amber core, stubby lobbing mouth
+    c.fillStyle='#4a3220';c.strokeStyle=out;c.lineWidth=LW;c.beginPath();c.moveTo(R(.05),R(-g.w));c.lineTo(R(g.len),R(-g.w*.8));c.lineTo(R(g.len),R(g.w*.8));c.lineTo(R(.05),R(g.w));c.closePath();c.fill();c.stroke();
+    c.fillStyle='#2a1c10';c.beginPath();c.ellipse(R(g.len),0,R(.04),R(g.w*.7),0,0,7);c.fill();
+    const gg=c.createRadialGradient(R(-.04),R(-.05),0,0,0,R(g.bulb));gg.addColorStop(0,'#ffcf6a');gg.addColorStop(.45,'#c47a2a');gg.addColorStop(1,'#4e3018');
+    c.fillStyle=gg;c.beginPath();c.arc(0,0,R(g.bulb),0,7);c.fill();c.stroke();
+    c.strokeStyle='rgba(40,24,10,.8)';c.lineWidth=LW*.7;for(const a of [-.9,0,.9]){c.beginPath();c.arc(0,0,R(g.bulb*.78),a-.35+Math.PI,a+.35+Math.PI);c.stroke();}
+    c.fillStyle='rgba(255,220,120,.85)';c.beginPath();c.arc(R(-g.bulb*.25),R(-g.bulb*.25),R(g.bulb*.18),0,7);c.fill();return;}
+  // a sap gland with a spitting spine: short and green on the Mite, a long pale thorn on the Thornback
+  c.fillStyle=g.col;c.strokeStyle=out;c.lineWidth=LW*.9;c.beginPath();c.moveTo(R(.02),R(-g.w));c.quadraticCurveTo(R(g.len*.6),R(-g.w*.7),R(g.len),0);c.quadraticCurveTo(R(g.len*.6),R(g.w*.7),R(.02),R(g.w));c.closePath();c.fill();c.stroke();
+  const gg=c.createRadialGradient(R(-.03),R(-.04),0,0,0,R(g.bulb));gg.addColorStop(0,d.lite);gg.addColorStop(1,d.dark);
+  c.fillStyle=gg;c.beginPath();c.arc(0,0,R(g.bulb),0,7);c.fill();c.stroke();
+  c.fillStyle=g.tip;c.beginPath();c.arc(R(-g.bulb*.2),R(-g.bulb*.25),Math.max(.5,R(g.bulb*.22)),0,7);c.fill();}
+// per-ant render state: walk phase driven by distance actually covered (no moonwalking), eased facing, and how much it is moving
+const ANTV=new WeakMap();
+function antState(u){let s=ANTV.get(u);const now=G.time,cyc=ANTD[u.t].cyc;
+  if(!s){s={ph:(u.id*.618)%1,lx:u.x,ly:u.y,a:u.ang,t:now,mv:0};ANTV.set(u,s);return s;}
+  const dt=now-s.t;if(dt<0||dt>1.5){s.lx=u.x;s.ly=u.y;s.a=u.ang;s.t=now;s.mv=0;return s;}
+  if(dt>0){const dd=Math.hypot(u.x-s.lx,u.y-s.ly);s.ph=(s.ph+dd/cyc)%1;s.mv+=((dd/dt>.08?1:0)-s.mv)*Math.min(1,dt*9);s.lx=u.x;s.ly=u.y;
+    const da=((u.ang-s.a+Math.PI*3)%(Math.PI*2))-Math.PI;s.a+=Math.abs(da)>2.6?da:clamp(da,-dt*11,dt*11);s.t=now;}
+  return s;}
+// deaths: a white flash, legs curling in, the body rolling and sinking away, and a spray of sap
+const ANTDIE=[];
+function antDied(u){const s=ANTV.get(u);ANTDIE.push({t:u.t,x:u.x,y:u.y,a:s?s.a:u.ang,g:u.tang,at:G.time,id:u.id});if(ANTDIE.length>120)ANTDIE.shift();}
+function drawAntDeaths(c,inView){const sm=c.imageSmoothingEnabled;c.imageSmoothingEnabled=true;
+  for(let i=ANTDIE.length-1;i>=0;i--){const q=ANTDIE[i],k=(G.time-q.at)/1.6;if(k<0||k>=1){ANTDIE.splice(i,1);continue;}if(!inView(q.x,q.y,1))continue;
+    const S=antSprites(q.t),r=S.r,x=q.x*T,y=q.y*T,roll=(q.id%2?1:-1)*.5*Math.min(1,k*2.5),sc=1-.18*k;
+    c.save();c.translate(x,y);c.rotate(q.a+roll);c.scale(sc,sc*(1-.25*Math.min(1,k*2)));c.globalAlpha=k<.6?1:1-(k-.6)/.4;c.drawImage(S.dead,-S.h,-S.h,S.h*2,S.h*2);
+    if(k<.15){c.globalAlpha=1-k/.15;c.drawImage(antWhite(S,S.dead),-S.h,-S.h,S.h*2,S.h*2);}c.restore();
+    const e=Math.min(1,k*3.2),ee=1-(1-e)*(1-e);c.fillStyle=q.t==='htank'?'#e3a23a':'#a6e05a';
+    for(let j=0;j<7;j++){const a=q.id*2.399+j*.9,dd=r*(.35+1.25*ee*(.6+.4*((j*7)%5)/4)),sz=Math.max(.6,r*.13*(1-k));c.globalAlpha=Math.max(0,1-k*1.25);
+      c.beginPath();c.arc(x+Math.cos(a)*dd,y+Math.sin(a)*dd+r*.4*k*k,sz,0,7);c.fill();}
+    c.globalAlpha=1;}
+  c.imageSmoothingEnabled=sm;}
+// Brood warriors are plant-like ants: abdomen, waist, thorax and head, six legs, mandibles and antennae, and a spitting gland that aims on
+// its own. u is the live ant (for walking, facing and the shot kick); without it (previews, icons) the ant stands idle.
+function drawTank(c,t,x,y,ang,tang,team,hit,u){
+  const S=antSprites(t),r=S.r,d=ANTD[t],sm=c.imageSmoothingEnabled;c.imageSmoothingEnabled=true;
+  let fr=S.idle[0],a=ang,rec=0,bob=1,lean=0;
+  if(u){const s=antState(u);a=s.a;
+    if(s.mv>.5){fr=S.walk[Math.floor(s.ph*ANT_WALK)%ANT_WALK];bob=1+(t==='htank'?.03:.018)*Math.sin(s.ph*Math.PI*4);}
+    else fr=S.idle[Math.floor(G.time*1.7+u.id*.37)%ANT_IDLE];
+    const rl=U[t].reload,w=Math.min(.16,rl*.5);if(u.cd>rl-w)rec=(u.cd-(rl-w))/w;
+    lean=((u.ang-a+Math.PI*3)%(Math.PI*2))-Math.PI;}
+  c.save();c.translate(x,y);c.rotate(a);if(rec)c.translate(-rec*r*.07,0);
+  if(lean)c.transform(1,clamp(lean,-.5,.5)*.12,0,1,0,0);   // a little sideways lean into a turn
+  c.scale(bob,1/bob);c.drawImage(fr,-S.h,-S.h,S.h*2,S.h*2);
+  if(hit){c.globalAlpha*=.8;c.drawImage(antWhite(S,fr),-S.h,-S.h,S.h*2,S.h*2);}
+  c.restore();
+  const gx=x+Math.cos(a)*d.gx*r,gy=y+Math.sin(a)*d.gx*r;
+  c.save();c.translate(gx,gy);c.rotate(tang);if(rec)c.translate(-rec*r*.18,0);c.drawImage(S.gland,-S.gh,-S.gh,S.gh*2,S.gh*2);
+  if(rec>.35){const g=d.gland,mx=r*(g.len+.04);c.globalAlpha*=(rec-.35)/.65;c.fillStyle=g.tip;c.beginPath();c.arc(mx,0,r*(t==='htank'?.2:.13),0,7);c.fill();
+    c.fillStyle='rgba(255,255,255,.8)';c.beginPath();c.arc(mx,0,r*.06,0,7);c.fill();}
+  c.restore();c.imageSmoothingEnabled=sm;}
 const OG={shell:'#2b1d33',flesh:'#5b3a6b',fleshL:'#80569a',glow:'#a6e05a',glowD:'#5f8a35',bark:'#7a5534',barkD:'#4a3220'};
 function blobPath(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
 function seed(c,i,x,y,s){c.fillStyle='rgba(0,0,0,.45)';c.beginPath();c.arc(x+1,y+1,s/2,0,7);c.fill();c.fillStyle=IT[i].c;c.beginPath();c.arc(x,y,s/2,0,7);c.fill();}
@@ -3958,7 +4084,8 @@ function render(){
   }
   if(PODFX.length)drawPodFx(ctx,time);
   for(const e of G.enemies)if(!E[e.t].air&&inView(e.x,e.y,1)&&fogVis(e.x,e.y))drawEnemy(ctx,e,time);
-  for(const u of G.units)if(inView(u.x,u.y,1)){drawTank(ctx,u.t,u.x*T,u.y*T,u.ang,u.tang,0,u.hit>0);
+  if(ANTDIE.length)drawAntDeaths(ctx,inView);
+  for(const u of G.units)if(inView(u.x,u.y,1)){drawTank(ctx,u.t,u.x*T,u.y*T,u.ang,u.tang,0,u.hit>0,u);
     if(u.hp<u.max){const r=U[u.t].r*T;ctx.fillStyle='#000';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2,3);ctx.fillStyle='#7fd06a';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2*u.hp/u.max,3);}}
   if(G.story)storyDrawWorld(ctx,time);
   if(PINGS.length)drawPings(ctx);

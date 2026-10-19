@@ -117,9 +117,9 @@ Units
 
 Ants hatch from your Spawning Pods and Brood Chambers. HDF machines arrive in waves, or are paid for by a colony core in base attacks.
 
-- Mite Ant (Nymbri Hive, hits ground): Small and cheap, grown from copper and lead. Weak alone, dangerous in packs.
-- Thornback Ant (Nymbri Hive, hits ground and air): Quick warrior that spits thorns. Grown from chitin and lead.
-- Bulwark Ant (Nymbri Hive, hits ground): Huge armoured ant that lobs acid seeds with splash. Grown from chitin, resin and titanium. Too big for Petal Gates, so give your walls a Maw Gate.
+- Mite Ant (Nymbri Hive, hits ground): Small and cheap, grown from copper and lead. Weak alone, dangerous in packs. Looks: the smallest ant, round-bodied with a big head and a pale leaf bud on its back, and quick short steps.
+- Thornback Ant (Nymbri Hive, hits ground and air): Quick warrior that spits thorns. Grown from chitin and lead. Looks: long legs, a narrow waist and a crest of pale thorns raked back along its body, with a long thorn spine on its back.
+- Bulwark Ant (Nymbri Hive, hits ground): Huge armoured ant that lobs acid seeds with splash. Grown from chitin, resin and titanium. Too big for Petal Gates, so give your walls a Maw Gate. Looks: broad and heavy, its abdomen armoured in bark plates, with crushing jaws and a glowing amber seed pod on its back.
 - Scout Tank (HDF, hits ground): Light tank and the backbone of every wave.
 - Rammer Drone (HDF, hits ground): Fast drone that rams a target and explodes.
 - Flame Tank (HDF, hits ground): Slow, tough tank with a short-range flamethrower.
