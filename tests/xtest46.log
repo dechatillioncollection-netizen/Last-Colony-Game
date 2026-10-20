@@ -1,0 +1,37 @@
+PASS the sounds load and play after the first click (145 sounds decoded) {"n":145,"state":"running"}
+PASS all three sliders set their own gains at once and show their percentages {"vol":{"m":0.5,"s":0.8,"a":0.6,"mute":false},"eff":{"s":0.4,"a":0.3,"m":0.5},"gm":0.5,"gs":0.8,"ga":0.6,"labels":["50%","80%","60%"],"chainS":0.4,"chainA":0.3}
+PASS Master 50% with Sound Effects 80% and Ambience 60% gives 40% and 30%, in the mixer itself {"vol":{"m":0.5,"s":0.8,"a":0.6,"mute":false},"eff":{"s":0.4,"a":0.3,"m":0.5},"gm":0.5,"gs":0.8,"ga":0.6,"labels":["50%","80%","60%"],"chainS":0.4,"chainA":0.3}
+PASS Master back at 100% leaves Sound Effects at 80% and Ambience at 60% (it never rewrote them) {"vol":{"m":1,"s":0.8,"a":0.6,"mute":false},"eff":{"s":0.8,"a":0.6,"m":1},"gs":0.8,"ga":0.6}
+PASS the settings are saved and come back in a new session (values, labels and the mute switch) {"vol":{"m":0.7,"s":0.35,"a":0.9,"mute":true},"ui":[[70,"70%"],[35,"35%"],[90,"90%"]],"mute":true,"gm":0}
+PASS muting, or both sliders at 0%, gives exactly silent output during a fight (every sample is 0) {"loud":{"rms":0.25939252173971183,"peak":0.7636054754257202},"muted":{"rms":0,"peak":0},"zero":{"rms":0,"peak":0}}
+PASS Sound Effects at 0%: no effect voices, engines or beds at all, while the ambience still plays {"maxV":0,"eng":0,"beds":0,"amb":5,"played":75,"ambOnly":{"rms":0.07421681936843481,"peak":0.33161747455596924}}
+PASS Ambience at 0%: every ambience loop is stopped, while effects carry on {"amb":0,"ga":0,"voices":4}
+PASS an idle Sap Burner (no coal) and a Thorn Spitter with no target make no sound {"feed":0,"bed":false,"spit":0}
+PASS given coal, the Sap Burner takes it in with a whumph and its burning bed starts {"feed":2,"bed":true,"burn":1.47}
+PASS when the coal runs out the burning bed fades away {"burn":0,"bed":0}
+PASS with no enemies, no combat sound plays {"web_creep":5}
+PASS a Thorn Spitter firing at a vehicle spits, and its thorns clank on the hull {"spits":5,"shot":true,"hits":18}
+PASS 100 ants fighting: at most 24 voices, at most 3 of any one sound, 4 engines, one shared scuttle bed {"ants":99,"maxV":21,"maxSame":3,"beds":["scuttle"],"maxEng":4,"played5s":{"bulwark_fire":8,"web_creep":7,"cannon":3,"thornback_fire":27,"metal_hit":20,"mite_fire":19,"gun_jet":3,"shell_boom":3,"ant_hit":6,"veh_explode":3,"ant_die":1},"req":2001,"antFire":46}
+PASS destroyed vehicles stop their engines at once, and dead ants leave no scuttle {"engGoneMs":108.6000000005588,"scuttle":0.0002,"enemies":0}
+PASS a burning Sap Burner that is destroyed stops sounding {"on":0.481,"after":0}
+PASS a finished game leaves no beds or engines running {"beds":0,"eng":0}
+PASS ambience: machines far off bring a rising rumble, a fight rouses the hive, and both ease back afterwards without a jump {"threat4s":0.404,"combat7s":0.387,"threatEnd":0.003,"combatEnd":0.226,"combatMid":0.333,"jump":0.0347,"wind":0.5}
+PASS 200 ants fighting: frames cost the same with sound on as off, and sound work on the game thread is under 0.25 ms a step and 1 ms per sound update {"on":{"median":16.7,"p90":33.4,"stepMs":1.25,"voices":24},"off":{"median":33.3,"p90":33.4,"stepMs":1.11,"voices":0},"req":12403,"soundMsPerStep":0.1057,"soundTickMs":0.064}
+PASS the game is unchanged by sound: byte-identical save to v45 (survival, seed 7, drawn every 3 steps, 13 ant deaths, sound playing) {"v45":{"len":10400,"h":1909265456,"deaths":13,"time":95,"sounds":0},"v46":{"len":10400,"h":1909265456,"deaths":13,"time":95,"sounds":32}}
+PASS the game is unchanged by sound: byte-identical save to v45 (siege, seed 3, drawn every 5 steps, 14 ant deaths, sound playing) {"v45":{"len":22524,"h":-1661469770,"deaths":14,"time":95,"sounds":0},"v46":{"len":22524,"h":-1661469770,"deaths":14,"time":95,"sounds":66}}
+PASS the game is unchanged by sound: byte-identical save to v45 (survival, seed 11, never drawn, 0 ant deaths, sound playing) {"v45":{"len":15404,"h":-447480792,"deaths":0,"time":95,"sounds":0},"v46":{"len":15404,"h":-447480792,"deaths":0,"time":95,"sounds":86}}
+PASS the patrol is the same three Scout Tanks as before, all starting on open ground inside the map {"v45":["dagger","dagger","dagger"],"v46":{"n":3,"types":["dagger","dagger","dagger"],"valid":true,"seenInPlayerView":false,"frame":[13.244138005197275,38.859320056191635,1.35],"start":[38.166666666666664,36.166666666666664]}}
+PASS no vehicle appears inside the player's view when the event starts (one in view waits further back, out of sight) {"n":3,"types":["dagger","dagger","dagger"],"valid":true,"seenInPlayerView":false,"frame":[13.244138005197275,38.859320056191635,1.35],"start":[38.166666666666664,36.166666666666664]}
+PASS Mission 1: the patrol reaches the meeting place far sooner {"v45_seconds":34.8,"v46_seconds":8.6}
+PASS the vehicles drive into view a few seconds after the event begins, not instantly {"firstVisible":4.5}
+PASS their engines are heard before they come into view {"heardAt":0.4,"seenAt":4.5}
+PASS the camera pans to the scene and holds there: keys and the wheel do not move it during the moment {"lock":true,"moved":1.2715566248778392,"dz":0.0030862582948378847}
+PASS the story plays in the same order as before and the tutorial completes {"v45":["fc_patrol","fc_command","fc_general","fc_after"],"v46":["fc_patrol","fc_command","fc_general","fc_after"]}
+PASS afterwards the camera is back where the player had it, at their zoom, and the controls work at once {"end":[-340,572,1],"before":[-340,572,1],"controlsMovedPx":291.68999999999795}
+PASS the patrol leaves without vanishing on screen, and its engines and the far rumble die away {"vanished":0,"eng":0,"threat":0.004012530203908682}
+PASS a save during the scene keeps the player's own camera; loading it resumes the scene with the camera framing it again {"c0":[-340,572,1],"mid":[-158.2872816504912,635.4478536378584,1.3445387748311555],"savedCam":[-340,572,1],"s":"fc_walk","cineOn":true,"lock":true}
+PASS restarting mid-scene unlocks the camera, and two overlapping moments still return to the view from before the first {"afterRestart":{"on":false,"lock":false},"back":[186.66666666666663,386.66666666666663,1.2],"c0":[186.66666666666663,386.66666666666663,1.2],"on":false}
+PASS a story line that points at a place (Mission 2: the depot) pans there, holds, and returns afterwards {"seen":{"why":"e_humans","lock":true},"c0":[-172,1316,1],"end":[-172,1316,1],"on":false}
+PASS no page errors []
+
+35 passed, 0 failed

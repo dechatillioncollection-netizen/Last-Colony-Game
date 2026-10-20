@@ -1,0 +1,17 @@
+{
+ "on": {
+  "median": 16.7,
+  "p90": 33.4,
+  "stepMs": 1.25,
+  "voices": 24
+ },
+ "off": {
+  "median": 33.3,
+  "p90": 33.4,
+  "stepMs": 1.11,
+  "voices": 0
+ },
+ "req": 12403,
+ "soundMsPerStep": 0.1057,
+ "soundTickMs": 0.064
+}

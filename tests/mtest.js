@@ -77,8 +77,9 @@ const URL=process.env.URL||'http://localhost:8123/index.html';
    let gainCut=0;{const c=G.eitems[CU];__t.run(30);gainCut=G.eitems[CU]-c;}
    return {cut:cut.length,ammoBefore:a0,events:ev1.filter(k=>!ev0.includes(k)),gainCut};});
  check('Outpost Kilo: cutting drills and belts fires the supply events',sup.cut>5&&sup.events.includes('k_drill')&&sup.events.includes('k_belt'),sup);
- const kv=await p.evaluate(async()=>{const c=G.ecores[0];destroyBlock(c);await new Promise(r=>setTimeout(r,200));const seq=DLG.open&&Object.keys(SEQ).find(k=>SEQ[k]===DLG.seq);
-   const lab=propCentre('lab'),cx=(cam.x+VW/2/cam.z)/T,cy=(cam.y+VH/2/cam.z)/T;return {over:G.over,seq,camAtLab:lab?Math.hypot(cx-lab[0],cy-lab[1])<8:false,ping:PINGS.map(p=>p.label)};});
+ const kv=await p.evaluate(async()=>{const near=async(c,d)=>{for(let i=0;i<40;i++){const cx=(cam.x+VW/2/cam.z)/T,cy=(cam.y+VH/2/cam.z)/T;if(c&&Math.hypot(cx-c[0],cy-c[1])<d)return true;await new Promise(r=>setTimeout(r,100));}return false;};const c=G.ecores[0];destroyBlock(c);await new Promise(r=>setTimeout(r,200));const seq=DLG.open&&Object.keys(SEQ).find(k=>SEQ[k]===DLG.seq);
+   // since v46 the camera pans to the scene rather than jumping, so give it time to arrive
+   const lab=propCentre('lab'),camAtLab=await near(lab,8);return {over:G.over,seq,camAtLab,ping:PINGS.map(p=>p.label)};});
  check('Outpost Kilo: destroying the core wins, and the outro looks at the laboratory',kv.over&&kv.seq==='k_out'&&kv.camAtLab,kv);
  await p.evaluate(()=>skipDlg());
  // ---------------- Mission 4: Frost Canyon ----------------
@@ -96,11 +97,11 @@ const URL=process.env.URL||'http://localhost:8123/index.html';
  check('The Last Colony: homes, shelters and a command centre on the colony side',la.houses>=20&&la.shelters>=3&&la.command===1&&la.leftSide===0,{houses:la.houses,shelters:la.shelters,command:la.command,left:la.leftSide});
  check('The Last Colony: colony economy and defences intact',la.fail===0&&la.turrets>=16&&la.walls>=20&&la.doors>=1,{efeed:la.efeed,turrets:la.turrets,walls:la.walls,doors:la.doors});
  const lc=await p.evaluate(async()=>{// the first direct exchange plays from the command centre
-   startMission('last');await new Promise(r=>setTimeout(r,150));let k=0,atCmd=false;
-   while(DLG.open&&k++<200){const key=Object.keys(SEQ).find(q=>SEQ[q]===DLG.seq);if(key==='x_contact'){const c=propCentre('command'),cx=(cam.x+VW/2/cam.z)/T,cy=(cam.y+VH/2/cam.z)/T;atCmd=Math.hypot(cx-c[0],cy-c[1])<8;break;}advanceDlg();advanceDlg();}
+   const near=async(c,d)=>{for(let i=0;i<40;i++){const cx=(cam.x+VW/2/cam.z)/T,cy=(cam.y+VH/2/cam.z)/T;if(c&&Math.hypot(cx-c[0],cy-c[1])<d)return true;await new Promise(r=>setTimeout(r,100));}return false;};startMission('last');await new Promise(r=>setTimeout(r,150));let k=0,atCmd=false;
+   while(DLG.open&&k++<200){const key=Object.keys(SEQ).find(q=>SEQ[q]===DLG.seq);if(key==='x_contact'){atCmd=await near(propCentre('command'),8);break;}advanceDlg();advanceDlg();}
    skipDlg();G.story.s='main';G.story.hold=false;const c=G.ecores[0];destroyBlock(c);await new Promise(r=>setTimeout(r,150));
-   const seq=DLG.open&&Object.keys(SEQ).find(q=>SEQ[q]===DLG.seq);const sh=propCentre('shelter'),cx=(cam.x+VW/2/cam.z)/T,cy=(cam.y+VH/2/cam.z)/T;
-   return {atCmd,over:G.over,seq,camAtShelter:Math.hypot(cx-sh[0],cy-sh[1])<12};});
+   const seq=DLG.open&&Object.keys(SEQ).find(q=>SEQ[q]===DLG.seq);const camAtShelter=await near(propCentre('shelter'),12);
+   return {atCmd,over:G.over,seq,camAtShelter};});
  check('The Last Colony: first contact plays from HDF Command; the core falls and the ending shows the shelters',lc.atCmd&&lc.over&&lc.seq==='x_out1'&&lc.camAtShelter,lc);
  await p.evaluate(()=>skipDlg());
  check('No page errors',errs.length===0,errs.slice(0,5));

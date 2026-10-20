@@ -6,7 +6,7 @@ The whole game is a single HTML file with its painted art beside it. The ground 
 
 ## Play
 
-Open `index.html` in a browser. Chrome, Edge and Firefox all work. Painted art loads from `art/`, so keep that folder next to the page. If the browser blocks local files, serve the folder instead:
+Open `index.html` in a browser. Chrome, Edge and Firefox all work. Painted art loads from `art/` and sound from `audio/`, so keep those folders next to the page. If the browser blocks local files, serve the folder instead:
 
 ```
 python3 -m http.server 8000
@@ -24,6 +24,7 @@ Press F3 in game to see the frame rate and which renderer is drawing the Rootweb
 | `art/plant/` | painted layers for the Bloom, Seed Pod, Thorn Spitter and Living Rootweb |
 | `art/source/` | the scripts that paint those layers |
 | `art/ART-GUIDE.md` | how the painted art is layered, animated and scaled |
+| `audio/` | the game's sounds (`sounds.js`, loaded after the first click) and the scripts that generate them, see `audio/README.md` |
 | `docs/` | story bible, campaign dialogue, game guide, campaign maps (`v34-campaign-maps.md`), test range layout, screenshots |
 | `electron/` | the Windows desktop build (`electron/build.sh` makes `LastColony-Windows.zip`) |
 | `tests/` | Playwright tests and profilers, see `tests/README.md` |

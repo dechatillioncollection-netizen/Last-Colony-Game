@@ -117,6 +117,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .qnote{min-height:0;font-style:italic}
 .opt{display:flex;gap:10px;align-items:flex-start;color:var(--muted);font-size:14px;line-height:1.4;margin-bottom:14px;cursor:pointer}
 .opt b{color:var(--text)}.opt input{margin-top:4px;accent-color:var(--amber);width:18px;height:18px}
+.scard{max-height:calc(100vh - 32px);overflow:auto}
+.vrow{display:grid;grid-template-columns:118px 1fr 46px;align-items:center;gap:8px;margin-bottom:8px;color:var(--muted);font-size:14px}
+.vrow input{accent-color:var(--amber);width:100%;margin:0}.vrow output{color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
+.snote{color:var(--muted);font-size:13px;line-height:1.4;margin:0 0 10px}
 /* planet sector map */
 #planet{position:fixed;inset:0;z-index:7;background:radial-gradient(ellipse at 40% 50%,#1a1328 0%,#07060a 70%);display:flex;flex-direction:column}
 #pbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:8px 12px;background:#17131bf0;border-bottom:2px solid var(--edge);font-size:14px}
@@ -216,6 +220,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <div class="qbar" role="radiogroup" aria-label="Graphics quality"><button data-q="low" role="radio">Low</button><button data-q="medium" role="radio">Medium</button><button data-q="high" role="radio">High</button><button data-q="epic" role="radio">Epic</button></div>
   <p id="qdesc" class="qdesc"></p><p id="qgpu" class="qdesc qnote"></p>
   <label class="opt"><input type="checkbox" id="optFog"><span><b>Fog of war</b><br>Ground you have never seen stays black, and enemies are only visible near your growths, Rootweb and ants.</span></label>
+  <div class="qlbl">Audio</div>
+  <div class="vrow"><label for="vol_m">Master volume</label><input type="range" id="vol_m" min="0" max="100" step="1"><output id="volv_m" for="vol_m">80%</output></div>
+  <div class="vrow"><label for="vol_s">Sound effects</label><input type="range" id="vol_s" min="0" max="100" step="1"><output id="volv_s" for="vol_s">80%</output></div>
+  <div class="vrow"><label for="vol_a">Ambience</label><input type="range" id="vol_a" min="0" max="100" step="1"><output id="volv_a" for="vol_a">60%</output></div>
+  <p class="snote">Master scales the other two. Sound effects covers growth, organs, ants, machines, combat and the interface; Ambience is the wind, the ground and the world around you.</p>
+  <label class="opt"><input type="checkbox" id="optMute"><span><b>Mute all sound</b><br>Silences the game and keeps your slider settings.</span></label>
   <button id="setClose">Close</button></div></div>
 <div id="planet" hidden>
   <div id="pbar"><h2>NERETH</h2><span id="pitems"></span><button id="pTech">Evolution</button><button id="pSaves">Saves</button><button id="pBack">Main menu</button></div>
@@ -245,7 +255,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <button class="mode" id="m-survival"><b>SURVIVAL</b><span>Hold your Bloom against 25 waves of colony war machines dropped into the red zone. Every growth starts evolved.</span></button>
       <button class="mode" id="m-siege"><b>BASE SIEGE</b><span>The last human colony sits across the map. Its drills and belts feed its turrets and pay for its machines, just like your vines feed you. Cut its supply, hatch a swarm and destroy its core. Every growth starts evolved.</span></button>
       <button class="mode" id="m-load"><b>LOAD GAME</b><span>Continue a saved game, or import a save file from the web version or the Windows app.</span></button>
-      <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics quality and fog of war.</span></button>
+      <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics, fog of war and sound.</span></button>
     </div>
     <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> or the wheel rotates a Vine before you place it (during a drag: a straight line turns whole; a line with corners keeps them and turns its end, or reverses) &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms (with no Vine chosen) &middot; <kbd>Space</kbd> pause.</p>
   </div>
@@ -396,7 +406,7 @@ function setMapSize(w){if(w===MW&&w===MH)return;MW=MH=w;N=w*w;
   terrCanvas.width=terrCanvas.height=w*T;miniBase.width=miniBase.height=w;webClearAll();miniWeb.width=miniWeb.height=w;hdCanvas.width=hdCanvas.height=w*HDR;webImg=null;
   webArtImg=null;webPat=null;if(webArtOn())webPat=webSel(0,0).x.createPattern(ART.plant.rootweb.img[0],'repeat');}
 function newGame(mode,mis){
-  RADIO.length=0;PINGS.length=0;
+  RADIO.length=0;PINGS.length=0;sndReset();cineReset();
   setMapSize(mis?mis.size:mode==='siege'?MAXM:96);
   G={mode,mission:mis?mis.id:null,diff:mis&&mis.diff||1,winWave:mis&&mis.waves||WIN_WAVE,ezone:mis&&mis.ezone||(mode==='siege'?23:7),
      income:new Float64Array(7),incLast:new Float64Array(7),incRate:new Float64Array(7),incT:0,seed:mis?mis.seed:(rnd()*1e9)|0,time:0,terrain:new Uint8Array(N),ore:new Int8Array(N).fill(-1),bgrid:new Int32Array(N),
@@ -636,7 +646,7 @@ function webList(b){const R=webRadius(b);if(b.wr===R&&b.wlist)return b.wlist;con
     const d=Math.hypot(x+.5-cx,y+.5-cy)+hash(x,y,G.seed+3)*.9+(core?(vn(x/7+G.seed%97,y/7)-.5)*(G.reach?Math.min(9,R*.3):9):0);if(d<=R)L.push([d,y*MW+x]);}
   L.sort((a,c)=>a[0]-c[0]);if(core)L.length=Math.min(L.length,coreWebCap());b.wlist=L.map(v=>v[1]);b.wr=R;b.wi=0;return b.wlist;}
 function webAt(x,y){return inMap(x,y)&&G.web[y*MW+x]===1;}
-function setWeb(i,v){if(G.web[i]===v)return;G.web[i]=v;G.webCount+=v?1:-1;WSUP.dirty=true;const x=i%MW,y=(i/MW)|0;
+function setWeb(i,v){if(G.web[i]===v)return;G.web[i]=v;G.webCount+=v?1:-1;WSUP.dirty=true;const x=i%MW,y=(i/MW)|0;if(v&&G.time>0)snd('web',x,y);
   /* visual only from here */if(!v){webBorn.delete(i);webNod.delete(i);}
   // the painted look paints nothing here: new tiles and their neighbours are painted by webArtTick, within a small budget each frame
   // the GPU Rootweb needs only the new coverage and the time each tile was born
@@ -1246,7 +1256,7 @@ function removeBlock(b){
 }
 function destroyBlock(b){
   if(!G.blocks.has(b.id))return;
-  removeBlock(b);
+  removeBlock(b);snd('destroyB',b);
   for(let k=0;k<b.size*2;k++)G.decals.push({x:b.x+rnd()*b.size,y:b.y+rnd()*b.size,r:.3+rnd()*.3});
   if(G.decals.length>500)G.decals.splice(0,G.decals.length-500);
   G.fx.push({k:'boom',x:b.x+b.size/2,y:b.y+b.size/2,r:b.size*.8,life:.35,max:.35});
@@ -1255,7 +1265,7 @@ function destroyBlock(b){
     else{G.ecores=G.ecores.filter(c=>c!==b);msg('A colony core is destroyed!','good');if(!G.ecores.length)endGame(true);}
   }
 }
-function hurtBlock(b,dmg){if(!b||!G.blocks.has(b.id)||testShielded(b))return;b.hp-=dmg;b.hit=.12;if(b.hp<=0)destroyBlock(b);}
+function hurtBlock(b,dmg){if(!b||!G.blocks.has(b.id)||testShielded(b))return;b.hp-=dmg;b.hit=.12;snd('hurtB',b,dmg);if(b.hp<=0)destroyBlock(b);}
 function drillOre(t,x,y){
   const d=B[t],cnt=new Array(7).fill(0);
   for(let yy=y;yy<y+d.size;yy++)for(let xx=x;xx<x+d.size;xx++){if(!inMap(xx,yy))continue;const i=yy*MW+xx,o=G.ore[i];
@@ -1523,7 +1533,7 @@ function enemyThink(e){
   thinkGround(e,d);
 }
 function enemyFireAt(e,tx,ty,tgtBlock,tgtUnit){
-  const d=E[e.t];e.cd=d.reload;e.ang=Math.atan2(ty-e.y,tx-e.x);const dm=d.dmg*(e.boss?1.5:1);
+  const d=E[e.t];e.cd=d.reload;e.ang=Math.atan2(ty-e.y,tx-e.x);const dm=d.dmg*(e.boss?1.5:1);snd('eFire',e);
   if(d.flame){if(tgtUnit)hurtUnit(tgtUnit,dm);else hurtBlock(tgtBlock,dm);G.fx.push({k:'flame',x1:e.x,y1:e.y,x2:tx,y2:ty,life:.2,max:.2});return;}
   if(d.art){const fl=Math.hypot(tx-e.x,ty-e.y)/6;G.bullets.push({x:e.x,y:e.y,sx:e.x,sy:e.y,tx,ty,t:0,fl,team:1,art:true,dmg:dm,splash:d.splash});return;}
   const L=Math.hypot(tx-e.x,ty-e.y)||1;
@@ -1534,7 +1544,7 @@ function splashBlocks(team,x,y,r,dmg){const hit=new Set();
     const id=G.bgrid[ty*MW+tx];if(!id||hit.has(id))continue;const b=G.blocks.get(id);if(b&&b.team===team){hit.add(id);hurtBlock(b,dmg);}}}
 function splashUnits(x,y,r,dmg){for(const u of G.units){if(u.dead)continue;const d=Math.hypot(u.x-x,u.y-y),R=r+U[u.t].r;if(d<R)hurtUnit(u,dmg*(.3+.7*(1-d/R)));}}
 function explode(e){
-  const d=E[e.t].explode;e.dead=true;G.fx.push({k:'boom',x:e.x,y:e.y,r:d.r,life:.35,max:.35});
+  const d=E[e.t].explode;e.dead=true;snd('ram',e);G.fx.push({k:'boom',x:e.x,y:e.y,r:d.r,life:.35,max:.35});
   splashBlocks(0,e.x,e.y,d.r,d.dmg);splashUnits(e.x,e.y,d.r,d.dmg);
 }
 function stepEnemy(e,dt){
@@ -1552,7 +1562,7 @@ function stepEnemy(e,dt){
       e.vx+=(dx/L*d.spd-e.vx)*Math.min(1,dt*2);e.vy+=(dy/L*d.spd-e.vy)*Math.min(1,dt*2);
       e.x+=e.vx*dt;e.y+=e.vy*dt;e.ang=Math.atan2(e.vy,e.vx);
       const ti=tileAt(e.x,e.y);
-      if(e.cd<=0&&ti>=0&&G.bgrid[ti]&&G.blocks.get(G.bgrid[ti]).team===0){e.cd=d.bomb.reload;G.fx.push({k:'boom',x:e.x,y:e.y,r:d.bomb.r,life:.3,max:.3});
+      if(e.cd<=0&&ti>=0&&G.bgrid[ti]&&G.blocks.get(G.bgrid[ti]).team===0){e.cd=d.bomb.reload;snd('bomb',e);G.fx.push({k:'boom',x:e.x,y:e.y,r:d.bomb.r,life:.3,max:.3});
         const dm=d.bomb.dmg*(e.boss?1.5:1);splashBlocks(0,e.x,e.y,d.bomb.r,dm);splashUnits(e.x,e.y,d.bomb.r,dm);}
       return;
     }
@@ -1585,11 +1595,11 @@ function separate(){
     nudge(ua,-dx*push,-dy*push,0);nudge(ub,dx*push,dy*push,0);}
 }
 function nudge(e,dx,dy,team){NARROW=team===0&&U[e.t]&&U[e.t].large?1:0;try{if(canStep(e.x,e.y,e.x+dx,e.y+dy,radOf(e,team),team)){e.x+=dx;e.y+=dy;}}finally{NARROW=0;}}
-function damageEnemy(e,dmg){if(e.dead||e.script||(G.test&&arenaAt(e.x,e.y)<0))return;e.hp-=dmg;e.hit=.1;if(e.hp<=0){e.dead=true;G.kills++;G.fx.push({k:'boom',x:e.x,y:e.y,r:E[e.t].r*1.6,life:.3,max:.3});G.decals.push({x:e.x,y:e.y,r:E[e.t].r*.9,scorch:true});}}
+function damageEnemy(e,dmg){if(e.dead||e.script||(G.test&&arenaAt(e.x,e.y)<0))return;e.hp-=dmg;e.hit=.1;if(e.hp>0)snd('hitE',e);else snd('dieE',e);if(e.hp<=0){e.dead=true;G.kills++;G.fx.push({k:'boom',x:e.x,y:e.y,r:E[e.t].r*1.6,life:.3,max:.3});G.decals.push({x:e.x,y:e.y,r:E[e.t].r*.9,scorch:true});}}
 
 // ---------- player tanks ----------
 function spawnUnit(t,x,y){const u={t,x,y,hp:U[t].hp,max:U[t].hp,cd:0,think:0,target:null,chase:null,ang:0,tang:0,dead:false,vx:0,vy:0,id:G.nextId++};G.units.push(u);return u;}
-function hurtUnit(u,dmg){if(u.dead||(G.test&&arenaAt(u.x,u.y)<0))return;u.hp-=dmg;u.hit=.1;if(u.hp<=0){u.dead=true;antDied(u);G.fx.push({k:'boom',x:u.x,y:u.y,r:.8,life:.35,max:.35});G.decals.push({x:u.x,y:u.y,r:.4,scorch:true});}}
+function hurtUnit(u,dmg){if(u.dead||(G.test&&arenaAt(u.x,u.y)<0))return;u.hp-=dmg;u.hit=.1;if(u.hp>0)snd('hitU',u);if(u.hp<=0){u.dead=true;antDied(u);snd('dieU',u);G.fx.push({k:'boom',x:u.x,y:u.y,r:.8,life:.35,max:.35});G.decals.push({x:u.x,y:u.y,r:.4,scorch:true});}}
 function rallyPoint(k){
   if(G.test){const u=G.units[k];if(u&&u.home)return u.home;}
   if(!G.core)return [MW/2,MH/2];
@@ -1613,7 +1623,7 @@ function stepUnitN(u,dt,k){
   if(u.target){const t=u.target;const want=Math.atan2(t.y-u.y,t.x-u.x);let da=((want-u.tang+Math.PI*3)%(Math.PI*2))-Math.PI;u.tang+=clamp(da,-dt*6,dt*6);
     if(u.cd<=0&&Math.abs(da)<.3){u.cd=d.reload;const L=Math.hypot(t.x-u.x,t.y-u.y)||1;
       const [lx,ly]=t.bid?[t.x,t.y]:leadAim(u.x,u.y,t,d.bspd),L2=Math.hypot(lx-u.x,ly-u.y)||1;
-      G.bullets.push({x:u.x,y:u.y,vx:(lx-u.x)/L2*d.bspd,vy:(ly-u.y)/L2*d.bspd,life:(d.range+2)/d.bspd,team:0,dmg:d.dmg,splash:d.splash||0,air:d.air,ground:d.ground,col:'#ffe7a8',hitsBlocks:true,tgt:t.bid||0});}}
+      G.bullets.push({x:u.x,y:u.y,vx:(lx-u.x)/L2*d.bspd,vy:(ly-u.y)/L2*d.bspd,life:(d.range+2)/d.bspd,team:0,dmg:d.dmg,splash:d.splash||0,air:d.air,ground:d.ground,col:'#ffe7a8',hitsBlocks:true,tgt:t.bid||0});snd('antFire',u);}}
   // movement
   if(G.command==='attack'&&G.mode==='siege'&&u.go){
     if(u.target)return;
@@ -1663,9 +1673,9 @@ const BUILD_T={conveyor:.5,tconveyor:.8,junction:.8,router:1,sorter:1.2,drill:4,
   wall:1.5,wallL:5,twall:3,door:2.5,doorL:7,mender:4,duo:3,scatter:7,hail:4,lancer:10,node:3,bellows:7,nest:7,factory:12};
 function buildTime(t){return BUILD_T[t]||3;}
 function isSite(b){return !!b&&!!b.bt&&b.built<1;}
-function startSite(b,delay){if(G.test||b.team!==0||b.t==='core')return;b.bt=buildTime(b.t);b.built=-(delay||0)/b.bt;b.hp=Math.max(1,Math.round(b.max*.1));}
+function startSite(b,delay){if(G.test||b.team!==0||b.t==='core')return;b.bt=buildTime(b.t);b.built=-(delay||0)/b.bt;b.hp=Math.max(1,Math.round(b.max*.1));snd('site',b);}
 function growSite(b,dt){const p0=Math.max(0,b.built);b.built=Math.min(1,b.built+dt/b.bt);const p1=Math.max(0,b.built);
-  if(p1>p0)b.hp=Math.min(b.max,b.hp+b.max*.9*(p1-p0));if(b.built>=1){b.built=1;if(GATE[b.t])G.dirty=true;if(!VINE[b.t])G.fx.push({k:'grown',x:b.x+b.size/2,y:b.y+b.size/2,r:b.size*.7,life:.45,max:.45});}}
+  if(p1>p0)b.hp=Math.min(b.max,b.hp+b.max*.9*(p1-p0));if(b.built>=1){b.built=1;snd('grown',b);if(GATE[b.t])G.dirty=true;if(!VINE[b.t])G.fx.push({k:'grown',x:b.x+b.size/2,y:b.y+b.size/2,r:b.size*.7,life:.45,max:.45});}}
 function bAlpha(b){return isSite(b)?.2+.45*Math.max(0,b.built):.4+.6*b.built;}
 // a site: a membrane outline closing round it, roots reaching in from the corners as it grows, and a growth bar
 function drawSite(c,b){const p=Math.max(0,b.built),S=b.size*T,x=b.x*T,y=b.y*T;c.save();
@@ -1754,7 +1764,7 @@ function rotateTool(s){if(!canRotate())return false;const md=mouse.down,t=G.tool
     if(cur==null){const [wx,wy]=s2w(mouse.x,mouse.y),a=placeOrigin(t,md.w[0],md.w[1]),b=placeOrigin(t,wx,wy);const pl=curPlan(t,md,b).plan;cur=a[0]===b[0]&&a[1]===b[1]||!pl.length?G.rot:pl[pl.length-1][2];}
     md.er=(cur+s+4)%4;G.rot=md.er;}
   else G.rot=(G.rot+s+4)%4;
-  return true;}
+  snd('ui','rotate');return true;}
 // the wheel: a notched wheel turns one step a notch; a touchpad's small pixel deltas add up to a step every 60 px
 const WHEEL={acc:0,t:0};
 function wheelSteps(e){if(e.deltaMode)return e.deltaY>0?1:e.deltaY<0?-1:0;const now=performance.now();if(now-WHEEL.t>220)WHEEL.acc=0;WHEEL.t=now;
@@ -1902,14 +1912,14 @@ function updTurret(b,dt,d){
   if(tu.laser){
     b.charge=Math.min(1,b.charge+dt*sat/tu.reload);
     if(b.charge>=1&&Math.abs(da)<.2){b.charge=0;const ex=cx+Math.cos(b.ang)*tu.range,ey=cy+Math.sin(b.ang)*tu.range;
-      laserLine(b,cx,cy,ex,ey,tu.dmg);G.fx.push({k:'laser',x1:cx,y1:cy,x2:ex,y2:ey,life:.25,max:.25,team:b.team});}
+      snd('fire',b);laserLine(b,cx,cy,ex,ey,tu.dmg);G.fx.push({k:'laser',x1:cx,y1:cy,x2:ex,y2:ey,life:.25,max:.25,team:b.team});}
     return;
   }
   if(b.reload>0||Math.abs(da)>.25)return;
   let ai,a;
   if(b.t==='core'){ai=CU;a={dmg:8,spd:14};}
   else{ai=bestAmmo(b);if(ai<0)return;a=tu.ammo[ai];b.ammo[ai]--;}
-  b.reload=tu.reload*(a.rm||1);b.shot=G.time; // painted turrets animate from this real shot
+  b.reload=tu.reload*(a.rm||1);b.shot=G.time;snd('fire',b); // painted turrets animate from this real shot
   if(tu.art){const [lx,ly,fl]=tg.bid?[tg.x,tg.y,Math.hypot(tg.x-cx,tg.y-cy)/a.spd]:leadAim(cx,cy,tg,a.spd);
     G.bullets.push({x:cx,y:cy,sx:cx,sy:cy,tx:lx,ty:ly,t:0,fl,team:b.team,art:true,dmg:a.dmg,splash:a.splash,ground:true,col:IT[ai].c});return;}
   const off=b.t==='duo'?((b.rr^=1)?.18:-.18):0,px=cx-Math.sin(b.ang)*off,py=cy+Math.cos(b.ang)*off;
@@ -1932,27 +1942,27 @@ function updBlock(b,dt){
     return;}
   case 'drill':case 'pdrill':
     if(b.oreItem<0)return;
-    if(b.out<10){b.prog+=dt*b.oreCount*d.rate*(b.oreItem===TI?.7:1);if(b.prog>=1){b.prog-=1;b.out++;}}
+    if(b.out<10){b.prog+=dt*b.oreCount*d.rate*(b.oreItem===TI?.7:1);if(b.prog>=1){b.prog-=1;b.out++;snd('tap',b);}}
     if(b.out>0&&offload(b,b.oreItem))b.out--;
     return;
   case 'press':case 'smelter':{
     const ok=d.input.every(([i,n])=>b.inv[i]>=n)&&b.out<10;b.wants=ok&&!!d.power;
-    if(ok){b.prog+=dt*(d.power?(b.team===1?G.epow:G.powSat):1)/d.time;if(b.prog>=1){b.prog=0;for(const [i,n] of d.input)b.inv[i]-=n;b.out++;}}
+    if(ok){b.prog+=dt*(d.power?(b.team===1?G.epow:G.powSat):1)/d.time;if(b.prog>=1){b.prog=0;for(const [i,n] of d.input)b.inv[i]-=n;b.out++;snd('gland',b);}}
     if(b.out>0&&offload(b,d.out))b.out--;
     return;}
   case 'nest':case 'factory':{
     const u=U[b.unit];const ok=unitOk(b.unit)&&u.cost.every(([i,n])=>b.inv[i]>=n)&&G.units.length<UNIT_CAP;b.wants=ok;
     if(ok){b.prog+=dt*(d.power?G.powSat:1)/u.time;if(b.prog>=1){b.prog=0;for(const [i,n] of u.cost)b.inv[i]-=n;
-      NARROW=u.large?1:0;let sp;try{sp=exitTile(b);}finally{NARROW=0;}const nu=spawnUnit(b.unit,sp[0],sp[1]);nu.ang=nu.tang=b.ang;msg(`${u.name} hatched.`,'good');}}
+      NARROW=u.large?1:0;let sp;try{sp=exitTile(b);}finally{NARROW=0;}const nu=spawnUnit(b.unit,sp[0],sp[1]);nu.ang=nu.tang=b.ang;snd('hatch',sp[0],sp[1]);msg(`${u.name} hatched.`,'good');}}
     return;}
   case 'combustion':
-    if(b.burn<=0&&b.inv[COAL]>0){b.inv[COAL]--;b.burn=2;}
+    if(b.burn<=0&&b.inv[COAL]>0){b.inv[COAL]--;b.burn=2;if(b.team===0)snd('feed',b);}
     if(b.burn>0)b.burn-=dt;
     return;
   case 'mender':
     b.prog+=dt*G.powSat;if(b.prog>=2){b.prog=0;let any=false;
       for(const o of G.blocks.values()){if(o.team!==b.team||o.hp>=o.max||isSite(o))continue;const [ox,oy]=bCenter(o);if(Math.hypot(ox-b.x-.5,oy-b.y-.5)<=6){o.hp=Math.min(o.max,o.hp+o.max*.12);any=true;}}
-      if(any)G.fx.push({k:'heal',x:b.x+.5,y:b.y+.5,r:6,life:.5,max:.5});}
+      if(any){G.fx.push({k:'heal',x:b.x+.5,y:b.y+.5,r:6,life:.5,max:.5});snd('heal',b);}}
     return;
   case 'core':updTurret(b,dt,{tur:{range:7.5,reload:.5,air:true,ground:true}});return;
   }
@@ -1980,7 +1990,7 @@ function computePower(){
 function stepBullets(dt){
   for(const p of G.bullets){
     if(p.art){p.t+=dt;const k=Math.min(1,p.t/p.fl);p.x=p.sx+(p.tx-p.sx)*k;p.y=p.sy+(p.ty-p.sy)*k;
-      if(k>=1){p.dead=true;G.fx.push({k:'boom',x:p.x,y:p.y,r:p.splash,life:.3,max:.3});
+      if(k>=1){p.dead=true;G.fx.push({k:'boom',x:p.x,y:p.y,r:p.splash,life:.3,max:.3});snd('shell',p);
         if(p.team===0){forEnemiesNear(p.x,p.y,p.splash+1,e=>{if(!E[e.t].air&&Math.hypot(e.x-p.x,e.y-p.y)<p.splash+E[e.t].r)damageEnemy(e,p.dmg);});splashBlocks(1,p.x,p.y,p.splash,p.dmg);}
         else{splashBlocks(0,p.x,p.y,p.splash,p.dmg);splashUnits(p.x,p.y,p.splash,p.dmg);}}
       continue;}
@@ -2111,6 +2121,7 @@ function deconstruct(b){
 }
 function setTool(t){
   if(G&&G.tool===t&&t!==null)t=null;
+  if(G&&G.tool!==t)snd('ui',t?'ui_tool':'ui_cancel');
   if(G)G.tool=t;
   document.querySelectorAll('.bbtn,.tab.tool').forEach(b=>b.classList.toggle('on',b.dataset.t===(t||'')));
   showInfo(t&&t!=='remove'?t:null);
@@ -2127,7 +2138,7 @@ cv.addEventListener('pointermove',e=>{
   const md=mouse.down;if(!md)return;
   if(Math.hypot(e.offsetX-md.x,e.offsetY-md.y)>6)md.moved=true;
   const pan=md.b===1||(md.type==='touch'&&!G.tool);
-  if(md.moved&&pan){cam.x=md.cam[0]-(e.offsetX-md.x)/cam.z;cam.y=md.cam[1]-(e.offsetY-md.y)/cam.z;clampCam();}
+  if(md.moved&&pan&&!CINE.lock){if(CINE.ret){cineUser();md.cam=[cam.x,cam.y];md.x=e.offsetX;md.y=e.offsetY;}cam.x=md.cam[0]-(e.offsetX-md.x)/cam.z;cam.y=md.cam[1]-(e.offsetY-md.y)/cam.z;clampCam();}
 });
 cv.addEventListener('pointerleave',()=>{mouse.in=false;});
 function removeArea(a,b){
@@ -2137,7 +2148,7 @@ function removeArea(a,b){
 }
 // selected ants: G.selUs lists every selected ant (G.selU is the first one, used by the panel and the tutorial)
 function selAnts(){const ids=G.selUs&&G.selUs.length?G.selUs:G.selU?[G.selU]:[];if(!ids.length)return [];const s=new Set(ids);return G.units.filter(u=>s.has(u.id)&&!u.dead);}
-function setSelAnts(ids){G.selUs=ids;G.selU=ids[0]||0;G.sel=0;renderPanel(true);}
+function setSelAnts(ids){if(ids.length)snd('ui','ui_select');G.selUs=ids;G.selU=ids[0]||0;G.sel=0;renderPanel(true);}
 // send ants to a spot; a group spreads out round it (nearest ant to the middle) so they don't pile up on one point
 function sendAnts(list,wx,wy){const spots=[];
   for(let r=0;spots.length<list.length&&r<10;r++){const m=r?Math.max(6,Math.round(2*Math.PI*r)):1;
@@ -2159,16 +2170,16 @@ cv.addEventListener('pointerup',e=>{
     if(md.type==='touch'&&md.moved&&!B[G.tool].belt)return;
     const t=G.tool,a=placeOrigin(t,md.w[0],md.w[1]),b=placeOrigin(t,wx,wy);
     if(VINE[t]){const P=curPlan(t,md.moved?md:{w:md.w},md.moved?b:a),rows=P.rows;
-      if(rows.length===1&&rows[0].why){const w=rows[0].why;if(w!=='same'&&w!=='dup')msg(w==='short'?'Not enough in the Bloom':w);return;}
+      if(rows.length===1&&rows[0].why){const w=rows[0].why;if(w!=='same'&&w!=='dup'){msg(w==='short'?'Not enough in the Bloom':w);snd('ui','deny');}return;}
       const [ok,why]=placePlan(t,rows),skip=(why.short||0)+(why.reach||0)+(why.blocked||0);
       if(skip){const parts=[];if(why.short)parts.push(`${why.short} not affordable`);if(why.reach)parts.push(`${why.reach} out of vine reach`);if(why.blocked)parts.push(`${why.blocked} blocked`);
-        msg(ok?`${ok} ${B[t].name}${ok===1?'':'s'} placed; ${parts.join(', ')}.`:`Nothing placed: ${parts.join(', ')}.`);}
+        msg(ok?`${ok} ${B[t].name}${ok===1?'':'s'} placed; ${parts.join(', ')}.`:`Nothing placed: ${parts.join(', ')}.`);if(!ok)snd('ui','deny');}
       if(md.moved&&P.plan.length&&B[t].rot)G.rot=P.plan[P.plan.length-1][2];
       return;}
     const plan=md.moved?linePlan(t,a,b):[[a[0],a[1],G.rot]];
     let ok=0,last='';for(const [x,y,r] of plan){const why=placeCheck(t,x,y)||(canAfford(B[t].cost)?'':'Not enough in the Bloom');
       if(why){last=why;continue;}if(tryPlace(t,x,y,B[t].rot?r:0,true))ok++;}
-    if(!ok&&last)msg(last);
+    if(!ok&&last){msg(last);snd('ui','deny');}
     if(md.moved&&plan.length&&B[t].rot)G.rot=plan[plan.length-1][2];
     return;
   }
@@ -2183,11 +2194,12 @@ cv.addEventListener('pointerup',e=>{
   if(pu){if(e.shiftKey){const have=selAnts().map(u=>u.id);setSelAnts(have.includes(pu.id)?have.filter(id=>id!==pu.id):[...have,pu.id]);}else setSelAnts([pu.id]);return;}
   const o=blockAt(Math.floor(wx),Math.floor(wy)),sel=selAnts();
   // with ants selected, a tap on open ground sends them there
-  if(sel.length&&!o){const i=tileAt(wx,wy);if(i>=0&&!solidTile(i,0)){sendAnts(sel,wx,wy);msg(sel.length>1?`${sel.length} ants moving out.`:`${U[sel[0].t].name} moving out.`);return;}}
-  G.selU=0;G.selUs=[];G.sel=o?o.id:0;renderPanel(true);
+  if(sel.length&&!o){const i=tileAt(wx,wy);if(i>=0&&!solidTile(i,0)){sendAnts(sel,wx,wy);snd('ui','ui_select',.7);msg(sel.length>1?`${sel.length} ants moving out.`:`${U[sel[0].t].name} moving out.`);return;}}
+  G.selU=0;G.selUs=[];G.sel=o?o.id:0;if(o)snd('ui','ui_select');renderPanel(true);
 });
 cv.addEventListener('wheel',e=>{e.preventDefault();
   if(canRotate()){const s=wheelSteps(e);if(s)rotateTool(s);return;}   // a directional growth chosen: the wheel rotates it, and never also zooms
+  if(CINE.lock)return;cineUser();
   const [wx,wy]=s2w(e.offsetX,e.offsetY);
   cam.z=clamp(cam.z*(e.deltaY<0?1.12:1/1.12),.5,2.5);cam.x=wx*T-e.offsetX/cam.z;cam.y=wy*T-e.offsetY/cam.z;clampCam();},{passive:false});
 window.addEventListener('keydown',e=>{
@@ -2199,13 +2211,13 @@ window.addEventListener('keydown',e=>{
   keys.add(k);
   if(k===' '){e.preventDefault();setSpeed(G.paused?G.speed:0);}
   else if(k==='f4'){DBG.nav=!DBG.nav;DBG.inv=[];msg(DBG.nav?'Route debug view on (F4 to hide).':'Route debug view off.');}
-  else if(k==='escape'&&mouse.down&&!mouse.down.cancel){mouse.down.cancel=true;msg('Placement cancelled.');}
+  else if(k==='escape'&&mouse.down&&!mouse.down.cancel){mouse.down.cancel=true;msg('Placement cancelled.');snd('ui','ui_cancel');}
   else if(k==='escape'){if(G.tool)setTool(null);else{G.sel=0;G.selU=0;G.selUs=[];renderPanel(true);}}
   else if(k==='r'){if(!rotateTool(e.shiftKey?-1:1))G.rot=(G.rot+(e.shiftKey?3:1))%4;}
   else if(k==='c'){setCommand(G.command==='attack'?'defend':'attack');}
   else if(k==='q'){const [wx,wy]=s2w(mouse.x,mouse.y),o=blockAt(Math.floor(wx),Math.floor(wy));if(o&&o.team===0&&o.t!=='core'&&G.unlocked.has(o.t)){G.tool=null;selectTab(catOf(o.t));setTool(o.t);G.rot=o.rot;}}
   else if(k==='x'){setTool('remove');}
-  else if(k==='h'&&G.core)centerOn(G.core.x+1.5,G.core.y+1.5);
+  else if(k==='h'&&G.core&&!CINE.lock){cineUser();centerOn(G.core.x+1.5,G.core.y+1.5);}
   else if(k==='delete'||k==='backspace'){const b=G.blocks.get(G.sel);if(b)deconstruct(b);}
   else if(HOTKEYS[k]&&G.unlocked.has(HOTKEYS[k])){selectTab(catOf(HOTKEYS[k]));setTool(HOTKEYS[k]);}
   if(k.startsWith('arrow'))e.preventDefault();
@@ -2214,7 +2226,7 @@ window.addEventListener('keyup',e=>{if(e.key==='Alt')e.preventDefault();keys.del
 window.addEventListener('blur',()=>keys.clear());
 
 const mini=document.getElementById('mini'),mctx=mini.getContext('2d');
-function miniJump(e){const r=mini.getBoundingClientRect();centerOn((e.clientX-r.left)/r.width*MW,(e.clientY-r.top)/r.height*MH);}
+function miniJump(e){if(CINE.lock)return;cineUser();const r=mini.getBoundingClientRect();centerOn((e.clientX-r.left)/r.width*MW,(e.clientY-r.top)/r.height*MH);}
 mini.addEventListener('pointerdown',e=>{if(!G)return;mini.setPointerCapture(e.pointerId);miniJump(e);mini._drag=true;});
 mini.addEventListener('pointermove',e=>{if(mini._drag)miniJump(e);});
 mini.addEventListener('pointerup',()=>{mini._drag=false;});
@@ -4224,7 +4236,7 @@ let techWasPaused=false;
 function toggleTech(force){
   const el=$('tech'),open=force===undefined?el.hidden:force;
   if(open===!el.hidden)return;
-  el.hidden=!open;
+  el.hidden=!open;snd('ui',open?'ui_open':'ui_close');
   if(open){if(G){techWasPaused=G.paused;G.paused=true;}renderTech();}else if(G){G.paused=techWasPaused;setSpeed(G.paused?0:G.speed);buildMenu();}else if(!$('planet').hidden){PL.dirty=true;renderSectorCard();updatePlanetBar();}
 }
 function techLayout(){
@@ -4315,7 +4327,7 @@ panel.addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn|
 
 const msgEl=$('msgs');let lastMsg='',lastMsgT=0;
 function msg(text,kind){
-  const now=performance.now();if(text===lastMsg&&now-lastMsgT<1500)return;lastMsg=text;lastMsgT=now;
+  const now=performance.now();if(text===lastMsg&&now-lastMsgT<1500)return;lastMsg=text;lastMsgT=now;snd('msg',text,kind);
   const d=document.createElement('div');d.textContent=text;if(kind)d.className=kind;msgEl.appendChild(d);
   while(msgEl.children.length>4)msgEl.firstChild.remove();
   setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),700);},kind==='alert'?6000:kind==='radio'||kind==='hive'?7500:3500);
@@ -4536,8 +4548,8 @@ function drawPingsMini(c,s){const now=performance.now();for(const p of PINGS){co
 // the camera looks at a landmark while a dialogue sequence plays, so the voices come from somewhere real
 const SEQ_FOCUS={e_humans:'depot',k_out:'lab',x_contact:'command',x_intro:'core',x_out1:'shelter',x_out2:'shelter'};
 function seqFocus(k){const f=SEQ_FOCUS[k];if(!f||!G||G.mapv<2)return;
-  if(f==='core'){if(G.core)centerOn(G.core.x+1.5,G.core.y+1.5);return;}
-  const p=propCentre(f);if(!p)return;centerOn(p[0],p[1]);ping(p[0],p[1],{depot:'Ember Depot',lab:'Containment laboratory',command:'HDF Command',shelter:'Shelters'}[f]);
+  if(f==='core'){if(G.core)cineFocus(G.core.x+1.5,G.core.y+1.5,{why:k});return;}
+  const p=propCentre(f);if(!p)return;cineFocus(p[0],p[1],{why:k});ping(p[0],p[1],{depot:'Ember Depot',lab:'Containment laboratory',command:'HDF Command',shelter:'Shelters'}[f]);
   if(f==='shelter')for(const r of propsOf('shelter').slice(1))ping(r[0]+r[2]/2,r[1]+r[3]/2);}
 // helpers for conditions
 function evLive(){return !!G&&G.mapv>=2&&!G.over&&!G.held&&(!G.story||G.story.s==='main');}
@@ -4860,13 +4872,13 @@ function snapGame(){
   const blocks=[];for(const b of G.blocks.values()){const o={};for(const k in b){if(BLOCK_SKIP[k])continue;o[k]=packVal(b[k]);}blocks.push(o);}
   const ents=(L,skip)=>L.filter(e=>!e.dead).map(e=>{const o={};for(const k in e)if(!skip[k])o[k]=e[k];return o;});
   return {v:1,MW,g,blocks,core:G.core?G.core.id:0,ecores:G.ecores.map(c=>c.id),
-    enemies:ents(G.enemies,{target:1,tu:1,nav:1}),units:ents(G.units,{target:1,chase:1,nav:1}),bullets:G.bullets.filter(p=>!p.dead),cam:{x:cam.x,y:cam.y,z:cam.z}};
+    enemies:ents(G.enemies,{target:1,tu:1,nav:1}),units:ents(G.units,{target:1,chase:1,nav:1}),bullets:G.bullets.filter(p=>!p.dead),cam:CINE.on&&CINE.prev?{x:CINE.prev.x,y:CINE.prev.y,z:CINE.prev.z}:{x:cam.x,y:cam.y,z:cam.z}};
 }
 async function gz(str,dir){const s=new Blob([str]).stream().pipeThrough(dir?new CompressionStream('gzip'):new DecompressionStream('gzip'));return new Uint8Array(await new Response(s).arrayBuffer());}
 async function encodeSave(){const j=JSON.stringify(snapGame());return 'LC1:'+b64(await gz(j,true));}
 async function decodeSave(s){if(!s||!s.startsWith('LC1:'))throw new Error('Not a Last Colony save');const u=await gz(unb64(s.slice(4)),false);return JSON.parse(new TextDecoder().decode(u));}
 function applySave(S){webSupReset();
-  RADIO.length=0;PINGS.length=0;
+  RADIO.length=0;PINGS.length=0;sndReset();cineReset();
   setMapSize(S.MW);
   const g={};for(const k in S.g)g[k]=unpackVal(S.g[k]);
   G=Object.assign(g,{flow:new Float64Array(N),flowNext:new Int32Array(N),pflow:new Float64Array(N),pflowNext:new Int32Array(N),bgrid:new Int32Array(N),
@@ -5025,8 +5037,8 @@ async function renderSlots(){
   $('expBtn').disabled=!(G&&!G.over)&&!CAMP;$('quitBtn').hidden=!G;$('quitBtn').textContent=G&&G.held&&!G.over?'Leave sector':G&&G.mission?'Exit to planet':'Exit to main menu';
 }
 let savesWasPaused=false;
-async function openSaves(){await Store.init();if(G&&!G.over){savesWasPaused=G.paused;G.paused=true;}$('saves').hidden=false;renderSlots();}
-function closeSaves(){$('saves').hidden=true;if(G&&!G.over){G.paused=savesWasPaused;setSpeed(G.paused?0:G.speed);}}
+async function openSaves(){await Store.init();if(G&&!G.over){savesWasPaused=G.paused;G.paused=true;}$('saves').hidden=false;renderSlots();snd('ui','ui_open');}
+function closeSaves(){if(!$('saves').hidden)snd('ui','ui_close');$('saves').hidden=true;if(G&&!G.over){G.paused=savesWasPaused;setSpeed(G.paused?0:G.speed);}}
 async function exportSave(){
   try{const file={game:'Last Colony',v:1,when:Date.now(),label:G&&!G.over?saveLabel():'Campaign progress',save:G&&!G.over?await encodeSave():null,campaign:CAMP?JSON.parse(campToJSON(CAMP)):null,sectors:{}};
     if(CAMP)for(const m of MISSIONS)if(CAMP.captured[m.id]){const v=await Store.get('sector-'+m.id);if(v)file.sectors[m.id]=v;}
@@ -5189,7 +5201,7 @@ function playStory(keys,done){keys=(keys||[]).filter(k=>SEQ[k]);if(!keys.length)
 function nextSeq(){const k=DLG.queue.shift();if(!k){closeDlg();return;}DLG.seq=SEQ[k];seqFocus(k);DLG.i=0;DLG.slots=[null,null];$('commChan').textContent=DLG.seq.chan;
   $('comm').classList.toggle('hum',DLG.seq.lines.some(l=>CHARS[l[0]].side==='h')&&!DLG.seq.lines.some(l=>CHARS[l[0]].side==='p'));
   $('comm').classList.toggle('mix',DLG.seq.lines.some(l=>CHARS[l[0]].side==='h')&&DLG.seq.lines.some(l=>CHARS[l[0]].side==='p'));showLine();}
-function showLine(){const [who,text]=DLG.seq.lines[DLG.i],ch=CHARS[who];
+function showLine(){const [who,text]=DLG.seq.lines[DLG.i],ch=CHARS[who];snd('line',who);
   // the first two voices take the left and right frames; a third replaces whoever spoke least recently
   let side=DLG.slots.indexOf(who);if(side<0){side=DLG.slots[0]===null?0:DLG.slots[1]===null?1:(DLG.last[0]<=DLG.last[1]?0:1);DLG.slots[side]=who;}
   DLG.last[side]=performance.now();DLG.side=side;DLG.text=text;DLG.shown=0;DLG.t0=performance.now();
@@ -5203,7 +5215,7 @@ function dlgHTML(t,n){const esc=x=>x.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;
   let h='',i=0;for(const [a,b] of R){if(a>=n)break;const e=Math.min(b,n);h+=esc(t.slice(i,a))+'<i>'+esc(t.slice(a,e))+'</i>';i=e;}return h+esc(t.slice(i,n));}
 function advanceDlg(){if(!DLG.open)return;if(DLG.shown<DLG.text.length){DLG.shown=DLG.text.length;$('commTxt').innerHTML=dlgHTML(DLG.text,DLG.shown);return;}
   DLG.i++;if(DLG.i<DLG.seq.lines.length)showLine();else nextSeq();}
-function closeDlg(){DLG.open=false;$('commbg').hidden=true;$('comm').classList.remove('in');const f=DLG.done;DLG.done=null;DLG.queue=[];if(f)f();}
+function closeDlg(){DLG.open=false;if(CINE.on&&!CINE.ret&&SEQ_FOCUS[CINE.why])cineEnd();$('commbg').hidden=true;$('comm').classList.remove('in');const f=DLG.done;DLG.done=null;DLG.queue=[];if(f)f();}
 function skipDlg(){DLG.queue=[];closeDlg();}
 function dlgLoop(now){if(!DLG.open){DLG.raf=0;return;}
   const el=(now-DLG.t0)/1000,target=Math.min(DLG.text.length,Math.floor(el*52));
@@ -5223,11 +5235,11 @@ function storyBegin(){const st=G&&G.story;if(!st)return;const S=STORY[st.m];
   if(st.s==='intro')playStory(S.intro,()=>{if(!G||G.story!==st)return;
     if(S.tutorial&&!(CAMP&&CAMP.flags&&CAMP.flags.tut1))enterTut(0);
     else if(S.tutorial)offerTutorial();
-    else{st.s='main';st.hold=false;const mm=MIS[st.m];if(mm)msg(mm.tip,'good');if(G.core&&SEQ_FOCUS[S.intro[S.intro.length-1]])centerOn(G.core.x+1.5+6,G.core.y+1.5);}});
+    else{st.s='main';st.hold=false;const mm=MIS[st.m];if(mm)msg(mm.tip,'good');}});
   else if(st.s==='tut'){if(st.k<0)offerTutorial();else enterTut(st.k,true);}
   else if(st.s==='fc_talk')fcTalk();
   else if(st.s==='fc_after')fcAfter();
-  else if(st.s==='fc_walk'||st.s==='fc_withdraw')showTut(null);
+  else if(st.s==='fc_walk'||st.s==='fc_withdraw'){showTut(null);if(st.s==='fc_walk'&&st.frame)cineFocus(st.frame[0],st.frame[1],{z:st.frame[2],why:'fc',keep:fcLead});}
 }
 function offerTutorial(){const st=G.story;st.s='tut';st.k=-1;
   $('tut').hidden=false;$('tutStep').textContent='LANDFALL';$('tutTitle').textContent='You have played this tutorial before';
@@ -5289,11 +5301,18 @@ function startFirstContact(){const st=G.story;showTut(null);
   if(track){
     // Patrol 7 enters from the map edge and walks the survey track; past its end it heads for the new Thorn Spitter, stopping well short
     const R=track.map(([x,y])=>[x+.5,y+.5]),[ex,ey]=R[R.length-1],dx=tx-ex,dy=ty-ey,L=Math.hypot(dx,dy)||1;if(L>9)R.push(freeNear(tx-dx/L*8,ty-dy/L*8,1));
-    st.home=R[0];st.route=1;
-    for(let k=0;k<3;k++){const side=k===0?0:k===1?1.1:-1.1,r=patrolLane(R,side),e=spawnEnemy('dagger');e.x=r[0][0];e.y=r[0][1];
-      e.script=1;e.lead=k===0?1:0;e.route=r;e.wp=1;e.goal=r[1];e.wait=k*1.4;e.id=G.nextId++;e.ang=Math.atan2(r[1][1]-r[0][1],r[1][0]-r[0][0]);}
-    ping(R[0][0]-2,R[0][1],'Movement on the survey track');
-    msg('Something is moving along the survey track to the east.','alert');return;}
+    // v46: frame the place where the patrol will see the growth, together with the Thorn Spitter, and start the patrol on the track just
+    // beyond that frame, so it drives into view a few seconds after the event begins. The track behind it is kept for the way out.
+    const F=fcFrame(R,tx,ty),Rs=[F.sp].concat(R.slice(F.k+1)),back=R.slice(0,F.k+1).concat([F.sp]);
+    st.home=R[0];st.route=1;st.frame=[F.cx,F.cy,F.z];
+    for(let k=0;k<3;k++){const side=k===0?0:k===1?1.1:-1.1,r=patrolLane(Rs,side),e=spawnEnemy('dagger');e.x=r[0][0];e.y=r[0][1];
+      e.script=1;e.lead=k===0?1:0;e.route=r;e.back=patrolLane(back,side);e.wp=1;e.goal=r[1];e.wait=k*1.4;e.id=G.nextId++;e.ang=Math.atan2(r[1][1]-r[0][1],r[1][0]-r[0][0]);
+      // if the start is on the player's screen right now, the vehicle waits further back on the track, out of sight, and moves up to the
+      // start once the camera has swung over to the meeting place (so nothing ever appears in view)
+      if(onView(e.x,e.y,2)){const hold=fcHold(back,e.x,e.y);e.park=[e.x,e.y];e.x=hold[0];e.y=hold[1];e.wait=1e9;}}
+    ping(F.sp[0],F.sp[1],'Movement on the survey track');
+    msg('Something is moving along the survey track to the east.','alert');
+    cineFocus(F.cx,F.cy,{z:F.z,why:'fc',keep:fcLead});return;}
   let dx=G.spawn.x-tx,dy=G.spawn.y-ty;const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
   const far=Math.min(24,L-1),[sx,sy]=freeNear(tx+dx*far,ty+dy*far,1),goal=freeNear(tx+dx*7.5,ty+dy*7.5,1);
   st.home=[sx,sy];
@@ -5302,8 +5321,26 @@ function startFirstContact(){const st=G.story;showTut(null);
     const e=spawnEnemy('dagger');e.x=sx-dy*side*1.2-dx*back;e.y=sy+dx*side*1.2-dy*back;const i=tileAt(e.x,e.y);if(i<0||solidTile(i,1)){e.x=sx;e.y=sy;}
     e.script=1;e.lead=k===0?1:0;e.goal=g;e.id=G.nextId++;e.ang=Math.atan2(-dy,-dx);}
   msg('Tremors in the soil to the east. Something heavy is moving toward the new Thorn Spitter.','alert');
-  centerOn((tx+sx)/2,(ty+sy)/2);
+  cineFocus((tx+sx)/2,(ty+sy)/2,{z:cineFit(tx,ty,sx,sy,cam.z),why:'fc',keep:fcLead});
 }
+// the meeting place on the track (where the patrol first sees the growth), the shot that shows it with the Thorn Spitter, and the point on
+// the track just outside that shot to start from: sp, on the stretch from waypoint k to k+1. With no room, the track's own start.
+function fcFrame(R,tx,ty){const pts=[];for(let k=0;k<R.length-1;k++){const [ax,ay]=R[k],[bx,by]=R[k+1],n=Math.max(1,Math.ceil(Math.hypot(bx-ax,by-ay)/.5));for(let j=0;j<n;j++)pts.push([ax+(bx-ax)*j/n,ay+(by-ay)*j/n,k]);}
+  pts.push([R[R.length-1][0],R[R.length-1][1],Math.max(0,R.length-2)]);
+  let si=pts.length-1;for(let i=0;i<pts.length;i++){const [x,y]=pts[i];if(webNear(x,y,6.5)||Math.hypot(x-tx,y-ty)<10){si=i;break;}}
+  // the shot: a little closer than normal play when it fits, with the meeting place near the side the patrol comes in from (so it is not a
+  // long drive across the screen) and the Thorn Spitter still well inside it
+  const P=pts[si],q=pts[Math.max(0,si-8)],ux0=q[0]-P[0],uy0=q[1]-P[1],uL=Math.hypot(ux0,uy0)||1,ux=ux0/uL,uy=uy0/uL;
+  const z=clamp(Math.min(1.35,VW/T/(Math.abs(P[0]-tx)+16),VH/T/(Math.abs(P[1]-ty)+12)),.55,1.35),vw=VW/z/T,vh=VH/z/T,M=5;
+  const h=Math.min(Math.abs(ux)>.01?vw/2/Math.abs(ux):1e9,Math.abs(uy)>.01?vh/2/Math.abs(uy):1e9)-7;
+  let cx=P[0]-ux*h,cy=P[1]-uy*h;const keepIn=(c,a,half,m)=>clamp(c,a-half+m,a+half-m);
+  cx=keepIn(cx,tx,vw/2,4);cy=keepIn(cy,ty,vh/2,3);cx=keepIn(cx,P[0],vw/2,5);cy=keepIn(cy,P[1],vh/2,4);
+  let i=si;for(;i>0;i--){const [x,y]=pts[i];if(Math.abs(x-cx)>vw/2+M||Math.abs(y-cy)>vh/2+M)break;}
+  let sp=[pts[i][0],pts[i][1]];const ti=tileAt(sp[0],sp[1]);if(ti<0||solidTile(ti,1))sp=freeNear(sp[0],sp[1],1);
+  return {cx,cy,z,sp,k:pts[i][2],seen:[P[0],P[1]]};}
+function fcHold(back,x,y){for(let k=back.length-1;k>=0;k--){const [bx,by]=back[k];if(!onView(bx,by,3))return [bx,by];}return back[0]||[x,y];}
+function fcLead(){const e=G&&G.enemies.find(e=>e.script&&e.lead&&!e.dead);return e?[e.x,e.y]:null;}
+function onView(x,y,m){const vw=VW/cam.z/T,vh=VH/cam.z/T,x0=cam.x/T,y0=cam.y/T;return x>x0-m&&x<x0+vw+m&&y>y0-m&&y<y0+vh+m;}
 // the same route shifted sideways, so the three vehicles drive side by side; any point that lands on rock keeps the centre line
 function patrolLane(R,off){return R.map(([x,y],k)=>{const [ax,ay]=R[Math.max(0,k-1)],[bx,by]=R[Math.min(R.length-1,k+1)],dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1;
   const px=x-dy/L*off,py=y+dx/L*off,i=tileAt(px,py);return i<0||solidTile(i,1)?[x,y]:[px,py];});}
@@ -5317,26 +5354,262 @@ function scriptStep(e,dt){const d=E[e.t];e.cd=1;e.target=null;e.tu=null;if(!e.go
   if(e.out&&(e.route?e.wp>=e.route.length-1&&L<1.2:L<1.2)||e.out&&(e.x<2.5||e.y<2.5||e.x>MW-2.5||e.y>MH-2.5))e.dead=true;}
 function storyTick(dt){const st=G.story;if(!st)return;st.t+=dt;
   if(st.s==='fc_walk'){const P=G.enemies.filter(e=>e.script);const lead=P.find(e=>e.lead)||P[0];
+    P.forEach((e,k)=>{if(e.park&&!onView(e.park[0],e.park[1],2)){e.x=e.park[0];e.y=e.park[1];e.park=null;e.wait=(e.lead?0:1)*1.4*k;}});
     if(st.route){
       // the scene starts where the patrol can actually see the growth: close to the Rootweb or within sight of the Thorn Spitter
       const seen=lead&&(webNear(lead.x,lead.y,6.5)||Math.hypot(lead.x-st.look[0],lead.y-st.look[1])<10),end=lead&&lead.wp>=lead.route.length-1&&Math.hypot(lead.goal[0]-lead.x,lead.goal[1]-lead.y)<.8;
       if(!lead||seen||end||st.t>90){for(const e of P){e.arr=1;e.hold=1;e.goal=[e.x,e.y];}st.seenAt=lead?[+lead.x.toFixed(1),+lead.y.toFixed(1)]:null;st.s='fc_talk';st.t=0;fcTalk();}}
     else if(!lead||lead.arr&&P.every(e=>e.arr||st.t>25)||st.t>45){for(const e of P){e.arr=1;}st.s='fc_talk';st.t=0;fcTalk();}}
-  else if(st.s==='fc_withdraw'){if(!G.enemies.some(e=>e.script&&!e.dead)||st.t>40){for(const e of G.enemies)if(e.script)e.dead=true;st.s='fc_after';st.t=0;st.cease=false;fcAfter();}}}
-function fcTalk(){const st=G.story;const lead=G.enemies.find(e=>e.script&&e.lead)||G.enemies.find(e=>e.script);if(lead)centerOn(lead.x-3,lead.y);
+  else if(st.s==='fc_withdraw'){
+    // once past where it came into the shot, a vehicle nobody is looking at has gone (it is never removed in view)
+    for(const e of G.enemies)if(e.script&&!e.dead&&e.exitAt!==undefined&&e.wp>e.exitAt&&!onView(e.x,e.y,3))e.dead=true;
+    if(CINE.on&&!CINE.ret&&CINE.why==='fc'){const l=fcLead();if(!l||!onView(l[0],l[1],-1)||st.t>8)cineEnd();}
+    if(!G.enemies.some(e=>e.script&&!e.dead)||st.t>40){for(const e of G.enemies)if(e.script)e.dead=true;st.s='fc_after';st.t=0;st.cease=false;fcAfter();}}}
+function fcTalk(){const st=G.story;const lead=G.enemies.find(e=>e.script&&e.lead)||G.enemies.find(e=>e.script);
+  if(lead){const [tx,ty]=st.look||[lead.x,lead.y];cineFocus((lead.x+tx)/2,(lead.y+ty)/2,{z:cineFit(lead.x,lead.y,tx,ty,CINE.on&&!CINE.ret?CINE.z:cam.z),why:'fc'});}
   playStory(['fc_patrol','fc_command','fc_general'],()=>{if(!G||G.story!==st)return;st.s='fc_withdraw';st.t=0;
     for(const e of G.enemies)if(e.script){e.out=1;e.arr=0;e.nav=null;
       // back the way it came, along the track and off the map
-      if(e.route){e.hold=0;e.route=e.route.slice(0,Math.max(1,e.wp)).reverse();e.route.unshift([e.x,e.y]);e.wp=1;e.goal=e.route[1]||e.route[0];}
+      if(e.route){e.hold=0;e.route=e.route.slice(0,Math.max(1,e.wp)).reverse();e.route.unshift([e.x,e.y]);
+        if(e.back&&e.back.length>1){e.exitAt=e.route.length-1;e.route=e.route.concat(e.back.slice(0,-1).reverse());}   // on past the start, the way it really came
+        e.wp=1;e.goal=e.route[1]||e.route[0];}
       else e.goal=freeNear(st.home[0]+(rnd()-.5)*2,st.home[1]+(rnd()-.5)*2,1);}
     msg('Patrol 7 is withdrawing to report. Let it go.','good');});}
-function fcAfter(){const st=G.story;
+function fcAfter(){const st=G.story;if(CINE.on&&CINE.why==='fc')cineEnd();
   playStory(['fc_after'],()=>{if(!G||G.story!==st)return;st.s='main';st.hold=false;st.cease=false;st.fc=1;
     if(CAMP){CAMP.flags=CAMP.flags||{};CAMP.flags.tut1=1;CAMP.flags.firstContact=1;saveCamp();}
     G.countdown=Math.max(G.countdown,100);$('tut').hidden=true;
     msg('Tutorial complete. Clearance teams are coming. Survive 10 waves and keep your Thorn Spitters fed with copper.','good');});}
 // story outro on a won sector; returns true if a dialogue is playing
 function storyOutro(done){const S=G&&G.mission&&STORY[G.mission];if(!S||!S.outro||G.held)return false;$('tut').hidden=true;playStory(S.outro,done);return true;}
+
+// ---------- v46: sound and the event camera ----------
+// ===== v46: sound. Original sounds (audio/sounds.js, made by audio/source) played through one mixer: Master scales the Sound Effects and
+// Ambience buses, each with its own saved slider. Sound reads the game and never changes it: no game field, no random draw (it has its own
+// generator), nothing saved. Loud groups are pooled: one shared bed for every moving ant, one per kind of working organ, a few engine voices
+// for the nearest vehicles, a cap on voices with priorities, and cooldowns on anything that can repeat quickly. =====
+const SND={ctx:null,on:false,ready:false,loading:false,buf:{},nvar:{},bus:null,voices:[],cool:{},kcool:new Map(),beds:{},eng:new Map(),amb:{},
+  prev:new WeakMap(),gates:new WeakMap(),bel:new WeakMap(),heat:0,grow:0,tAcc:0,nextFar:8,r:12345,MAX:24,stats:{req:0,played:0,culled:0,capped:0,cool:0,by:{}},
+  vol:{m:.8,s:.8,a:.6,mute:false},duck:1};
+try{const v=JSON.parse(localStorage.getItem('lc_audio')||'null');if(v){for(const k of ['m','s','a'])if(typeof v[k]==='number')SND.vol[k]=clamp(v[k],0,1);SND.vol.mute=!!v.mute;}}catch(e){}
+// sound's own random numbers, so the game's sequence is never touched
+function sndRnd(){let s=SND.r;s^=s<<13;s>>>=0;s^=s>>>17;s^=s<<5;s>>>=0;SND.r=s||1;return SND.r/4294967296;}
+// what each slider gives after Master (Master multiplies, it never rewrites the others)
+function sndEff(){const v=SND.vol,m=v.mute?0:v.m;return {s:m*v.s,a:m*v.a,m};}
+function sndSave(){try{localStorage.setItem('lc_audio',JSON.stringify(SND.vol));}catch(e){}}
+// per sound: base volume, priority (higher wins a voice when all are busy), cooldown between plays, most at once
+const SFX={
+  web_creep:[.18,1,.55,2],vine_lay:[.45,2,.12,2],vine_grow:[.3,1,.045,3],place_organ:[.6,3,.1,2],grown_organ:[.45,2,.15,2],deny:[.5,4,.25,1],rotate:[.4,4,.05,2],
+  org_hit:[.5,2,.06,3],org_burst:[.8,4,.05,3],heal:[.4,2,.6,1],burner_feed:[.35,1,.4,1],sun_pulse:[.16,1,1.4,1],spore_puff:[.3,1,.3,2],tap_draw:[.22,1,.35,1],gland_work:[.3,1,.5,1],
+  hatch:[.6,3,.3,1],gate:[.35,1,.15,2],thorn_spit:[.38,2,.05,3],flak_puff:[.4,2,.06,3],mortar_launch:[.55,3,.1,2],seed_burst:[.6,3,.06,3],lance:[.5,3,.08,2],
+  mite_fire:[.28,1,.04,3],thornback_fire:[.32,2,.045,3],bulwark_fire:[.5,3,.08,2],ant_hit:[.32,1,.04,3],ant_die:[.55,3,.05,3],
+  gun_scout:[.5,2,.05,3],gun_mg:[.42,2,.05,3],gun_jet:[.45,2,.08,2],cannon:[.8,4,.12,2],flame:[.5,2,.12,3],zap:[.5,3,.1,2],flak_gun:[.55,3,.1,2],shell_boom:[.85,4,.08,3],
+  metal_hit:[.4,2,.05,3],metal_heavy:[.55,2,.08,2],veh_explode:[.95,5,.06,3],ram_blast:[.9,5,.06,2],struct_fall:[.9,5,.2,2],
+  ui_select:[.35,5,.04,2],ui_tool:[.35,5,.04,2],ui_cancel:[.35,5,.06,1],ui_open:[.3,5,.08,1],ui_close:[.3,5,.08,1],ui_alert:[.55,5,2.5,1],ui_good:[.35,5,1.5,1],
+  comm_radio:[.28,5,.15,1],comm_hive:[.3,5,.15,1]};
+// continuous beds: [buffer, volume, sound effects (s) or ambience (a)]
+const BEDS={scuttle:['ant_scuttle',.42,'s'],burner:['burner_loop',.5,'s'],sun:['sun_loop',.2,'s'],bellows:['bellows_breath',.32,'s']};
+const ENG={dagger:['eng_scout',.65],mace:['eng_flame',.7],fortress:['eng_heavy',.8],crawler:['eng_drone',.5],flare:['eng_jet',.55],horizon:['eng_bomber',.7]};
+const AMBW={meadow:'amb_meadow',base:'amb_meadow',frost:'amb_frost',ash:'amb_ash',pass:'amb_pass',colony:'amb_colony'};
+
+// the browser only allows sound after the player has clicked or pressed a key: the mixer is built on that first touch
+function sndUnlock(){if(SND.ctx){if(SND.ctx.state==='suspended'&&!document.hidden)SND.ctx.resume().catch(()=>{});return;}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  try{const c=new AC(),b={};SND.ctx=c;
+    b.out=c.createDynamicsCompressor();b.out.threshold.value=-10;b.out.knee.value=8;b.out.ratio.value=4;b.out.attack.value=.004;b.out.release.value=.25;b.out.connect(c.destination);
+    // a fixed make-up gain before the limiter, so the game sits at a normal loudness with the sliders at their defaults
+    b.trim=c.createGain();b.trim.gain.value=1.3;b.trim.connect(b.out);b.master=c.createGain();b.master.connect(b.trim);
+    b.s=c.createGain();b.sd=c.createGain();b.s.connect(b.sd);b.sd.connect(b.master);
+    b.a=c.createGain();b.ad=c.createGain();b.a.connect(b.ad);b.ad.connect(b.master);
+    b.meter=c.createAnalyser();b.meter.fftSize=2048;b.out.connect(b.meter);
+    SND.bus=b;sndApply(true);SND.on=true;sndLoad();
+    document.addEventListener('visibilitychange',()=>{if(!SND.ctx)return;if(document.hidden)SND.ctx.suspend().catch(()=>{});else SND.ctx.resume().catch(()=>{});});
+  }catch(e){SND.ctx=null;}}
+for(const ev of ['pointerdown','keydown','touchend'])window.addEventListener(ev,sndUnlock,{capture:true,passive:true});
+// the sounds come as one script of base64 MP3s, so they load the same way from a web page and from the Windows app's files
+function sndLoad(){if(SND.loading||SND.ready)return;SND.loading=true;
+  const go=()=>{const L=window.LC_SOUNDS;if(!L){SND.loading=false;return;}const names=Object.keys(L);let i=0;
+    const next=()=>{if(i>=names.length){SND.ready=true;SND.loading=false;return;}const n=names[i++];
+      const bin=atob(L[n]),u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);
+      SND.ctx.decodeAudioData(u.buffer).then(a=>{SND.buf[n]=a;const m=/^(.*)_(\d+)$/.exec(n);if(m)SND.nvar[m[1]]=Math.max(SND.nvar[m[1]]||0,+m[2]+1);}).catch(()=>{}).then(next);};
+    for(let k=0;k<4;k++)next();};
+  if(window.LC_SOUNDS)go();else{const s=document.createElement('script');s.src='audio/sounds.js';s.onload=go;s.onerror=()=>{SND.loading=false;};document.head.appendChild(s);}}
+function sndBuf(name){if(SND.buf[name])return SND.buf[name];const n=SND.nvar[name];return n?SND.buf[name+'_'+((sndRnd()*n)|0)]:null;}
+// the sliders: set the bus gains at once (a short ramp so a drag never clicks); a muted category is exactly 0
+function sndApply(now){const b=SND.bus;if(!b)return;const e=sndEff(),t=SND.ctx.currentTime,set=(p,v)=>{if(now){p.cancelScheduledValues(t);p.setValueAtTime(v,t);}else p.setTargetAtTime(v,t,.03);};
+  set(b.master.gain,SND.vol.mute?0:SND.vol.m);set(b.s.gain,SND.vol.s);set(b.a.gain,SND.vol.a);
+  if(e.a<=0)sndAmbStop();if(e.s<=0){for(const k in SND.beds)sndBedStop(k,true);for(const e2 of [...SND.eng.keys()])sndEngStop(e2,true);for(const v of SND.voices)try{v.src.stop();}catch(_){}SND.voices.length=0;}}
+
+// where a sound sits for the listener: full inside the view, falling away outside it, panned by its place across the screen
+function sndPos(x,y){if(!G||!VW)return {g:1,pan:0,d:0};const z=cam.z,vw=VW/z/T,vh=VH/z/T,cx=cam.x/T+vw/2,cy=cam.y/T+vh/2;
+  const dx=Math.max(0,Math.abs(x-cx)-vw/2),dy=Math.max(0,Math.abs(y-cy)-vh/2),d=Math.hypot(dx,dy),inr=Math.min(1,Math.hypot((x-cx)/(vw/2),(y-cy)/(vh/2))/1.4);
+  let g=d>0?1/(1+(d/7)*(d/7)):1-.2*inr;g*=.72+.28*Math.min(1,z);
+  return {g,pan:clamp((x-cx)/(vw/2+3),-1,1)*.7,d};}
+function sndReady(cat){return SND.on&&SND.ready&&SND.ctx&&SND.ctx.state==='running'&&sndEff()[cat]>0;}
+// play one sound. o: {x,y} world tiles (none = interface), vol, rate, key (a per-object cooldown), kc (its length), pri
+function sndPlay(name,o){o=o||{};const st=SND.stats;st.req++;if(!sndReady('s'))return null;const d=SFX[name];if(!d)return null;
+  const now=SND.ctx.currentTime;
+  if(now-(SND.cool[name]||-9)<d[2]){st.cool++;return null;}
+  if(o.key!==undefined){const kk=name+':'+o.key,t=SND.kcool.get(kk);if(t!==undefined&&now-t<(o.kc||.2)){st.cool++;return null;}SND.kcool.set(kk,now);if(SND.kcool.size>600)SND.kcool.clear();}
+  let p={g:1,pan:0,d:0};if(o.x!==undefined){p=sndPos(o.x,o.y);if(p.g<.03){st.culled++;return null;}}
+  const pri=o.pri||d[1];let same=0;for(const v of SND.voices)if(v.name===name)same++;
+  if(same>=d[3]){st.capped++;return null;}
+  if(SND.voices.length>=SND.MAX){let w=null;for(const v of SND.voices)if(v.pri<pri&&(!w||v.pri<w.pri||v.pri===w.pri&&v.t0<w.t0))w=v;
+    if(!w){st.capped++;return null;}sndKill(w);}
+  const buf=sndBuf(name);if(!buf)return null;
+  const c=SND.ctx,src=c.createBufferSource(),g=c.createGain();src.buffer=buf;src.playbackRate.value=(o.rate||1)*(1+(sndRnd()-.5)*.06);
+  let node=src;if(p.d>1.5){const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=Math.max(500,9000/(1+p.d/4));node.connect(f);node=f;}
+  g.gain.value=d[0]*(o.vol==null?1:o.vol)*p.g;node.connect(g);
+  let out=g;if(o.x!==undefined&&c.createStereoPanner){const pn=c.createStereoPanner();pn.pan.value=p.pan;g.connect(pn);out=pn;}
+  out.connect(SND.bus.s);
+  const v={name,pri,t0:now,src,g};SND.voices.push(v);src.onended=()=>{const i=SND.voices.indexOf(v);if(i>=0)SND.voices.splice(i,1);try{out.disconnect();}catch(_){}};
+  src.start();SND.cool[name]=now;st.played++;st.by[name]=(st.by[name]||0)+1;return v;}
+function sndKill(v){const i=SND.voices.indexOf(v);if(i>=0)SND.voices.splice(i,1);try{const t=SND.ctx.currentTime;v.g.gain.setTargetAtTime(0,t,.015);v.src.stop(t+.08);}catch(_){}}
+// game events: each reads what just happened and picks its sound
+function sndAt(name,x,y,o){o=o||{};o.x=x;o.y=y;return sndPlay(name,o);}
+function sndHeat(k){SND.heat=Math.min(20,SND.heat+k);}
+const SND_TFIRE={duo:['thorn_spit','gun_mg'],scatter:['flak_puff','flak_gun'],hail:['mortar_launch','cannon'],lancer:['lance','zap'],core:['thorn_spit','gun_mg']};
+const SND_ANT={mite:'mite_fire',tank:'thornback_fire',htank:'bulwark_fire'};
+const sndEv={
+  web(x,y){SND.grow++;if(SND.on)sndAt('web_creep',x+.5,y+.5,{vol:.8+sndRnd()*.4});},
+  site(b){if(!SND.on)return;const c=b.x+b.size/2,y=b.y+b.size/2;if(VINE[b.t])sndAt('vine_lay',c,y);else sndAt('place_organ',c,y,{rate:b.size>2?.8:b.size>1?.9:1});},
+  grown(b){if(!SND.on)return;const c=b.x+b.size/2,y=b.y+b.size/2;if(VINE[b.t])sndAt('vine_grow',c,y);else sndAt('grown_organ',c,y,{rate:b.size>2?.8:1});},
+  hurtB(b,dmg){if(!SND.on||b.hp<=0)return;const [x,y]=bCenter(b);sndHeat(.15);
+    if(b.team===0)sndAt('org_hit',x,y,{key:b.id,kc:.25,vol:Math.min(1,.5+dmg/40)});else sndAt(b.size>1?'metal_heavy':'metal_hit',x,y,{key:b.id,kc:.25});},
+  destroyB(b){if(!SND.on)return;const x=b.x+b.size/2,y=b.y+b.size/2;sndHeat(1.5);
+    if(b.team===0)sndAt('org_burst',x,y,{rate:b.size>2?.75:b.size>1?.88:1.1,vol:b.size>1?1:.7,pri:b.t==='core'?5:4});
+    else if(b.size>1)sndAt('struct_fall',x,y);else sndAt('metal_heavy',x,y,{vol:.8});},
+  heal(b){sndAt('heal',b.x+.5,b.y+.5);},
+  feed(b){sndAt('burner_feed',b.x+.5,b.y+.5,{key:b.id,kc:1});},
+  tap(b){if(b.team===0)sndAt('tap_draw',b.x+b.size/2,b.y+b.size/2,{key:b.id,kc:1.4,rate:b.t==='pdrill'?.8:1});},
+  gland(b){if(b.team===0)sndAt('gland_work',b.x+b.size/2,b.y+b.size/2,{key:b.id,kc:1.2});},
+  hatch(x,y){sndAt('hatch',x,y);},
+  fire(b){if(!SND.on)return;const m=SND_TFIRE[b.t];if(!m)return;const [x,y]=bCenter(b);sndHeat(.25);sndAt(m[b.team===0?0:1],x,y,{rate:b.t==='core'?.85:1});},
+  shell(p){if(SND.on)sndAt(p.team===0?'seed_burst':'shell_boom',p.x,p.y);},
+  antFire(u){if(SND.on){sndHeat(.12);sndAt(SND_ANT[u.t],u.x,u.y);}},
+  eFire(e){if(!SND.on)return;const d=E[e.t];sndHeat(.25);
+    if(d.flame)sndAt('flame',e.x,e.y,{key:e.id||0,kc:.3});else if(d.art)sndAt('cannon',e.x,e.y);else sndAt(e.t==='flare'?'gun_jet':'gun_scout',e.x,e.y);},
+  bomb(e){sndHeat(1);sndAt('shell_boom',e.x,e.y);},
+  ram(e){sndHeat(1.5);sndAt('ram_blast',e.x,e.y);},
+  hitE(e){if(SND.on)sndAt('metal_hit',e.x,e.y,{key:e.id||0,kc:.14,rate:E[e.t].r>.5?.8:1});},
+  dieE(e){if(!SND.on)return;sndHeat(2);sndAt(E[e.t].air?'shell_boom':'veh_explode',e.x,e.y,{rate:E[e.t].r>.5?.85:E[e.t].r<.3?1.15:1});},
+  hitU(u){if(SND.on)sndAt('ant_hit',u.x,u.y,{key:u.id,kc:.15,rate:U[u.t].r<.3?1.15:U[u.t].r>.5?.8:1});},
+  dieU(u){if(!SND.on)return;sndHeat(1);sndAt('ant_die',u.x,u.y,{rate:u.t==='mite'?1.2:u.t==='htank'?.78:1});},
+  ui(n,v){sndPlay(n,{vol:v});},
+  msg(text,kind){if(kind==='alert')sndPlay('ui_alert');else if(kind==='good'&&!/hatched\.$/.test(text))sndPlay('ui_good');},
+  line(who){const ch=CHARS[who];if(ch)sndPlay(ch.side==='h'?'comm_radio':'comm_hive');}};
+function snd(k,a,b){if(!SND.on)return;try{sndEv[k](a,b);}catch(e){}}
+
+// ---- beds: one looping source each, its level following how much of that thing is happening near the view
+function sndBedSet(k,target,pan,rate){const d=BEDS[k];if(!d||!sndReady(d[2])){if(SND.beds[k])sndBedStop(k,true);return;}let b=SND.beds[k];const c=SND.ctx,t=c.currentTime;
+  if(!b){if(target<.002)return;const buf=sndBuf(d[0]);if(!buf)return;const src=c.createBufferSource(),g=c.createGain(),pn=c.createStereoPanner?c.createStereoPanner():null;
+    src.buffer=buf;src.loop=true;g.gain.value=0;src.connect(g);if(pn){g.connect(pn);pn.connect(SND.bus[d[2]]);}else g.connect(SND.bus[d[2]]);src.start(t,sndRnd()*buf.duration);
+    b=SND.beds[k]={src,g,pn,idle:0};}
+  b.g.gain.setTargetAtTime(target*d[1],t,.25);if(b.pn)b.pn.pan.setTargetAtTime(pan||0,t,.3);if(rate)b.src.playbackRate.setTargetAtTime(rate,t,.3);
+  b.idle=target<.002?b.idle+1:0;if(b.idle>30)sndBedStop(k);}
+function sndBedStop(k,now){const b=SND.beds[k];if(!b)return;delete SND.beds[k];try{const t=SND.ctx.currentTime;b.g.gain.setTargetAtTime(0,t,now?.02:.2);b.src.stop(t+(now?.1:1));}catch(_){}}
+// ---- engines: a voice each for the four vehicles heard best; every other one is too far or too quiet to matter
+function sndEngStop(e,now){const v=SND.eng.get(e);if(!v)return;SND.eng.delete(e);try{const t=SND.ctx.currentTime;v.g.gain.setTargetAtTime(0,t,now?.02:.15);v.src.stop(t+(now?.1:.8));}catch(_){}}
+function sndEngines(dt){if(!sndReady('s')||!G){for(const e of [...SND.eng.keys()])sndEngStop(e,true);return;}const c=SND.ctx,t=c.currentTime,live=[];
+  for(const e of G.enemies){if(e.dead||!ENG[e.t])continue;const p=sndPos(e.x,e.y),gE=p.d>0?1/(1+(p.d/5)*(p.d/5)):p.g;if(gE<.04)continue;
+    const pv=SND.prev.get(e),sp=pv&&dt>0?Math.hypot(e.x-pv[0],e.y-pv[1])/dt:0;SND.prev.set(e,[e.x,e.y]);live.push([e,gE,p,sp]);}
+  live.sort((a,b)=>b[1]-a[1]);const keep=new Set(live.slice(0,4).map(l=>l[0]));
+  for(const e of [...SND.eng.keys()])if(!keep.has(e)||e.dead||!G.enemies.includes(e))sndEngStop(e);
+  for(const [e,gE,p,sp] of live.slice(0,4)){let v=SND.eng.get(e);const d=ENG[e.t];
+    if(!v){const buf=sndBuf(d[0]);if(!buf)continue;const src=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),pn=c.createStereoPanner?c.createStereoPanner():null;
+      src.buffer=buf;src.loop=true;f.type='lowpass';f.frequency.value=800;g.gain.value=0;src.connect(f);f.connect(g);if(pn){g.connect(pn);pn.connect(SND.bus.s);}else g.connect(SND.bus.s);
+      src.start(t,sndRnd()*buf.duration);v={src,f,g,pn,born:t};SND.eng.set(e,v);}
+    const k=clamp(sp/(E[e.t].spd*1.3),0,1),fadeIn=Math.min(1,(t-v.born)/1.5);
+    v.g.gain.setTargetAtTime(d[1]*gE*(.55+.45*k)*fadeIn*(e.boss?1.2:1),t,.2);v.src.playbackRate.setTargetAtTime(.84+.3*k,t,.3);
+    v.f.frequency.setTargetAtTime(600+9000*gE*gE,t,.25);if(v.pn)v.pn.pan.setTargetAtTime(p.pan,t,.2);}}
+// ---- ambience: the ground's wind, the deep air, the soil's small lives, the colony at work, machines approaching and the hive roused
+function sndAmbStop(){for(const k in SND.amb){const a=SND.amb[k];try{const t=SND.ctx.currentTime;for(const s of a.src)s.stop(t+.1);a.g.gain.setTargetAtTime(0,t,.02);}catch(_){}}SND.amb={};}
+function sndAmbSet(name,target){if(!sndReady('a'))return;let a=SND.amb[name];const c=SND.ctx,t=c.currentTime;
+  if(!a){if(target<.003)return;const buf=SND.buf[name];if(!buf)return;const g=c.createGain();g.gain.value=0;g.connect(SND.bus.a);const src=[];
+    // two copies half a loop apart, left and right, so a mono loop fills the stereo field
+    for(const [pan,off] of [[-.6,0],[.6,.5]]){const s=c.createBufferSource();s.buffer=buf;s.loop=true;let n=s;if(c.createStereoPanner){const p=c.createStereoPanner();p.pan.value=pan;s.connect(p);n=p;}n.connect(g);s.start(t,buf.duration*off);src.push(s);}
+    a=SND.amb[name]={g,src,idle:0};}
+  a.g.gain.setTargetAtTime(target,t,1.2);a.idle=target<.003?a.idle+1:0;
+  if(a.idle>60){delete SND.amb[name];try{for(const s of a.src)s.stop(t+.2);}catch(_){}}}
+function sndAmbient(dt){if(!sndReady('a')){if(Object.keys(SND.amb).length)sndAmbStop();return;}
+  const bio=G&&G.mapv>=2&&G.biome||'base',wind=AMBW[bio]||'amb_meadow',inGame=!!(G&&!G.over);
+  for(const w of new Set(Object.values(AMBW)))sndAmbSet(w,w===wind?(inGame?.5:.32):0);
+  sndAmbSet('amb_low',inGame?.34:.25);sndAmbSet('amb_soil',inGame&&(bio==='meadow'||bio==='base')?.22:0);
+  let hive=0,threat=0,combat=0;
+  if(inGame){let own=0;for(const b of G.blocks.values())if(b.team===0)own++;
+    SND.grow*=Math.exp(-dt/4);hive=clamp(.12+.45*Math.min(1,(G.webCount||0)/1400)+.3*Math.min(1,own/90)+.15*Math.min(1,SND.grow/6),0,.85);
+    // machines on the move that the player cannot see yet: a far rumble that grows as they close on the Bloom
+    if(G.core){const cx=G.core.x+1.5,cy=G.core.y+1.5;let w=0;for(const e of G.enemies){if(e.dead||E[e.t].air)continue;const p=sndPos(e.x,e.y);if(p.d<=1)continue;const dd=Math.hypot(e.x-cx,e.y-cy);if(dd<48)w+=(1-dd/48)*(e.t==='fortress'||e.t==='mace'?1.5:1);}threat=Math.min(1,w/2.5);}
+    SND.heat*=Math.exp(-dt/7);combat=Math.min(1,SND.heat/9);}
+  sndAmbSet('amb_hive',hive*.5);sndAmbSet('amb_threat',threat*.62);sndAmbSet('amb_combat',combat*.42);
+  // now and then something far away: a gust, a groan under the ground, ice cracking, a clank across the valley
+  SND.nextFar-=dt;if(SND.nextFar<=0){SND.nextFar=9+sndRnd()*18;
+    const pick={meadow:['far_gust','far_groan','far_rumble'],base:['far_gust','far_groan','far_rumble'],frost:['ice_crack','far_gust','ice_crack'],ash:['far_rumble','far_groan','far_gust'],pass:['far_gust','far_rumble','far_gust'],colony:['far_clank','far_gust','far_clank']}[bio]||['far_gust'];
+    const n=pick[(sndRnd()*pick.length)|0],buf=sndBuf(n);if(buf){const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();s.buffer=buf;g.gain.value=(inGame?.32:.2)*(.6+sndRnd()*.4);
+      let o=g;if(c.createStereoPanner){const p=c.createStereoPanner();p.pan.value=(sndRnd()-.5)*1.4;g.connect(p);o=p;}s.connect(g);o.connect(SND.bus.a);s.start();s.onended=()=>{try{o.disconnect();}catch(_){}};}}}
+// ---- the per-frame part (about ten times a second): organ beds, ant swarm, engines, ambience, dialogue ducking
+function sndTick(dt){if(!SND.on||!SND.ctx)return;SND.tAcc+=dt;if(SND.tAcc<.1)return;const T0=SND.tAcc;SND.tAcc=0;
+  try{const c=SND.ctx,t=c.currentTime,duck=DLG.open?1:0;
+    SND.bus.sd.gain.setTargetAtTime(duck?.5:1,t,.3);SND.bus.ad.gain.setTargetAtTime(duck?.7:1,t,.4);
+    if(!SND.ready)return;
+    sndAmbient(T0);
+    if(!G||G.over){for(const k in SND.beds)sndBedStop(k);for(const e of [...SND.eng.keys()])sndEngStop(e);return;}
+    sndEngines(T0);
+    // every ant on the move adds to one shared scuttle, rising as the square root of how many there are
+    let n=0,pw=0;for(const u of G.units){if(u.dead)continue;const pv=SND.prev.get(u);SND.prev.set(u,[u.x,u.y]);if(!pv)continue;const sp=Math.hypot(u.x-pv[0],u.y-pv[1])/T0;if(sp<.25)continue;
+      const p=sndPos(u.x,u.y);if(p.g<.05)continue;const w=p.g*(u.t==='htank'?1.6:u.t==='mite'?.8:1);n+=w;pw+=w*p.pan;}
+    sndBedSet('scuttle',Math.min(1,Math.sqrt(n)/Math.sqrt(24)),n?pw/n:0,1+.12*Math.min(1,n/24));
+    // working organs: Sap Burners only while burning, Sunleaves while they make energy, Bellows on their breath
+    let bu=0,bp=0,su=0,sp2=0,be=0,bep=0,suns=[];const tt=performance.now()/1000;
+    for(const b of G.blocks.values()){if(b.team!==0||isSite(b))continue;const k=b.t;if(k!=='combustion'&&k!=='solar'&&k!=='bellows'&&k!=='door'&&k!=='doorL')continue;
+      const p=sndPos(b.x+b.size/2,b.y+b.size/2);if(p.g<.05)continue;
+      if(k==='combustion'){if(b.burn>0){bu+=p.g;bp+=p.g*p.pan;}}
+      else if(k==='solar'){su+=p.g;sp2+=p.g*p.pan;suns.push([b,p.g]);}
+      else if(k==='bellows'){const s=OST.get(b);const act=G.powSat>=.25&&s&&(s.ph>0||tt-(s.grow||-9)<1.6);if(act){be+=p.g;bep+=p.g*p.pan;}
+        const ex=s&&s.ex||0,last=SND.bel.get(b);if(s&&last!==undefined&&ex>last&&act)sndAt('spore_puff',b.x+1,b.y+1);if(s)SND.bel.set(b,ex);}
+      else{const op=b.op||0,was=SND.gates.get(b);SND.gates.set(b,op>.5);if(was!==undefined&&was!==(op>.5))sndAt('gate',b.x+b.size/2,b.y+b.size/2,{});}}
+    sndBedSet('burner',Math.min(1,bu),bu?bp/bu:0);sndBedSet('sun',Math.min(1,su*.6),su?sp2/su:0);sndBedSet('bellows',Math.min(1,be),be?bep/be:0);
+    if(suns.length&&G.powGen>0&&sndRnd()<T0/3.2){const [b,g]=suns[(sndRnd()*suns.length)|0];sndAt('sun_pulse',b.x+1,b.y+1,{vol:.8});}
+  }catch(e){}}
+// stops everything a finished game left playing (a new game, a load, back to the menu)
+function sndReset(){if(!SND.ctx)return;for(const k in SND.beds)sndBedStop(k,true);for(const e of [...SND.eng.keys()])sndEngStop(e,true);for(const v of [...SND.voices])sndKill(v);SND.heat=0;SND.grow=0;}
+// the Audio settings: three sliders with their numbers, and a mute switch; each change is heard at once and saved
+function audioUI(){const v=SND.vol;for(const k of ['m','s','a']){const el=$('vol_'+k);if(el){el.value=Math.round(v[k]*100);$('volv_'+k).textContent=Math.round(v[k]*100)+'%';}}const mu=$('optMute');if(mu)mu.checked=v.mute;}
+for(const k of ['m','s','a']){const el=document.getElementById('vol_'+k);if(!el)continue;
+  el.addEventListener('input',()=>{SND.vol[k]=clamp(+el.value/100,0,1);$('volv_'+k).textContent=Math.round(SND.vol[k]*100)+'%';sndUnlock();sndApply();sndSave();});
+  el.addEventListener('change',()=>{if(k!=='a')sndPlay('ui_select');});}
+{const mu=document.getElementById('optMute');if(mu)mu.addEventListener('change',()=>{SND.vol.mute=mu.checked;sndUnlock();sndApply();sndSave();});}
+window.__snd=SND;
+
+// ===== v46: the event camera. An important scripted moment pans the camera to it, holds it there (the player's own camera controls wait),
+// can follow a moving subject, and when the moment ends pans back to exactly where the player was, at their zoom. Controls come back at once;
+// touching them during the pan home stops the pan there. Everything here is camera only: it is never saved and changes nothing in the game.
+const CINE={on:false,lock:false,ret:false,prev:null,x:0,y:0,z:1,follow:null,keep:null,why:''};
+function camCentre(){return [(cam.x+VW/2/cam.z)/T,(cam.y+VH/2/cam.z)/T];}
+// start (or retarget) a moment: x,y the tile to frame, z the zoom (keeps the player's when left out), follow() an optional moving subject
+function cineFocus(x,y,o){o=o||{};if(!G)return;
+  if(!CINE.on||CINE.ret){if(!CINE.on)CINE.prev={x:cam.x,y:cam.y,z:cam.z};CINE.on=true;CINE.ret=false;}
+  CINE.lock=o.lock!==false;if(o.keep!==CINE.keep)CINE.seen=false;CINE.x=x;CINE.y=y;CINE.z=clamp(o.z||CINE.prev.z,.5,2.5);CINE.follow=o.follow||null;CINE.keep=o.keep||null;CINE.why=o.why||'';}
+// the moment is over: head back to the player's view, and hand the controls back now
+function cineEnd(){if(!CINE.on||CINE.ret)return;CINE.lock=false;CINE.follow=null;CINE.keep=null;CINE.ret=true;
+  const p=CINE.prev;CINE.z=p.z;CINE.x=(p.x+VW/2/p.z)/T;CINE.y=(p.y+VH/2/p.z)/T;}
+// a new game, a load or leaving a sector drops any moment without panning
+function cineReset(){CINE.on=false;CINE.lock=false;CINE.ret=false;CINE.prev=null;CINE.follow=null;CINE.keep=null;}
+// the player moved the camera themselves while it was on its way home: leave it where they put it
+function cineUser(){if(CINE.ret)cineReset();}
+function cineTick(dt){if(!CINE.on||!G)return;
+  if(CINE.follow){let p=null;try{p=CINE.follow();}catch(e){p=null;}if(p){CINE.x=p[0];CINE.y=p[1];}}   // a subject that is gone leaves the camera where it was
+  // keep a subject inside the middle of the frame without chasing every step it takes
+  // (only once it is in the shot: the camera never goes out to meet a subject that has not arrived yet)
+  if(CINE.keep){let p=null;try{p=CINE.keep();}catch(e){p=null;}const vw=VW/CINE.z/T,vh=VH/CINE.z/T;
+    if(p&&Math.abs(p[0]-CINE.x)<vw/2-1&&Math.abs(p[1]-CINE.y)<vh/2-1)CINE.seen=true;
+    if(p&&CINE.seen){const mx=vw*.32,my=vh*.3;
+    if(p[0]<CINE.x-mx)CINE.x=p[0]+mx;else if(p[0]>CINE.x+mx)CINE.x=p[0]-mx;if(p[1]<CINE.y-my)CINE.y=p[1]+my;else if(p[1]>CINE.y+my)CINE.y=p[1]-my;}}
+  const k=1-Math.exp(-dt*3),kz=1-Math.exp(-dt*2.6),[cx,cy]=camCentre();
+  const z=cam.z+(CINE.z-cam.z)*kz,nx=cx+(CINE.x-cx)*k,ny=cy+(CINE.y-cy)*k;cam.z=z;cam.x=nx*T-VW/2/z;cam.y=ny*T-VH/2/z;clampCam();
+  if(CINE.ret){const p=CINE.prev;if(Math.abs(cam.x-p.x)<1.5&&Math.abs(cam.y-p.y)<1.5&&Math.abs(cam.z-p.z)<.003){cam.x=p.x;cam.y=p.y;cam.z=p.z;clampCam();cineReset();}}}
+// the zoom that fits two points (with a margin) in the view, never closer than the player had it unless they were zoomed far out
+function cineFit(ax,ay,bx,by,z0){let z=clamp(z0,.8,1.25);const fit=z=>Math.abs(ax-bx)+10<=VW/z/T&&Math.abs(ay-by)+8<=VH/z/T;while(z>.55&&!fit(z))z-=.05;return z;}
 
 // ---------- loop ----------
 let last=performance.now(),acc=0,frame=0;
@@ -5345,11 +5618,13 @@ const FPS={n:0,t:0};window.addEventListener('keydown',e=>{if(e.key==='F3'){e.pre
 function loop(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;
   FPS.n++;FPS.t+=now-(FPS.l||now);FPS.l=now;if(FPS.t>=500){const b=$('fpsBox');if(!b.hidden)b.textContent=Math.round(FPS.n*1000/FPS.t)+' fps · Rootweb on '+(webGPU?'GPU':'2D canvas');FPS.n=0;FPS.t=0;}
+  sndTick(dt);
   if(G){
+    cineTick(dt);
     const sp=700*dt/cam.z;let px=0,py=0;
     if(keys.has('a')||keys.has('arrowleft'))px-=1;if(keys.has('d')||keys.has('arrowright'))px+=1;
     if(keys.has('w')||keys.has('arrowup'))py-=1;if(keys.has('s')||keys.has('arrowdown'))py+=1;
-    if(px||py){cam.x+=px*sp;cam.y+=py*sp;clampCam();}
+    if((px||py)&&!CINE.lock){cineUser();cam.x+=px*sp;cam.y+=py*sp;clampCam();}
     autosaveTick(dt);storyFrame();if(!G.paused&&!G.over)radioTick(dt);if(!G.paused&&!G.over&&!DLG.open){acc+=dt*G.speed;let n=0;while(acc>=STEP&&n<20){step(STEP);acc-=STEP;n++;}if(n>=20)acc=0;}
     render();
     if(frame%3===0)renderMini();
@@ -5387,14 +5662,14 @@ function qualityUI(){for(const b of document.querySelectorAll('.qbar button')){c
   else if(glOn())n.textContent='Your graphics card is drawing the ground and Rootweb.';
   else if(!(APP?webArtLoaded():webArtOn()))n.textContent='The graphics card takes over once the painted artwork has loaded.';
   else n.textContent='Your graphics card can\u2019t be used here ('+(GLR.why||'WebGL 2 unavailable')+'), so the processor draws the ground and Rootweb instead.';}
-function openSettings(){$('optFog').checked=SET.fog;qualityUI();$('settings').hidden=false;}
+function openSettings(){$('optFog').checked=SET.fog;qualityUI();audioUI();$('settings').hidden=false;snd('ui','ui_open');}
 for(const b of document.querySelectorAll('.qbar button'))b.onclick=()=>{const q=b.dataset.q;if(q===SET.q)return;
   // building the HD ground takes a moment: say so first
   if(QUALITY[q].hd&&!SET.hd&&G){msg('Building HD textures...');setTimeout(()=>applyQuality(q),30);}else applyQuality(q);};
 $('setBtn').onclick=openSettings;
 $('optFog').onchange=e=>{SET.fog=e.target.checked;try{localStorage.setItem('lc_fog',SET.fog?'1':'0');}catch(_){}};
-$('setClose').onclick=()=>{$('settings').hidden=true;};
-$('settings').onclick=e=>{if(e.target.id==='settings')$('settings').hidden=true;};
+$('setClose').onclick=()=>{$('settings').hidden=true;snd('ui','ui_close');};
+$('settings').onclick=e=>{if(e.target.id==='settings'){$('settings').hidden=true;snd('ui','ui_close');}};
 requestAnimationFrame(loop);
 window.__game=()=>G;
 </script>

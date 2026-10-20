@@ -30,7 +30,7 @@ How you play
 
 Resources: Copper, Lead, Sand, Coal and Titanium are mined. Resin and Chitin are processed. Titanium needs a Deep Root.
 
-Modes: a five-mission Campaign across the planet Nereth, plus two standalone modes, Survival and Base Siege. Optional extras are fog of war, the HD Remaster look, painted artwork for the Bloom and Spawning Pod, save slots and save files, and a Test Range save for trying units and turrets.
+Modes: a five-mission Campaign across the planet Nereth, plus two standalone modes, Survival and Base Siege. Optional extras are sound and ambience (with their own volume settings), fog of war, the HD Remaster look, painted artwork for the Bloom and Spawning Pod, save slots and save files, and a Test Range save for trying units and turrets.
 
 Nymbri Hive structures
 
@@ -87,6 +87,16 @@ Building controls
 - Press Esc during a drag to cancel it: nothing is placed and nothing is paid. Esc otherwise drops the chosen growth or clears the selection.
 - Hold Alt to see a fine grid over every tile you could physically build on: open ground and ore, on or off the Rootweb, but not rock, deep water, growths or growing sites. Only the tiles on screen are drawn. The placement preview still says whether a spot needs Rootweb or is out of reach.
 - F4 shows the enemy route view (for curious players and testing): the shared route field the HDF follow to your Bloom, structures it would have to break through tinted red, each enemy's role, target (red line), objective (yellow) and local path (orange), and a flash where the route field was rebuilt.
+
+Sound and the event camera
+
+- Sound starts with your first click or key press, because browsers only allow a page to play sound after you interact with it.
+- Everything you hear comes from something that is happening. The Rootweb creaks quietly as it spreads, and vines and organs squelch as they are laid and as they finish growing. A refused placement gives a dull thud, and turning a vine gives a soft click. Damaged growths tear, and destroyed ones burst.
+- Organs sound only while they work. A Sap Burner roars softly while it has fuel and whumphs as it takes coal in. A Sunleaf hums and pulses while it makes vigor. A Spore Bellows breathes and puffs on each exhale. Root Taps, Glands and Brood Chambers sound as they draw, process or hatch.
+- Ants scuttle as one shared sound however many are moving, and each kind fires with its own sound. HDF machines are metal, motors and guns: each kind of vehicle has its own engine, and you hear them before you see them.
+- The world has its own ambience, which changes with the sector: wind, small lives in the soil, the low hum of the hive as it grows, and a distant mechanical rumble when HDF machines are on their way. A fight brings in a tense layer, which eases back gradually afterwards. Story lines duck the sound a little so they can always be heard.
+- Settings, then Audio: Master, Sound Effects and Ambience volumes from 0 to 100%, and Mute. Master scales the other two (Master 50% with Sound Effects 80% plays effects at 40%). The settings apply at once and are remembered.
+- Important story moments pan the camera to what is happening and hold it there until the moment ends. The camera then returns to where you had it, at your zoom, and your controls work again straight away.
 
 HDF structures
 
@@ -147,7 +157,7 @@ A mandatory tutorial teaches the controls: selecting units, moving the map, usin
 
 The map: a green meadow. The Bloom grows in a hollow on the west side, hidden from a dirt survey track that runs in from the east past survey markers, a parked survey truck and a radio mast. HDF waves follow that track.
 
-Then comes a scripted first contact with combat switched off. HDF Patrol 7 (Private Kessler and Sergeant Okafor) walks up the track and finds purple growth that wasn't there yesterday. They see a spiked structure turn toward them and back away without firing. Okafor reports to Lieutenant Castell at HDF Command. Castell escalates to Supreme General Varrick and mentions that Dr Nymbris of the Biohazard Division wants samples, because the footage isn't enough to identify the growth. Varrick orders a cordon, samples for the doctor and burning. The patrol withdraws.
+Then comes a scripted first contact with combat switched off. HDF Patrol 7 (Private Kessler and Sergeant Okafor) drives in along the track and finds purple growth that wasn't there yesterday. The camera pans to them as their engines come over the rise. They see a spiked structure turn toward them and back away without firing. Okafor reports to Lieutenant Castell at HDF Command. Castell escalates to Supreme General Varrick and mentions that Dr Nymbris of the Biohazard Division wants samples, because the footage isn't enough to identify the growth. Varrick orders a cordon, samples for the doctor and burning. The patrol withdraws.
 
 The Bloom tells the Seed Cluster that the hard things are gone but one reached toward it, and it reached back. Waves begin. After victory, the Seed Cluster concludes the humans were tearing their roots out, not feeding on them, and sends the Bloom north-east along the trails.
 
