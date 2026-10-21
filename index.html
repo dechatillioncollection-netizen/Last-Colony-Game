@@ -184,7 +184,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #tut{position:fixed;top:56px;left:12px;width:min(340px,calc(100% - 24px));z-index:4;background:#17131bf2;border:1px solid var(--edge);border-left:3px solid var(--amber);padding:10px 12px 12px;box-shadow:0 6px 24px #0008}
 #tutStep{font-family:var(--f-display);font-size:10px;color:var(--amber);letter-spacing:.06em}
 #tutTitle{display:block;font-size:16px;margin:4px 0 2px}
-#tutText{margin:0;font-size:13.5px;line-height:1.45;color:#cfd2d8}
+#tutText{margin:0;font-size:14px;line-height:1.45;color:#eef0f3;font-weight:500}
+#tutLead{margin:0 0 6px;font-size:13px;line-height:1.4;color:var(--muted);font-style:italic}
+#tutInfo{margin:6px 0 0;font-size:13px;line-height:1.45;color:#aeb2bc}#tutInfo:empty{display:none}#tutInfo.solo{margin-top:0;color:#dfe2e7;font-size:13.5px}
+#tutHint{margin:8px 0 0;padding:6px 8px;font-size:13px;line-height:1.4;color:#f3d48a;background:#2a2116;border-left:2px solid var(--amber)}
+#tutKeys{margin-top:8px;font-size:12.5px;color:var(--muted)}#tutKeys summary{cursor:pointer;color:#cfd2d8}
+.keys{margin:6px 0 0;padding-left:16px;line-height:1.45}.keys li{margin-bottom:3px}.keys kbd{font-size:11.5px}
+.sgrid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.sgrid button{font-size:13px;padding:5px 9px}
+#sgal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#000a}#sgal[hidden]{display:none}#sgal .scard{width:min(640px,calc(100% - 24px))}
 #tutActs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}#tutActs:empty{display:none}
 .tbar{height:3px;background:#2a2430;margin-top:10px}#tutBar{display:block;height:100%;width:0;background:var(--amber);transition:width .3s}
 .tutglow{outline:2px solid var(--amber)!important;outline-offset:1px;animation:tutg 1s ease-in-out infinite}
@@ -226,7 +233,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <div class="vrow"><label for="vol_a">Ambience</label><input type="range" id="vol_a" min="0" max="100" step="1"><output id="volv_a" for="vol_a">60%</output></div>
   <p class="snote">Master scales the other two. Sound effects covers growth, organs, ants, machines, combat and the interface; Ambience is the wind, the ground and the world around you.</p>
   <label class="opt"><input type="checkbox" id="optMute"><span><b>Mute all sound</b><br>Silences the game and keeps your slider settings.</span></label>
+  <p class="snote"><button id="sgalBtn">Sound test</button> Play every weapon and impact sound on its own.</p>
+  <div class="qlbl">Controls</div><details id="setKeys" class="snote"><summary>Show the controls</summary><ul class="keys"><li><kbd>WASD</kbd>, arrow keys or middle-drag: move the camera. On touch, drag with one finger when no growth is chosen</li><li>Mouse wheel: zoom (with no Vine chosen). <kbd>H</kbd>: back to the Bloom. Click the minimap to jump there</li><li>Left-click: place or select. Drag a Vine to lay a route; with nothing chosen, drag a box to select ants</li><li><kbd>Ctrl</kbd> while dragging a Vine: a diagonal, staircase route</li><li><kbd>R</kbd> or the mouse wheel: rotate the planned Vine (<kbd>Shift</kbd>+<kbd>R</kbd> turns it back)</li><li><kbd>Esc</kbd>: cancel a drag, put the growth away, or clear the selection</li><li>Right-click, or <kbd>X</kbd> and drag: reabsorb growths. <kbd>Delete</kbd> reabsorbs the selected one</li><li><kbd>Alt</kbd> (hold): show the ground you can grow on</li><li><kbd>Q</kbd>: copy the growth under the pointer. <kbd>1</kbd> to <kbd>0</kbd>: quick picks (1 Vine, 4 Root Tap, 5 Thorn Spitter)</li><li><kbd>C</kbd> or the Swarm button: switch every ant between Defend and Attack</li><li><kbd>T</kbd>: evolution. <kbd>Space</kbd>: pause. The 1×, 2× and 4× buttons set the speed</li></ul></details>
   <button id="setClose">Close</button></div></div>
+<div id="sgal" hidden><div class="scard"></div></div>
 <div id="planet" hidden>
   <div id="pbar"><h2>NERETH</h2><span id="pitems"></span><button id="pTech">Evolution</button><button id="pSaves">Saves</button><button id="pBack">Main menu</button></div>
   <div id="pwrap"><canvas id="pcv"></canvas><div id="pcard"></div></div>
@@ -234,7 +244,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div id="saves" hidden><div class="scard"><h2>SAVES</h2><p id="saveWhere" class="lbl"></p><div id="slotList"></div>
   <div class="acts"><button id="expBtn" title="Download this game and your campaign progress as a file">Export to file</button><button id="impBtn" title="Load a save file exported from the web version or the Windows app">Import file</button><input type="file" id="impFile" accept=".json,application/json" hidden></div>
   <div class="acts"><button id="quitBtn">Exit to main menu</button><button id="savesClose">Close</button></div></div></div>
-<div id="tut" hidden><span id="tutStep"></span><b id="tutTitle"></b><p id="tutText"></p><div id="tutActs"></div><div class="tbar"><i id="tutBar"></i></div></div>
+<div id="tut" hidden><span id="tutStep"></span><b id="tutTitle"></b><p id="tutLead" hidden></p><p id="tutText"></p><p id="tutInfo"></p><p id="tutHint" hidden></p><div id="tutActs"></div><details id="tutKeys"><summary>Controls</summary><ul class="keys"><li><kbd>WASD</kbd>, arrow keys or middle-drag: move the camera. On touch, drag with one finger when no growth is chosen</li><li>Mouse wheel: zoom (with no Vine chosen). <kbd>H</kbd>: back to the Bloom. Click the minimap to jump there</li><li>Left-click: place or select. Drag a Vine to lay a route; with nothing chosen, drag a box to select ants</li><li><kbd>Ctrl</kbd> while dragging a Vine: a diagonal, staircase route</li><li><kbd>R</kbd> or the mouse wheel: rotate the planned Vine (<kbd>Shift</kbd>+<kbd>R</kbd> turns it back)</li><li><kbd>Esc</kbd>: cancel a drag, put the growth away, or clear the selection</li><li>Right-click, or <kbd>X</kbd> and drag: reabsorb growths. <kbd>Delete</kbd> reabsorbs the selected one</li><li><kbd>Alt</kbd> (hold): show the ground you can grow on</li><li><kbd>Q</kbd>: copy the growth under the pointer. <kbd>1</kbd> to <kbd>0</kbd>: quick picks (1 Vine, 4 Root Tap, 5 Thorn Spitter)</li><li><kbd>C</kbd> or the Swarm button: switch every ant between Defend and Attack</li><li><kbd>T</kbd>: evolution. <kbd>Space</kbd>: pause. The 1×, 2× and 4× buttons set the speed</li></ul></details><div class="tbar"><i id="tutBar"></i></div></div>
 <div id="commbg" hidden><div id="comm">
   <div class="cport" id="cport0"><canvas width="264" height="264"></canvas><span></span></div>
   <div id="commBody"><div id="commChan"></div><div id="commName"></div><div id="commRole"></div><div id="commTxt" aria-live="polite"></div>
@@ -1317,7 +1327,7 @@ function accepts(b,item,src){
   return false;
 }
 function handle(b,item,src){
-  const d=B[b.t];
+  const d=B[b.t];if(src&&item===CU&&b.team===0&&G.story&&G.story.s==='tut'&&tutRoute(src))tutFed(b,src);
   if(b.t==='core'){if(b.team===0){G.items[item]++;G.income[item]++;}else G.eitems[item]++;return;}
   if(d.belt){b.belt.unshift({i:item,p:0});return;}
   if(b.t==='junction'){const td=(relDir(b,src)+2)%4;b.buf[td].push({i:item,t:0});return;}
@@ -1534,7 +1544,7 @@ function enemyThink(e){
 }
 function enemyFireAt(e,tx,ty,tgtBlock,tgtUnit){
   const d=E[e.t];e.cd=d.reload;e.ang=Math.atan2(ty-e.y,tx-e.x);const dm=d.dmg*(e.boss?1.5:1);snd('eFire',e);
-  if(d.flame){if(tgtUnit)hurtUnit(tgtUnit,dm);else hurtBlock(tgtBlock,dm);G.fx.push({k:'flame',x1:e.x,y1:e.y,x2:tx,y2:ty,life:.2,max:.2});return;}
+  if(d.flame){SNDW='flame';if(tgtUnit)hurtUnit(tgtUnit,dm);else hurtBlock(tgtBlock,dm);SNDW='';G.fx.push({k:'flame',x1:e.x,y1:e.y,x2:tx,y2:ty,life:.2,max:.2});return;}
   if(d.art){const fl=Math.hypot(tx-e.x,ty-e.y)/6;G.bullets.push({x:e.x,y:e.y,sx:e.x,sy:e.y,tx,ty,t:0,fl,team:1,art:true,dmg:dm,splash:d.splash});return;}
   const L=Math.hypot(tx-e.x,ty-e.y)||1;
   G.bullets.push({x:e.x,y:e.y,vx:(tx-e.x)/L*d.bspd,vy:(ty-e.y)/L*d.bspd,life:(d.range+1)/d.bspd,team:1,dmg:dm,tgt:tgtBlock?tgtBlock.id:0});
@@ -1595,7 +1605,7 @@ function separate(){
     nudge(ua,-dx*push,-dy*push,0);nudge(ub,dx*push,dy*push,0);}
 }
 function nudge(e,dx,dy,team){NARROW=team===0&&U[e.t]&&U[e.t].large?1:0;try{if(canStep(e.x,e.y,e.x+dx,e.y+dy,radOf(e,team),team)){e.x+=dx;e.y+=dy;}}finally{NARROW=0;}}
-function damageEnemy(e,dmg){if(e.dead||e.script||(G.test&&arenaAt(e.x,e.y)<0))return;e.hp-=dmg;e.hit=.1;if(e.hp>0)snd('hitE',e);else snd('dieE',e);if(e.hp<=0){e.dead=true;G.kills++;G.fx.push({k:'boom',x:e.x,y:e.y,r:E[e.t].r*1.6,life:.3,max:.3});G.decals.push({x:e.x,y:e.y,r:E[e.t].r*.9,scorch:true});}}
+function damageEnemy(e,dmg){if(e.dead||e.script||(G.test&&arenaAt(e.x,e.y)<0))return;e.hp-=dmg;e.hit=.1;if(e.hp>0)snd('hitE',e,dmg);else snd('dieE',e);if(e.hp<=0){e.dead=true;G.kills++;G.fx.push({k:'boom',x:e.x,y:e.y,r:E[e.t].r*1.6,life:.3,max:.3});G.decals.push({x:e.x,y:e.y,r:E[e.t].r*.9,scorch:true});}}
 
 // ---------- player tanks ----------
 function spawnUnit(t,x,y){const u={t,x,y,hp:U[t].hp,max:U[t].hp,cd:0,think:0,target:null,chase:null,ang:0,tang:0,dead:false,vx:0,vy:0,id:G.nextId++};G.units.push(u);return u;}
@@ -1661,8 +1671,8 @@ function vineDist(extra){const prev=VEXTRA;VEXTRA=extra||null;
     for(let h=0;h<q.length;h++){const i=q[h],d=D.get(i),x=i%MW,y=(i/MW)|0;
       for(let k=0;k<4;k++){const nx=x+D4X[k],ny=y+D4Y[k];if(!inMap(nx,ny))continue;const j=ny*MW+nx;if(!D.has(j)&&isVineTile(j)){D.set(j,d+1);q.push(j);}}}
     return D;}finally{VEXTRA=prev;}}
-var REACH_JOIN='Vines past the Rootweb must join it, or join a vine that does';
-function reachFar(d){return `Too far from Rootweb: vines reach ${VREACH} tiles past it (this would be tile ${d})`;}
+var REACH_JOIN='A Vine beyond the Rootweb must connect to it, directly or through other Vines';
+function reachFar(d){return `Too far from Rootweb: Vines can extend ${VREACH} connected tiles beyond it (this would be tile ${d})`;}
 function isReachWhy(w){return w===REACH_JOIN||w.startsWith('Too far from Rootweb');}
 function vineReachWhy(i){if(territory(i))return '';const D=VDIST||vineDist(new Set([i])),d=D.get(i);
   if(d===undefined)return REACH_JOIN;if(d>VREACH)return reachFar(d);return '';}
@@ -1889,7 +1899,8 @@ function turretAcquire(b,tu,cx,cy){
   const u=nearestUnit(cx,cy,tu.range);if(u)return u;
   const pb=nearestBlockOf(0,cx,cy,tu.range);return pb?blockTarget(pb):null;
 }
-function laserLine(b,cx,cy,ex,ey,dmg){
+function laserLine(b,cx,cy,ex,ey,dmg){SNDW='beam';try{laserHit(b,cx,cy,ex,ey,dmg);}finally{SNDW='';}}
+function laserHit(b,cx,cy,ex,ey,dmg){
   if(b.team===0)forEnemiesNear((cx+ex)/2,(cy+ey)/2,Math.hypot(ex-cx,ey-cy)/2+1,e=>{if(e.dead||E[e.t].air)return;
     const vx=ex-cx,vy=ey-cy,t=clamp(((e.x-cx)*vx+(e.y-cy)*vy)/(vx*vx+vy*vy),0,1);if(Math.hypot(e.x-cx-vx*t,e.y-cy-vy*t)<.5+E[e.t].r)damageEnemy(e,dmg);});
   else for(const u of G.units){const vx=ex-cx,vy=ey-cy,t=clamp(((u.x-cx)*vx+(u.y-cy)*vy)/(vx*vx+vy*vy),0,1);if(Math.hypot(u.x-cx-vx*t,u.y-cy-vy*t)<.5+U[u.t].r)hurtUnit(u,dmg);}
@@ -2005,7 +2016,7 @@ function stepBullets(dt){
         else damageEnemy(hitE,p.dmg);continue;}
       if(p.hitsBlocks&&p.ground){const id=G.bgrid[i];if(id){const b=G.blocks.get(id);if(b&&b.team===1&&(B[b.t].solid||id===p.tgt)){p.dead=true;hurtBlock(b,p.dmg);if(p.splash)splashBlocks(1,p.x,p.y,p.splash,p.dmg*.5);}}}
     }else{
-      if(G.terrain[i]===ROCK){p.dead=true;continue;}
+      if(G.terrain[i]===ROCK){p.dead=true;snd('rock',p);continue;}
       let hu=null;for(const u of G.units)if(!u.dead&&segD(u.x,u.y)<U[u.t].r+.12){hu=u;break;}
       if(hu){p.dead=true;hurtUnit(hu,p.dmg);continue;}
       const id=G.bgrid[i];if(id){const b=G.blocks.get(id);if(b&&b.team===0&&(B[b.t].solid||id===p.tgt)){p.dead=true;hurtBlock(b,p.dmg);}}
@@ -2081,13 +2092,13 @@ function placeCheck(t,x,y){
   for(let yy=y;yy<y+d.size;yy++)for(let xx=x;xx<x+d.size;xx++){
     if(!inMap(xx,yy))return 'Out of bounds';const i=yy*MW+xx;
     if(blockedT(i))return 'Cannot grow on rock or deep water';
-    if(!VINE[t]&&!d.tier&&!territory(i)&&!G.webFree)return 'Needs Rootweb under it. Plant Rootweb Nodes to spread it';
+    if(!VINE[t]&&!d.tier&&!territory(i)&&!G.webFree)return 'This growth must be placed on Rootweb. Plant Rootweb Nodes to spread it (only Root Taps and Deep Roots can go on ore beyond it)';
     const o=G.bgrid[i];
     if(o){const ob=G.blocks.get(o);if(!replaceable(ob,t))return ob.team===1?'That is an enemy block':'Something is already there';}
     if(!G.held&&Math.hypot(xx+.5-G.spawn.x,yy+.5-G.spawn.y)<(G.mode==='siege'?Math.min(12,G.ezone):7))return G.mode==='siege'?'Too close to the colony':'Too close to the drop zone';
   }
   if(VINE[t]&&!G.webFree&&!NOREACH){const w=vineReachWhy(y*MW+x);if(w)return w;}
-  if(d.tier){const o=drillOre(t,x,y);if(o.item<0)return d.tier<2&&hasOre(t,x,y,TI)?'Titanium needs a Deep Root':'No ore under it';}
+  if(d.tier){const o=drillOre(t,x,y);if(o.item<0)return d.tier<2&&hasOre(t,x,y,TI)?'Titanium needs a Deep Root':'No ore here. Place it over exposed ore crystals';}
   if(d.solid){for(const e of G.enemies)if(!E[e.t].air&&e.x>x-.3&&e.x<x+d.size+.3&&e.y>y-.3&&e.y<y+d.size+.3)return 'An enemy is in the way';
     for(const u of G.units)if(u.x>x-.3&&u.x<x+d.size+.3&&u.y>y-.3&&u.y<y+d.size+.3&&!GATE[t])return 'An ant is in the way';}
   return '';
@@ -5241,48 +5252,122 @@ function storyBegin(){const st=G&&G.story;if(!st)return;const S=STORY[st.m];
   else if(st.s==='fc_after')fcAfter();
   else if(st.s==='fc_walk'||st.s==='fc_withdraw'){showTut(null);if(st.s==='fc_walk'&&st.frame)cineFocus(st.frame[0],st.frame[1],{z:st.frame[2],why:'fc',keep:fcLead});}
 }
+// ===== v47: the Landfall tutorial, rewritten. Each panel gives one clear action (bright) and at most a line or two of explanation (muted);
+// a hint line under them reacts to what the player has done (still growing, wrong ore, Vine pointing the wrong way) so nobody gets stuck.
+// Steps that teach a mechanism are checked by that mechanism: copper must reach the Bloom along a Vine, the Rootweb Node must have new
+// ground to spread to, and the Thorn Spitter must have been fed copper by Vine before Patrol 7 arrives.
 function offerTutorial(){const st=G.story;st.s='tut';st.k=-1;
   $('tut').hidden=false;$('tutStep').textContent='LANDFALL';$('tutTitle').textContent='You have played this tutorial before';
-  $('tutText').textContent='Replay it, or skip straight to the mission. The first contact with the humans has already happened, so it will not repeat.';
+  $('tutLead').hidden=true;$('tutHint').hidden=true;$('tutInfo').textContent='';
+  $('tutText').textContent='Replay the tutorial, including the first meeting with the humans, or skip it and start defending straight away.';
   $('tutActs').innerHTML='<button id="tutReplay">Replay tutorial</button><button id="tutSkip">Skip to the mission</button>';
-  $('tutReplay').onclick=()=>enterTut(0);$('tutSkip').onclick=()=>{st.s='main';st.hold=false;st.cease=false;showTut(null);msg('Survive 10 waves. Feed your Thorn Spitters copper by vine.','good');};}
+  $('tutReplay').onclick=()=>enterTut(0);$('tutSkip').onclick=()=>{st.s='main';st.hold=false;st.cease=false;showTut(null);
+    msg('Survive 10 waves. Keep your Thorn Spitters fed with copper by Vine.','good');const mm=MIS[st.m];if(mm&&mm.tip)msg(mm.tip);};}
+// a touch screen gets touch wording, and never mentions keys or a mouse
+function tutTouch(){try{return matchMedia('(pointer:coarse)').matches&&!matchMedia('(pointer:fine)').matches;}catch(e){return false;}}
+const tutClick=()=>tutTouch()?'tap':'click';
+function hiveOf(t){return [...G.blocks.values()].filter(b=>b.team===0&&b.t===t);}
+function touchesCore(b){const c=G.core;return !!c&&b.x<=c.x+c.size&&b.x+b.size>=c.x&&b.y<=c.y+c.size&&b.y+b.size>=c.y;}
+// a Root Tap the tutorial can use: on copper and not touching the Bloom (one touching it delivers directly, with no Vine to learn)
+function tutTap(){return hiveOf('drill').find(b=>b.oreItem===CU&&!touchesCore(b));}
+// how many new tiles of Rootweb a Rootweb Node at b (a block, or a planned spot) would add beyond what the other sources already reach
+function nodeGain(b){const own=new Set();for(const o of webSources())if(o!==b&&o.id!==b.id)for(const i of webList(o))own.add(i);
+  const L=webList({t:'node',x:b.x,y:b.y,size:1,id:-1});let n=0;for(const i of L)if(!own.has(i)&&G.ore[i]<0)n++;return n;}
+// the best place to suggest for the node: on the Rootweb, placeable, adding the most new ground, preferring spots nearer the Bloom
+function nodeSpot(){if(!G.core)return null;const [cx,cy]=bCenter(G.core);let best=null,bv=-1;
+  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){const i=y*MW+x;if(!G.web[i])continue;const d=Math.hypot(x+.5-cx,y+.5-cy);if(d<4||d>(G.reach||14)+2)continue;
+    if(placeCheck('node',x,y))continue;const v=nodeGain({x,y,id:-2})-d*.4;if(v>bv){bv=v;best=[x,y];}}
+  return best;}
+// a Vine (or any item route) handing copper on: called by the game when an item moves into a hive growth, during the tutorial only
+function tutFed(b,src){const st=G.story;if(b.t==='core')st.vcore=(st.vcore||0)+1;else if(B[b.t].tur)st.vtur=b.id;}
+const tutRoute=s=>!!s&&(!!B[s.t].belt||s.t==='junction'||s.t==='router'||s.t==='sorter');
 const TUT=[
-  {id:'look',title:'Look around',text:'Drag the ground with the middle mouse button (one finger on touch), use WASD or the arrow keys, or tap the minimap. Scroll or pinch to zoom. Press H to jump back to the Bloom.',
+  {id:'look',title:'Look around',
+   lead:'Welcome to Landfall. Learn to move, grow and defend the hive. Enemy waves are paused until the tutorial ends.',
+   do:()=>tutTouch()?'Drag with one finger to move the camera, or tap the minimap.':'Move the camera with WASD or by dragging with the middle mouse button. Scroll to zoom.',
+   info:()=>tutTouch()?'':'Press H at any time to return to the Bloom.',
+   done:()=>tutTouch()?'Camera moved.':'Camera moved. H brings you back to the Bloom.',
    hl:['#mini'],enter:st=>{st.c0=[cam.x,cam.y,cam.z];},check:st=>Math.hypot(cam.x-st.c0[0],cam.y-st.c0[1])/T>5||Math.abs(cam.z/st.c0[2]-1)>.18},
-  {id:'bloom',title:'Select the Bloom',text:'Click or tap the Bloom, the great flower at the heart of your Rootweb. Selecting any growth shows what it is doing in the panel at the bottom.',
+  {id:'bloom',title:'Select the Bloom',
+   do:'Select the Bloom, the large flower at the centre of the colony.',info:'Its details appear in the information panel at the bottom.',
+   done:'The panel shows what any selected growth is doing.',
    enter:()=>{if(G.core)centerOn(G.core.x+1.5,G.core.y+1.5);},ring:()=>G.core&&[G.core.x+1.5,G.core.y+1.5,2.4],check:()=>G.core&&G.sel===G.core.id},
-  {id:'ant',title:'Select a Mite Ant',text:'The Bloom has budded three Mite Ants. Click or tap one to select it, or drag a box over several with the left mouse button. Its health and orders show in the panel.',
+  {id:'ant',title:'Select a Mite Ant',
+   do:'Three Mite Ants have emerged near the Bloom. Select one of them.',
+   info:()=>tutTouch()?'Its health and orders appear in the panel.':'Its health and orders appear in the panel. With no growth chosen, you can also drag a box to select several ants.',
+   done:'Ant selected.',
    enter:st=>{if(!st.ants){st.ants=1;for(let k=0;k<3;k++){const [x,y]=freeNear(G.core.x+5,G.core.y+.5+k,0);spawnUnit('mite',x,y);}}},
    ring:()=>{const u=G.units[0];return u&&[u.x,u.y,.9];},check:()=>!!G.selU&&G.units.some(u=>u.id===G.selU)},
-  {id:'order',title:'Move your ant',text:'With the ant selected, click or tap open ground to send it there. It will hold that spot and fight anything that comes close.',
+  {id:'order',title:'Move your ant',
+   do:()=>`With an ant selected, ${tutClick()} clear ground to move it there.`,info:'It will hold that position and defend itself if threatened.',
+   done:'Order given. The ant holds that spot.',
+   hint:()=>selAnts().length?'':'First select an ant.',
    check:()=>G.units.some(u=>u.hold)},
-  {id:'swarm',title:'Swarm orders',text:'The Swarm button (or C) switches every ant between Defend and Attack. Switching clears move orders. Press it twice to bring your ants home.',
-   hl:['#cmdBtn'],enter:st=>{st.toggles=0;},check:st=>st.toggles>=2},
-  {id:'web',title:'The Rootweb',text:'The purple ground is Rootweb. Every growth has to stand on it, although vines can reach past it. The Bloom spreads it by itself, but here only a short way around it: the dashed ring shows how far while you place a growth. Rootweb Nodes push it further. Ore lies in the ground as coloured crystals: copper is orange.',
+  {id:'swarm',title:'Command your Swarm',
+   do:()=>tutTouch()?'Tap the Swarm button twice: once to switch to Attack, then back to Defend.':'Press Swarm (C) twice: once to switch to Attack, then back to Defend.',
+   info:'Defend gathers your ants near the Bloom. Attack sends them towards enemies. Switching also cancels individual move orders.',
+   done:'Your Swarm is back on Defend.',
+   hint:st=>G.command==='attack'?'Now switch back to Defend.':'',
+   hl:['#cmdBtn'],enter:st=>{st.toggles=0;},check:st=>st.toggles>=2&&G.command==='defend'},
+  {id:'web',title:'The Rootweb',
+   info:'The purple ground is Rootweb. Most growths must be placed on it, but Root Taps and Deep Roots can go on ore beyond it. Vines can reach up to five connected tiles past its edge.',
    next:true,check:()=>false},
-  {id:'tap',title:'Grow a Root Tap',text:'Open the Roots tab and pick the Root Tap (or press 4), then place it on copper ore. More ore under it means faster gathering. Every growth costs items from the Bloom, shown at the top left.',
+  {id:'tap',title:'Place a Root Tap',
+   do:()=>tutTouch()?'Open Roots and choose Root Tap. Place it over the highlighted copper ore.':'Open Roots and choose Root Tap (4). Place it over the highlighted copper ore.',
+   info:'Copper shows as pale orange crystals. More ore under the Root Tap means faster mining. A new growth takes a little while to grow.',
+   done:'Root Tap placed. It starts mining once it has grown.',
+   hint:()=>{const D=hiveOf('drill');if(D.some(b=>b.oreItem===CU&&touchesCore(b)))return 'That Root Tap touches the Bloom, so it needs no Vine. Place one a little further out, on the highlighted copper, to practise.';
+     const w=D.find(b=>b.oreItem>=0&&b.oreItem!==CU);return w?`That Root Tap is on ${IT[w.oreItem].n.toLowerCase()}. Place one over copper, the pale orange crystals.`:'';},
    hl:['#mtabs .tab[title="Roots"]','.bbtn[data-t="drill"]'],ring:()=>{const v=nearVein(CU);return v&&[v[0],v[1],3.6];},
-   check:()=>[...G.blocks.values()].some(b=>b.team===0&&b.t==='drill'&&b.oreItem===CU)},
-  {id:'vine',title:'Run a vine home',text:'Pick the Vine (1) from the Vines tab and drag from the Root Tap to the Bloom. Vines carry items the way they grow, and turn corners as you drag. R rotates a single piece.',
-   hl:['#mtabs .tab[title="Vines"]','.bbtn[data-t="conveyor"]'],enter:st=>{st.cu0=G.income[CU];},check:st=>G.income[CU]>st.cu0},
-  {id:'node',title:'Push the Rootweb outward',text:'Open the Rootweb tab and plant a Rootweb Node near the edge of the purple ground. Each node grows new Rootweb around itself, which is how the swarm expands.',
-   hl:['#mtabs .tab[title="Rootweb"]','.bbtn[data-t="node"]'],check:()=>[...G.blocks.values()].some(b=>b.team===0&&b.t==='node')},
-  {id:'turret',title:'Raise your first Thorn Spitter',text:'Open the Spitters tab and grow a Thorn Spitter (5) on the eastern side of the Bloom. Spitters fire copper fed to them by vine.',
+   check:st=>{const b=tutTap();if(b)st.tap=b.id;return !!b;}},
+  {id:'vine',title:'Carry copper to the Bloom',
+   do:()=>tutTouch()?'Choose Vine in the Vines tab. Drag from the Root Tap to the Bloom so copper flows home.':'Choose Vine (1) in the Vines tab. Drag from the Root Tap to the Bloom so copper flows home.',
+   info:'Check the arrows in the preview: copper travels the way they point.',
+   done:'Copper is flowing into the Bloom.',
+   hint:st=>{const tap=G.blocks.get(st.tap)||tutTap();if(!tap)return 'Place a Root Tap on copper first.';
+     if(isSite(tap))return 'The Root Tap is still growing. Lay the Vine now, and copper will start moving once it has grown.';
+     const nb=(tap.prox||[]).filter(tutRoute);if(!nb.length)return 'Start the Vine on a tile right beside the Root Tap.';
+     if([...G.blocks.values()].some(b=>b.team===0&&B[b.t].belt&&isSite(b)))return 'The Vine is still growing.';
+     if(nb.every(o=>B[o.t].belt&&relDir(o,tap)===o.rot))return 'That Vine points into the Root Tap, so copper cannot leave. Check the arrows: remove it and lay it again from the Root Tap towards the Bloom.';
+     if(tap.out>=10)return 'Copper is not reaching the Bloom. Check that the Vine\'s arrows point towards the Bloom. Remove a wrong piece and lay it again.';
+     if(G.tool==='conveyor'&&!tutTouch())return 'Tip: hold Ctrl while dragging for a staircase route. R or the mouse wheel turns the planned Vine.';
+     return 'Copper is on its way.';},
+   hl:['#mtabs .tab[title="Vines"]','.bbtn[data-t="conveyor"]'],enter:st=>{st.vcore=0;},check:st=>st.vcore>0},
+  {id:'node',title:'Expand your Rootweb',
+   do:'Open Rootweb and choose Rootweb Node. Place it near the edge of the purple ground, by the ring.',
+   info:()=>`The Bloom spreads Rootweb only about ${G&&G.reach||11} tiles here. Choose a growth to see that reach as a dashed ring. Rootweb grows around exposed ore rather than covering it.`,
+   done:'The Node will spread new Rootweb once it has grown.',
+   hint:st=>{if(hiveOf('node').length&&!st.nodeOk)return 'That Node is deep inside the Rootweb, so it has nowhere new to spread. Place one nearer the edge, by the ring.';
+     return canAfford(B.node.cost)?'':'The Bloom needs more copper for a Node. Wait for your Root Tap to deliver some.';},
+   hl:['#mtabs .tab[title="Rootweb"]','.bbtn[data-t="node"]'],enter:st=>{st.nodeAt=nodeSpot();},ring:()=>{const p=G.story.nodeAt;return p&&[p[0]+.5,p[1]+.5,1.6];},
+   check:st=>{if(frame%15&&!st.nodeOk)return false;st.nodeOk=hiveOf('node').some(b=>nodeGain(b)>=6)?1:0;return !!st.nodeOk;}},
+  {id:'turret',title:'Prepare a Thorn Spitter',
+   do:()=>tutTouch()?'Open Spitters and choose Thorn Spitter. Place it east of the Bloom, near the ring. Let it finish growing, then feed it copper through a Vine.':'Open Spitters and choose Thorn Spitter (5). Place it east of the Bloom, near the ring. Let it finish growing, then feed it copper through a Vine.',
+   info:'Spitters fire what Vines bring them. Copper is the first ammunition; resin and chitin hit harder later.',
+   hint:st=>{const S=hiveOf('duo');if(!S.length)return canAfford(B.duo.cost)?'':'The Bloom needs more copper for a Thorn Spitter. Wait for your Root Tap to deliver some.';
+     if(S.every(isSite))return 'The Thorn Spitter is growing. Meanwhile, start a Vine from a Root Tap towards it.';
+     return 'Now feed it copper: run a Vine from a Root Tap to the Thorn Spitter. A Root Tap feeds every Vine that starts beside it.';},
    hl:['#mtabs .tab[title="Spitters"]','.bbtn[data-t="duo"]'],ring:()=>G.core&&[G.core.x+7,G.core.y+1.5,1.4],
-   check:()=>[...G.blocks.values()].some(b=>b.team===0&&b.t==='duo'&&b.built>=1)},
+   check:st=>{const b=G.blocks.get(st.vtur);return !!b&&b.team===0&&b.t==='duo'&&!isSite(b)&&(b.ammo[CU]||0)>0;}},
 ];
 function freeNear(x,y,team){for(let r=0;r<10;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;const tx=Math.floor(x)+dx,ty=Math.floor(y)+dy;
   if(inMap(tx,ty)&&!solidTile(ty*MW+tx,team))return [tx+.5,ty+.5];}return [x,y];}
 function nearVein(it){if(!G.core)return null;const cx=G.core.x+1.5,cy=G.core.y+1.5;let best=null,bd=1e9;for(const [x,y,i] of G.veins||[]){if(i!==it)continue;const d=Math.hypot(x-cx,y-cy);if(d<bd){bd=d;best=[x,y];}}return best;}
 function enterTut(k,resume){const st=G.story;st.s='tut';st.hold=true;st.k=k;const s=TUT[k];if(s.enter&&(!resume||!st.c0||s.id!=='look'))s.enter(st);showTut(s);}
-function showTut(s){const el=$('tut');if(!s){el.hidden=true;return;}el.hidden=false;
-  $('tutStep').textContent=`TUTORIAL · STEP ${G.story.k+1} OF ${TUT.length}`;$('tutTitle').textContent=s.title;$('tutText').textContent=s.text;
+const tutVal=(v,st)=>typeof v==='function'?v(st):(v||'');
+function showTut(s){const el=$('tut');if(!s){el.hidden=true;return;}el.hidden=false;const st=G.story;
+  $('tutStep').textContent=`TUTORIAL · STEP ${st.k+1} OF ${TUT.length}`;$('tutTitle').textContent=s.title;
+  const lead=tutVal(s.lead,st);$('tutLead').hidden=!lead;$('tutLead').textContent=lead;
+  const d=tutVal(s.do,st);$('tutText').hidden=!d;$('tutText').textContent=d;
+  const info=tutVal(s.info,st);$('tutInfo').textContent=info;$('tutInfo').classList.toggle('solo',!d);
+  tutHintUpd(s);
   $('tutActs').innerHTML=s.next?'<button id="tutNext">Next</button>':'';if(s.next)$('tutNext').onclick=()=>tutDone();
-  $('tutBar').style.width=(100*G.story.k/TUT.length)+'%';}
-function tutDone(){const st=G.story,k=st.k;if(k+1<TUT.length){msg(`${TUT[k].title}: done.`,'good');enterTut(k+1);}else startFirstContact();}
+  $('tutBar').style.width=(100*st.k/TUT.length)+'%';}
+function tutHintUpd(s){const h=s&&s.hint?tutVal(s.hint,G.story):'',el=$('tutHint');if(el.textContent!==h)el.textContent=h;el.hidden=!h;}
+function tutDone(){const st=G.story,k=st.k;if(k+1<TUT.length){const d=tutVal(TUT[k].done,st);if(d)msg(d,'good');enterTut(k+1);}else startFirstContact();}
 // called every frame: tutorial checks run even when the sim is paused (the camera step)
 function storyFrame(){const st=G&&G.story;if(!st||DLG.open)return;
-  if(st.s==='tut'&&st.k>=0){const s=TUT[st.k];if(s&&s.check(st))tutDone();}
+  if(st.s==='tut'&&st.k>=0){const s=TUT[st.k];if(s&&s.check(st))tutDone();else if(s&&frame%12===0)tutHintUpd(s);}
   if(frame%10===0){document.querySelectorAll('.tutglow').forEach(e=>e.classList.remove('tutglow'));
     const s=st.s==='tut'&&st.k>=0&&TUT[st.k];if(s&&s.hl)for(const q of s.hl)document.querySelectorAll(q).forEach(e=>e.classList.add('tutglow'));}}
 function storyDrawWorld(c,time){const st=G.story;if(!st)return;let r=null;
@@ -5311,7 +5396,7 @@ function startFirstContact(){const st=G.story;showTut(null);
       // start once the camera has swung over to the meeting place (so nothing ever appears in view)
       if(onView(e.x,e.y,2)){const hold=fcHold(back,e.x,e.y);e.park=[e.x,e.y];e.x=hold[0];e.y=hold[1];e.wait=1e9;}}
     ping(F.sp[0],F.sp[1],'Movement on the survey track');
-    msg('Something is moving along the survey track to the east.','alert');
+    msg('Your defences are ready. Movement has been detected on the survey track to the east.','alert');
     cineFocus(F.cx,F.cy,{z:F.z,why:'fc',keep:fcLead});return;}
   let dx=G.spawn.x-tx,dy=G.spawn.y-ty;const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
   const far=Math.min(24,L-1),[sx,sy]=freeNear(tx+dx*far,ty+dy*far,1),goal=freeNear(tx+dx*7.5,ty+dy*7.5,1);
@@ -5320,7 +5405,7 @@ function startFirstContact(){const st=G.story;showTut(null);
     const g=freeNear(goal[0]-dx*back-dy*side*1.7,goal[1]-dy*back+dx*side*1.7,1);
     const e=spawnEnemy('dagger');e.x=sx-dy*side*1.2-dx*back;e.y=sy+dx*side*1.2-dy*back;const i=tileAt(e.x,e.y);if(i<0||solidTile(i,1)){e.x=sx;e.y=sy;}
     e.script=1;e.lead=k===0?1:0;e.goal=g;e.id=G.nextId++;e.ang=Math.atan2(-dy,-dx);}
-  msg('Tremors in the soil to the east. Something heavy is moving toward the new Thorn Spitter.','alert');
+  msg('Your defences are ready. Tremors in the soil to the east: something heavy is moving towards the new Thorn Spitter.','alert');
   cineFocus((tx+sx)/2,(ty+sy)/2,{z:cineFit(tx,ty,sx,sy,cam.z),why:'fc',keep:fcLead});
 }
 // the meeting place on the track (where the patrol first sees the growth), the shot that shows it with the Thorn Spitter, and the point on
@@ -5379,7 +5464,7 @@ function fcAfter(){const st=G.story;if(CINE.on&&CINE.why==='fc')cineEnd();
   playStory(['fc_after'],()=>{if(!G||G.story!==st)return;st.s='main';st.hold=false;st.cease=false;st.fc=1;
     if(CAMP){CAMP.flags=CAMP.flags||{};CAMP.flags.tut1=1;CAMP.flags.firstContact=1;saveCamp();}
     G.countdown=Math.max(G.countdown,100);$('tut').hidden=true;
-    msg('Tutorial complete. Clearance teams are coming. Survive 10 waves and keep your Thorn Spitters fed with copper.','good');});}
+    msg('Tutorial complete. Clearance teams are coming. Survive 10 waves and keep your Thorn Spitters fed by Vine.','good');const mm=MIS[st.m];if(mm&&mm.tip)msg(mm.tip);});}
 // story outro on a won sector; returns true if a dialogue is playing
 function storyOutro(done){const S=G&&G.mission&&STORY[G.mission];if(!S||!S.outro||G.held)return false;$('tut').hidden=true;playStory(S.outro,done);return true;}
 
@@ -5404,7 +5489,9 @@ const SFX={
   hatch:[.6,3,.3,1],gate:[.35,1,.15,2],thorn_spit:[.38,2,.05,3],flak_puff:[.4,2,.06,3],mortar_launch:[.55,3,.1,2],seed_burst:[.6,3,.06,3],lance:[.5,3,.08,2],
   mite_fire:[.28,1,.04,3],thornback_fire:[.32,2,.045,3],bulwark_fire:[.5,3,.08,2],ant_hit:[.32,1,.04,3],ant_die:[.55,3,.05,3],
   gun_scout:[.5,2,.05,3],gun_mg:[.42,2,.05,3],gun_jet:[.45,2,.08,2],cannon:[.8,4,.12,2],flame:[.5,2,.12,3],zap:[.5,3,.1,2],flak_gun:[.55,3,.1,2],shell_boom:[.85,4,.08,3],
-  metal_hit:[.4,2,.05,3],metal_heavy:[.55,2,.08,2],veh_explode:[.95,5,.06,3],ram_blast:[.9,5,.06,2],struct_fall:[.9,5,.2,2],
+  metal_hit:[.42,2,.05,3],metal_heavy:[.55,3,.08,2],
+  // v47: impacts by what was hit (bark, Ironbark, HDF buildings, rock, soil, flame on tissue)
+  imp_bark:[.42,2,.05,3],imp_bark_heavy:[.5,2,.07,2],imp_ironbark:[.45,2,.05,3],imp_struct:[.5,2,.06,3],imp_rock:[.3,1,.05,3],imp_ground:[.38,1,.06,2],imp_burn:[.32,1,.2,2],veh_explode:[.95,5,.06,3],ram_blast:[.9,5,.06,2],struct_fall:[.9,5,.2,2],
   ui_select:[.35,5,.04,2],ui_tool:[.35,5,.04,2],ui_cancel:[.35,5,.06,1],ui_open:[.3,5,.08,1],ui_close:[.3,5,.08,1],ui_alert:[.55,5,2.5,1],ui_good:[.35,5,1.5,1],
   comm_radio:[.28,5,.15,1],comm_hive:[.3,5,.15,1]};
 // continuous beds: [buffer, volume, sound effects (s) or ambience (a)]
@@ -5416,12 +5503,14 @@ const AMBW={meadow:'amb_meadow',base:'amb_meadow',frost:'amb_frost',ash:'amb_ash
 function sndUnlock(){if(SND.ctx){if(SND.ctx.state==='suspended'&&!document.hidden)SND.ctx.resume().catch(()=>{});return;}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
   try{const c=new AC(),b={};SND.ctx=c;
-    b.out=c.createDynamicsCompressor();b.out.threshold.value=-10;b.out.knee.value=8;b.out.ratio.value=4;b.out.attack.value=.004;b.out.release.value=.25;b.out.connect(c.destination);
+    b.out=c.createDynamicsCompressor();b.out.threshold.value=-10;b.out.knee.value=8;b.out.ratio.value=4;b.out.attack.value=.004;b.out.release.value=.25;
+    // v47: a fast limiter last in the chain, so a big fight can't clip
+    b.lim=c.createDynamicsCompressor();b.lim.threshold.value=-2;b.lim.knee.value=0;b.lim.ratio.value=20;b.lim.attack.value=.001;b.lim.release.value=.1;b.out.connect(b.lim);b.lim.connect(c.destination);
     // a fixed make-up gain before the limiter, so the game sits at a normal loudness with the sliders at their defaults
     b.trim=c.createGain();b.trim.gain.value=1.3;b.trim.connect(b.out);b.master=c.createGain();b.master.connect(b.trim);
     b.s=c.createGain();b.sd=c.createGain();b.s.connect(b.sd);b.sd.connect(b.master);
     b.a=c.createGain();b.ad=c.createGain();b.a.connect(b.ad);b.ad.connect(b.master);
-    b.meter=c.createAnalyser();b.meter.fftSize=2048;b.out.connect(b.meter);
+    b.meter=c.createAnalyser();b.meter.fftSize=2048;b.lim.connect(b.meter);
     SND.bus=b;sndApply(true);SND.on=true;sndLoad();
     document.addEventListener('visibilitychange',()=>{if(!SND.ctx)return;if(document.hidden)SND.ctx.suspend().catch(()=>{});else SND.ctx.resume().catch(()=>{});});
   }catch(e){SND.ctx=null;}}
@@ -5456,10 +5545,12 @@ function sndPlay(name,o){o=o||{};const st=SND.stats;st.req++;if(!sndReady('s'))r
   if(same>=d[3]){st.capped++;return null;}
   if(SND.voices.length>=SND.MAX){let w=null;for(const v of SND.voices)if(v.pri<pri&&(!w||v.pri<w.pri||v.pri===w.pri&&v.t0<w.t0))w=v;
     if(!w){st.capped++;return null;}sndKill(w);}
-  const buf=sndBuf(name);if(!buf)return null;
+  const buf=o.v!=null&&SND.buf[name+'_'+o.v]||sndBuf(name);if(!buf)return null;
   const c=SND.ctx,src=c.createBufferSource(),g=c.createGain();src.buffer=buf;src.playbackRate.value=(o.rate||1)*(1+(sndRnd()-.5)*.06);
   let node=src;if(p.d>1.5){const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=Math.max(500,9000/(1+p.d/4));node.connect(f);node=f;}
-  g.gain.value=d[0]*(o.vol==null?1:o.vol)*p.g;node.connect(g);
+  // v47: in a crowded fight the lesser sounds give way a little, so the big ones (and the mix) stay clear
+  const crowd=pri>=4?1:1/(1+Math.max(0,SND.voices.length-6)*.05);
+  g.gain.value=d[0]*(o.vol==null?1:o.vol)*p.g*crowd;node.connect(g);
   let out=g;if(o.x!==undefined&&c.createStereoPanner){const pn=c.createStereoPanner();pn.pan.value=p.pan;g.connect(pn);out=pn;}
   out.connect(SND.bus.s);
   const v={name,pri,t0:now,src,g};SND.voices.push(v);src.onended=()=>{const i=SND.voices.indexOf(v);if(i>=0)SND.voices.splice(i,1);try{out.disconnect();}catch(_){}};
@@ -5470,12 +5561,17 @@ function sndAt(name,x,y,o){o=o||{};o.x=x;o.y=y;return sndPlay(name,o);}
 function sndHeat(k){SND.heat=Math.min(20,SND.heat+k);}
 const SND_TFIRE={duo:['thorn_spit','gun_mg'],scatter:['flak_puff','flak_gun'],hail:['mortar_launch','cannon'],lancer:['lance','zap'],core:['thorn_spit','gun_mg']};
 const SND_ANT={mite:'mite_fire',tank:'thornback_fire',htank:'bulwark_fire'};
+// v47: what a hive growth is made of, for the sound of a hit (unlisted growths are soft tissue). SNDW names the weapon while a flame jet or a
+// beam is dealing its damage (set and cleared around those calls; sound only, never read by the game)
+const SND_MAT={wall:'imp_bark',wallL:'imp_bark_heavy',doorL:'imp_bark_heavy',twall:'imp_ironbark'};let SNDW='';
 const sndEv={
   web(x,y){SND.grow++;if(SND.on)sndAt('web_creep',x+.5,y+.5,{vol:.8+sndRnd()*.4});},
   site(b){if(!SND.on)return;const c=b.x+b.size/2,y=b.y+b.size/2;if(VINE[b.t])sndAt('vine_lay',c,y);else sndAt('place_organ',c,y,{rate:b.size>2?.8:b.size>1?.9:1});},
   grown(b){if(!SND.on)return;const c=b.x+b.size/2,y=b.y+b.size/2;if(VINE[b.t])sndAt('vine_grow',c,y);else sndAt('grown_organ',c,y,{rate:b.size>2?.8:1});},
-  hurtB(b,dmg){if(!SND.on||b.hp<=0)return;const [x,y]=bCenter(b);sndHeat(.15);
-    if(b.team===0)sndAt('org_hit',x,y,{key:b.id,kc:.25,vol:Math.min(1,.5+dmg/40)});else sndAt(b.size>1?'metal_heavy':'metal_hit',x,y,{key:b.id,kc:.25});},
+  hurtB(b,dmg){if(!SND.on||b.hp<=0)return;const [x,y]=bCenter(b);sndHeat(.15);const o={key:b.id,kc:.25};
+    if(b.team===0){if(SNDW==='flame'){sndAt('imp_burn',x,y,o);return;}const m=SND_MAT[b.t];
+      if(m)sndAt(m,x,y,Object.assign(o,{vol:Math.min(1,.6+dmg/50)}));else sndAt('org_hit',x,y,Object.assign(o,{vol:Math.min(1,.5+dmg/40),rate:dmg>=25||b.t==='core'?.82:1}));}
+    else sndAt(b.size>1||dmg>=25?'metal_heavy':'imp_struct',x,y,o);},
   destroyB(b){if(!SND.on)return;const x=b.x+b.size/2,y=b.y+b.size/2;sndHeat(1.5);
     if(b.team===0)sndAt('org_burst',x,y,{rate:b.size>2?.75:b.size>1?.88:1.1,vol:b.size>1?1:.7,pri:b.t==='core'?5:4});
     else if(b.size>1)sndAt('struct_fall',x,y);else sndAt('metal_heavy',x,y,{vol:.8});},
@@ -5485,15 +5581,21 @@ const sndEv={
   gland(b){if(b.team===0)sndAt('gland_work',b.x+b.size/2,b.y+b.size/2,{key:b.id,kc:1.2});},
   hatch(x,y){sndAt('hatch',x,y);},
   fire(b){if(!SND.on)return;const m=SND_TFIRE[b.t];if(!m)return;const [x,y]=bCenter(b);sndHeat(.25);sndAt(m[b.team===0?0:1],x,y,{rate:b.t==='core'?.85:1});},
-  shell(p){if(SND.on)sndAt(p.team===0?'seed_burst':'shell_boom',p.x,p.y);},
+  shell(p){if(!SND.on)return;sndAt(p.team===0?'seed_burst':'shell_boom',p.x,p.y);
+    const i=tileAt(p.x,p.y);if(i>=0&&!G.bgrid[i])sndAt(G.terrain[i]===ROCK?'imp_rock':'imp_ground',p.x,p.y,{vol:.6});},   // the ground it landed on
+  rock(p){if(SND.on)sndAt('imp_rock',p.x,p.y,{vol:.7});},
   antFire(u){if(SND.on){sndHeat(.12);sndAt(SND_ANT[u.t],u.x,u.y);}},
   eFire(e){if(!SND.on)return;const d=E[e.t];sndHeat(.25);
     if(d.flame)sndAt('flame',e.x,e.y,{key:e.id||0,kc:.3});else if(d.art)sndAt('cannon',e.x,e.y);else sndAt(e.t==='flare'?'gun_jet':'gun_scout',e.x,e.y);},
   bomb(e){sndHeat(1);sndAt('shell_boom',e.x,e.y);},
   ram(e){sndHeat(1.5);sndAt('ram_blast',e.x,e.y);},
-  hitE(e){if(SND.on)sndAt('metal_hit',e.x,e.y,{key:e.id||0,kc:.14,rate:E[e.t].r>.5?.8:1});},
+  hitE(e,dmg){if(!SND.on)return;const d=E[e.t],o={key:e.id||0,kc:.14};
+    if(SNDW==='beam')sndAt('imp_burn',e.x,e.y,o);else if(!d.air&&(dmg>=16||d.r>.5&&dmg>=10))sndAt('metal_heavy',e.x,e.y,Object.assign(o,{vol:.75,rate:d.r>.5?.9:1}));
+    else sndAt('metal_hit',e.x,e.y,Object.assign(o,{rate:d.air?1.12:d.r>.5?.85:1}));},
   dieE(e){if(!SND.on)return;sndHeat(2);sndAt(E[e.t].air?'shell_boom':'veh_explode',e.x,e.y,{rate:E[e.t].r>.5?.85:E[e.t].r<.3?1.15:1});},
-  hitU(u){if(SND.on)sndAt('ant_hit',u.x,u.y,{key:u.id,kc:.15,rate:U[u.t].r<.3?1.15:U[u.t].r>.5?.8:1});},
+  hitU(u){if(!SND.on)return;const o={key:u.id,kc:.15};if(SNDW==='flame')sndAt('imp_burn',u.x,u.y,o);
+    else if(u.t==='htank')sndAt('imp_bark',u.x,u.y,Object.assign(o,{rate:1.1,vol:.8}));   // the Bulwark's bark armour plates
+    else sndAt('ant_hit',u.x,u.y,Object.assign(o,{rate:U[u.t].r<.3?1.15:1}));},
   dieU(u){if(!SND.on)return;sndHeat(1);sndAt('ant_die',u.x,u.y,{rate:u.t==='mite'?1.2:u.t==='htank'?.78:1});},
   ui(n,v){sndPlay(n,{vol:v});},
   msg(text,kind){if(kind==='alert')sndPlay('ui_alert');else if(kind==='good'&&!/hatched\.$/.test(text))sndPlay('ui_good');},
@@ -5611,6 +5713,57 @@ function cineTick(dt){if(!CINE.on||!G)return;
 // the zoom that fits two points (with a margin) in the view, never closer than the player had it unless they were zoomed far out
 function cineFit(ax,ay,bx,by,z0){let z=clamp(z0,.8,1.25);const fit=z=>Math.abs(ax-bx)+10<=VW/z/T&&Math.abs(ay-by)+8<=VH/z/T;while(z>.55&&!fit(z))z-=.05;return z;}
 
+// ---------- v47: the sound test ----------
+// ---------- v47: the sound test (Settings > Audio > Sound test) ----------
+// Every combat sound, played on demand through the same mixer as the game (the sliders and mute apply), for listening side by side.
+// Each button plays the next variation in turn. The pairs play a shot and then what it hits, with the flight time between them.
+const SGAL=[
+  ['Hive weapons',[['thorn_spit','Thorn Spitter'],['flak_puff','Spore Flak'],['mortar_launch','Seed Mortar launch'],['seed_burst','Seed Mortar burst'],['lance','Sunlance'],
+    ['mite_fire','Mite Ant'],['thornback_fire','Thornback Ant'],['bulwark_fire','Bulwark Ant']]],
+  ['HDF weapons',[['gun_scout','Scout Tank gun'],['gun_mg','Duo turret'],['gun_jet','Interceptor cannon'],['cannon','Siege Tank and Mortar'],['flame','Flame Tank'],
+    ['flak_gun','Flak turret'],['zap','Lancer turret'],['shell_boom','Shell or bomb'],['ram_blast','Rammer Drone blast']]],
+  ['Impacts by what is hit',[['org_hit','Soft membrane'],['ant_hit','Ant shell'],['imp_bark','Bark Wall'],['imp_bark_heavy','Great Bark and Maw Gate'],['imp_ironbark','Ironbark'],
+    ['metal_hit','HDF vehicle'],['metal_heavy','HDF heavy vehicle'],['imp_struct','HDF building'],['imp_rock','Rock'],['imp_ground','Ground'],['imp_burn','Flame or beam on tissue']]],
+  ['Destruction',[['org_burst','Growth destroyed'],['ant_die','Ant killed'],['veh_explode','Vehicle destroyed'],['struct_fall','HDF building destroyed']]],
+];
+// [label, [sound, delay in seconds, options], ...]
+const SGAL_PAIRS=[
+  ['Thorn Spitter on a Scout Tank',['thorn_spit',0],['metal_hit',.16]],
+  ['Thorn Spitter on a Siege Tank',['thorn_spit',0],['metal_heavy',.2,{vol:.75,rate:.9}]],
+  ['Spore Flak on a Bomber',['flak_puff',0],['metal_hit',.22,{rate:1.12}]],
+  ['Seed Mortar on open ground',['mortar_launch',0],['seed_burst',.75],['imp_ground',.75,{vol:.6}]],
+  ['Sunlance on a Flame Tank',['lance',0],['imp_burn',.02]],
+  ['Scout Tank on a Bark Wall',['gun_scout',0],['imp_bark',.14]],
+  ['Scout Tank on Ironbark',['gun_scout',0],['imp_ironbark',.14]],
+  ['Scout Tank on the Bloom',['gun_scout',0],['org_hit',.14,{rate:.82}]],
+  ['Siege Tank shell on Great Bark',['cannon',0],['shell_boom',.8],['imp_bark_heavy',.8]],
+  ['Flame Tank on a Mite Ant',['flame',0],['imp_burn',.05]],
+  ['Shot into the rocks',['gun_scout',0],['imp_rock',.15,{vol:.7}]],
+  ['Mite Ants on an HDF building',['mite_fire',0],['imp_struct',.12],['mite_fire',.2],['imp_struct',.32]],
+  ['Near tank destroyed, far small hit',['veh_explode',0],['metal_hit',.5,{vol:.12}]],
+];
+// a big fight: forty shots and hits in two seconds, to hear the voice limits and the mix hold together
+const SGAL_CROWD=['thorn_spit','metal_hit','gun_scout','org_hit','flak_puff','metal_heavy','mite_fire','imp_bark','cannon','ant_hit','lance','imp_struct'];
+const SGALV={};
+function sgalPlay(name,o){const n=SND.nvar[name]||0,k=SGALV[name]=((SGALV[name]==null?-1:SGALV[name])+1)%Math.max(1,n);
+  delete SND.cool[name];return sndPlay(name,Object.assign({v:n?k:null,pri:3},o||{}));}
+function sgalNote(){const el=$('sgalNote');if(!el)return;const e=sndEff();
+  el.textContent=!SND.on||!window.AudioContext&&!window.webkitAudioContext?'Sound is not available in this browser.':
+    SND.vol.mute?'Sound is muted. Untick Mute all sound to listen.':e.s<=0?'Sound effects are turned down to 0%.':
+    !SND.ctx||SND.ctx.state!=='running'?'Click any button to start the sound.':!SND.ready?'The sounds are still loading.':'Each button plays the next variation of that sound.';}
+function sgalOpen(){sndUnlock();let h='<h2>SOUND TEST</h2><p id="sgalNote" class="snote"></p>';
+  for(const [g,L] of SGAL)h+=`<div class="qlbl">${g}</div><div class="sgrid">`+L.map(([n,l])=>`<button data-s="${n}">${l}</button>`).join('')+'</div>';
+  h+='<div class="qlbl">Shot and impact</div><div class="sgrid">'+SGAL_PAIRS.map((p,i)=>`<button data-p="${i}">${p[0]}</button>`).join('')+'</div>';
+  h+='<div class="qlbl">Crowd</div><div class="sgrid"><button data-c="1">Forty shots and hits at once</button></div>';
+  h+='<button id="sgalClose">Close</button>';
+  const el=$('sgal');el.querySelector('.scard').innerHTML=h;el.hidden=false;sgalNote();
+  el.querySelector('#sgalClose').onclick=()=>{el.hidden=true;};
+  el.querySelectorAll('button[data-s]').forEach(b=>b.onclick=()=>{sndUnlock();sgalPlay(b.dataset.s);sgalNote();});
+  el.querySelectorAll('button[data-p]').forEach(b=>b.onclick=()=>{sndUnlock();const P=SGAL_PAIRS[+b.dataset.p];
+    for(const [n,t,o] of P.slice(1))setTimeout(()=>sgalPlay(n,o),t*1000);sgalNote();});
+  el.querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{sndUnlock();for(let k=0;k<40;k++)setTimeout(()=>{const n=SGAL_CROWD[k%SGAL_CROWD.length];
+    delete SND.cool[n];sndPlay(n,{vol:.5+.5*((k*7)%5)/4,pri:n.startsWith('metal_heavy')||n==='cannon'?3:2});},k*50);sgalNote();});}
+
 // ---------- loop ----------
 let last=performance.now(),acc=0,frame=0;
 // F3: frame rate readout, and which renderer draws the Rootweb
@@ -5666,7 +5819,8 @@ function openSettings(){$('optFog').checked=SET.fog;qualityUI();audioUI();$('set
 for(const b of document.querySelectorAll('.qbar button'))b.onclick=()=>{const q=b.dataset.q;if(q===SET.q)return;
   // building the HD ground takes a moment: say so first
   if(QUALITY[q].hd&&!SET.hd&&G){msg('Building HD textures...');setTimeout(()=>applyQuality(q),30);}else applyQuality(q);};
-$('setBtn').onclick=openSettings;
+$('setBtn').onclick=openSettings;$('sgalBtn').onclick=()=>sgalOpen();
+$('sgal').onclick=e=>{if(e.target.id==='sgal')$('sgal').hidden=true;};
 $('optFog').onchange=e=>{SET.fog=e.target.checked;try{localStorage.setItem('lc_fog',SET.fog?'1':'0');}catch(_){}};
 $('setClose').onclick=()=>{$('settings').hidden=true;snd('ui','ui_close');};
 $('settings').onclick=e=>{if(e.target.id==='settings'){$('settings').hidden=true;snd('ui','ui_close');}};

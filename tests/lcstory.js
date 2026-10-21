@@ -38,9 +38,13 @@ const {chromium}=require(process.env.PW||'playwright');
  await p.evaluate(()=>{const G=window.__game();const d=[...G.blocks.values()].find(b=>b.t==='drill');routeBelt(d,G.core,0);});
  for(let k=0;k<40&&(await st()).k===7;k++)await p.waitForTimeout(250);
  console.log('vine',JSON.stringify(await st()));
- await p.evaluate(()=>{const G=window.__game();for(let r=6;r<14;r++){if(tryPlace('node',G.core.x-r,G.core.y+1,0,true))break;}});await p.waitForTimeout(400);console.log('node',JSON.stringify(await st()));
+ // v47: the Node step needs a Node that adds new Rootweb, so use the spot the tutorial rings
+ await p.evaluate(()=>{const G=window.__game(),a=G.story.nodeAt;if(!a||!tryPlace('node',a[0],a[1],0,true))for(let r=6;r<14;r++){if(tryPlace('node',G.core.x-r,G.core.y+1,0,true))break;}});
+ for(let k=0;k<40&&(await st()).k===8;k++)await p.waitForTimeout(250);console.log('node',JSON.stringify(await st()));
  await p.evaluate(()=>{const G=window.__game();for(let r=5;r<12;r++){if(tryPlace('duo',G.core.x+r,G.core.y-2,0,true))break;}});
- await p.waitForTimeout(1500);console.log('turret',JSON.stringify(await st()));
+ // v47: the Thorn Spitter step completes once a Vine has fed it copper, so run one from the Root Tap
+ await p.evaluate(()=>{const G=window.__game();G.items[CU]+=200;const d=[...G.blocks.values()].find(b=>b.t==='drill'),t=[...G.blocks.values()].find(b=>b.t==='duo');routeBelt(d,t,0);});
+ for(let k=0;k<80&&(await st()).s==='tut';k++)await p.waitForTimeout(250);await p.waitForTimeout(500);console.log('turret',JSON.stringify(await st()));
  await p.screenshot({path:'s_fc_walk.png'});
  // watch the patrol walk; record HP and bullets
  let mon=[];for(let k=0;k<140;k++){const s=await p.evaluate(()=>{const G=window.__game();const P=G.enemies.filter(e=>e.script);return {s:G.story.s,n:P.length,hp:P.map(e=>e.hp|0).join('/'),pb:G.bullets.filter(b=>b.team===0).length,eb:G.bullets.filter(b=>b.team===1).length,cease:G.story.cease,dlg:DLG.open,pos:P.map(e=>e.x.toFixed(1)+','+e.y.toFixed(1)).join(' ')};});

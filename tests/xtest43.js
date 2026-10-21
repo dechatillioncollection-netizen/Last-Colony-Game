@@ -74,14 +74,14 @@ const HELP=()=>{
    return out;});
  ok(r.branch[0]===''&&r.branch[1]===''&&/tile 6/.test(r.branch[2]),'a branch keeps counting from where it leaves the line (4, 5, then 6 refused)',r.branch);
  ok(r.loop[0]===''&&r.loop[1]===''&&/tile 6/.test(r.loop[2])&&r.loop[3]==='','a loop gives no extra reach; the shortest route counts',r.loop);
- ok(r.tap===''&&/must join/.test(r.afterTap)&&/tile 6/.test(r.afterTap2),'a Root Tap does not restart the count',r);
+ ok(r.tap===''&&/must (join|connect)/.test(r.afterTap)&&/tile 6/.test(r.afterTap2),'a Root Tap does not restart the count',r);
  ok(r.knot===''&&r.swift==='','Vine Knots and Swift Vines count as vine tiles',r);
  ok(r.back.every(w=>w===''),'vines run back from a second patch of Rootweb count from it',r.back);
  // cut-off vines stay but give no reach
  r=await p.evaluate(()=>{const {G,X0,Y}=__strip();for(let k=0;k<5;k++)tryPlace('conveyor',X0+k,Y,0,true);__done();const n0=__vines();deconstruct(blockAt(X0+1,Y));__run(60);
    return {n0,n1:__vines(),kept:[2,3,4].every(k=>!!blockAt(X0+k,Y)),next:placeCheck('conveyor',X0+5,Y),side:placeCheck('conveyor',X0+3,Y+1)};});
  ok(r.kept&&r.n1===r.n0-1,'vines cut off from the Rootweb are not removed',r);
- ok(/must join/.test(r.next)&&/must join/.test(r.side),'cut-off vines give no reach for new ones',r);
+ ok(/must (join|connect)/.test(r.next)&&/must (join|connect)/.test(r.side),'cut-off vines give no reach for new ones',r);
  // an outlying mine: Root Tap on bare ore, 4 vines to the Rootweb, copper arrives in the Bloom
  r=await p.evaluate(()=>{const {G,X0,Y}=__strip();for(let y=Y;y<=Y+1;y++)for(let x=X0+4;x<X0+6;x++)G.ore[y*MW+x]=CU;drawTerrainAll();
    const a=tryPlace('drill',X0+4,Y,0,true);const v=[];for(let x=G.core.x+3;x<=X0+3;x++)v.push(tryPlace('conveyor',x,Y,2,true));

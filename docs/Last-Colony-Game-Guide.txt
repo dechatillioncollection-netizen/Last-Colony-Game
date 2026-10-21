@@ -75,7 +75,7 @@ Growth times: Vine 0.5 s, Swift Vine and Vine Knot 0.8 s, Splitter Bulb 1 s, Sor
 
 Vine reach
 
-Vines (and Swift Vines and Vine Knots) can run up to 5 tiles past the Rootweb. The count follows the shortest chain of vine tiles touching edge to edge back to the Rootweb: the first tile off the Rootweb is tile 1, tile 5 is allowed and tile 6 is refused. Branches, loops, Root Taps and other growths do not restart the count; vines that reach Rootweb again count from there. A vine off the Rootweb must join it or join a vine that does. If a vine line is cut, the cut-off part stays and keeps working but gives no reach for new vines until it is joined up again.
+Vines (and Swift Vines and Vine Knots) can run up to 5 tiles past the Rootweb. The count follows the shortest chain of vine tiles touching edge to edge back to the Rootweb: the first tile off the Rootweb is tile 1, tile 5 is allowed and tile 6 is refused. Branches, loops, Root Taps and other growths do not restart the count; vines that reach Rootweb again count from there. A Vine beyond the Rootweb must connect to it, directly or through other Vines. If a vine line is cut, the cut-off part stays and keeps working but gives no reach for new vines until it is joined up again.
 
 Building controls
 
@@ -86,7 +86,17 @@ Building controls
 - If the Bloom cannot pay for the whole line, the tiles nearest the Rootweb are placed first, as far as it can pay, and the message says how many were skipped and why. Tiles that are refused cost nothing.
 - Press Esc during a drag to cancel it: nothing is placed and nothing is paid. Esc otherwise drops the chosen growth or clears the selection.
 - Hold Alt to see a fine grid over every tile you could physically build on: open ground and ore, on or off the Rootweb, but not rock, deep water, growths or growing sites. Only the tiles on screen are drawn. The placement preview still says whether a spot needs Rootweb or is out of reach.
+- Placement messages say what is allowed: most growths must be placed on Rootweb, only Root Taps and Deep Roots can go on ore beyond it, a Root Tap needs exposed ore crystals under it, and a Vine beyond the Rootweb can extend 5 connected tiles.
 - F4 shows the enemy route view (for curious players and testing): the shared route field the HDF follow to your Bloom, structures it would have to break through tinted red, each enemy's role, target (red line), objective (yellow) and local path (orange), and a flash where the route field was rebuilt.
+
+Controls
+
+- Camera: WASD, the arrow keys or dragging with the middle mouse button. On a touch screen, drag with one finger when no growth is chosen. The mouse wheel zooms (unless a Vine is chosen). H returns to the Bloom, and clicking the minimap jumps there. There is no pinch-to-zoom.
+- Left-click places the chosen growth or selects. With nothing chosen, drag a box to select several ants; click open ground to move the selected ants there.
+- Ctrl while dragging a Vine lays a staircase route. R or the mouse wheel turns the planned Vine (Shift+R turns it back). Esc cancels a drag, puts the growth away or clears the selection.
+- Right-click, or X and drag, reabsorbs growths; Delete reabsorbs the selected one. Q copies the growth under the pointer. Hold Alt to see the ground you can grow on.
+- 1 to 0 pick growths quickly (1 Vine, 4 Root Tap, 5 Thorn Spitter). C or the Swarm button switches every ant between Defend and Attack. T opens evolution. Space pauses; the 1×, 2× and 4× buttons set the speed.
+- The same list is in the tutorial panel (Controls) and in Settings.
 
 Sound and the event camera
 
@@ -95,6 +105,9 @@ Sound and the event camera
 - Organs sound only while they work. A Sap Burner roars softly while it has fuel and whumphs as it takes coal in. A Sunleaf hums and pulses while it makes vigor. A Spore Bellows breathes and puffs on each exhale. Root Taps, Glands and Brood Chambers sound as they draw, process or hatch.
 - Ants scuttle as one shared sound however many are moving, and each kind fires with its own sound. HDF machines are metal, motors and guns: each kind of vehicle has its own engine, and you hear them before you see them.
 - The world has its own ambience, which changes with the sector: wind, small lives in the soil, the low hum of the hive as it grows, and a distant mechanical rumble when HDF machines are on their way. A fight brings in a tense layer, which eases back gradually afterwards. Story lines duck the sound a little so they can always be heard.
+- Combat is built from noise, not notes: HDF guns crack and thud with heavy breeches and recoil, and hive weapons snap, clench and discharge like muscle and pressurised sap. A hit sounds like what it struck: soft growths and the Bloom tear like membrane, Bark Wall, Great Bark (and the Maw Gate) and Ironbark crack progressively denser, a Bulwark Ant's bark plates crack, other ants crunch, HDF vehicles clank (heavier on a Siege Tank or a big hit), HDF buildings crunch, shells and stray rounds hit rock or soil, and flame or a Sunlance beam scorches. Shots that miss or run out make no impact sound.
+- In a big fight the lesser sounds give way a little and a limiter keeps the output from clipping, so a nearby explosion still stands out over distant small hits.
+- Settings, then Audio, then Sound test plays every weapon, impact and destruction sound, and shots paired with what they hit, through the same volume settings.
 - Settings, then Audio: Master, Sound Effects and Ambience volumes from 0 to 100%, and Mute. Master scales the other two (Master 50% with Sound Effects 80% plays effects at 40%). The settings apply at once and are remembered.
 - Important story moments pan the camera to what is happening and hold it there until the moment ends. The camera then returns to where you had it, at your zoom, and your controls work again straight away.
 
@@ -153,7 +166,7 @@ Rootweb in the campaign: every sector has a fixed map. The Bloom's own Rootweb o
 
 A quiet meadow where the swarm first takes root. The Bloom wakes and tells the Seed Cluster what lies beneath it. The Seed Cluster tells it to feed itself and grow defences, though it doesn't yet know what from.
 
-A mandatory tutorial teaches the controls: selecting units, moving the map, using structures, mining and building, then the first Thorn Spitter.
+A mandatory tutorial (waves are paused) teaches ten things, one panel each: move the camera, select the Bloom, select a Mite Ant, move it, switch the Swarm to Attack and back to Defend, the Rootweb (the only panel with a Next button), place a Root Tap on copper, carry copper to the Bloom along a Vine, plant a Rootweb Node where it adds new ground, and prepare a Thorn Spitter. Each step is checked by doing it: copper must reach the Bloom along a Vine (a Root Tap touching the Bloom does not count), the Node must be near the edge of the Rootweb, and the Thorn Spitter must be grown and fed copper by Vine before first contact begins. A hint line helps if a growth is still growing, the ore is wrong, a Vine points the wrong way or the Bloom is short of copper. On a replay you can replay the tutorial, including first contact, or skip straight to the mission.
 
 The map: a green meadow. The Bloom grows in a hollow on the west side, hidden from a dirt survey track that runs in from the east past survey markers, a parked survey truck and a radio mast. HDF waves follow that track.
 

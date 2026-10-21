@@ -1,4 +1,4 @@
-// Last Colony v46 sound recipes. Each entry makes one sound (or several variations) from the DSP toolkit; make.js writes and encodes them.
+// Last Colony sound recipes (v46, combat sounds remade in v47). Each entry makes one sound (or several variations) from the DSP toolkit; make.js writes and encodes them.
 // The hive is wet and aquatic (waterlily and water-fungus forms, sap, membranes): its sounds are bubbles, squelches, soft fibrous creaks
 // and membrane thumps. Human machines are metal, combustion and electricity, so the two sides never sound alike.
 'use strict';
@@ -25,6 +25,36 @@ function thump(r, sec, f0, f1, tau, nz = .25) { const n = N(sec);
 // soil and fibres: a cluster of tiny low crackles
 function fibre(r, sec, count, fc = 900, q = 3) { const n = N(sec);
   return grains(n, count, sec * .85, (o, at, r) => click(o, at, .3 + r() * .7, fc * (.6 + r() * .9), q, r, .002 + r() * .006), r); }
+
+// ---------------- v47 combat pieces ----------------
+// v46's combat sounds rang: hull hits and chitin ticks were a few long, clean sine modes (a struck bar, so each hit was a note) and the hive's
+// shots and hits carried bubbles (a falling drop of water). v47 builds every shot and impact from noise: a sharp transient, a short noise
+// body through broad bands, a low thud whose pitch falls too fast to hear as a note, and debris. Where metal must ring, it rings as a dense
+// cluster of many short inharmonic modes, which reads as "metal" without a pitch.
+// a sharp transient: a few milliseconds of high-passed noise
+function snap(n, r, f, len, at = 0) { const o = new Float32Array(n); addTo(o, mul(hp(white(N(len * 4 + .004), r), f), ad(N(len * 4 + .004), .0002, len)), at); return o; }
+// a broad noise body: lowpassed noise with a fast attack, the weight of a blow or a blast
+function body(n, r, f, tau, att = .001, col = 'brown') { const src = col === 'white' ? white(n, r) : col === 'pink' ? pink(n, r) : brown(n, r); return mul(lp(src, typeof f === 'function' ? f : f, .8), ad(n, att, tau)); }
+// a low thud: a sub sine dropping through more than an octave in a few tens of milliseconds (felt, not heard as a note), plus noise
+function thud(r, sec, f0, f1, tau, nz = .5) { const n = N(sec);
+  const s = mul(osc(n, t => f1 + (f0 - f1) * Math.exp(-t / (tau * .35))), ad(n, .002, tau));
+  return mix(n, [s, 1], [mul(lp(brown(n, r), f0 * 3), ad(n, .001, tau * .8)), nz]); }
+// a dense metal cluster: many inharmonic modes spread over a band, each short, at random strengths, so no single pitch stands out
+function cluster(n, r, f0, f1, count, d0, d1, amp = 1) { const modes = [];
+  for (let k = 0; k < count; k++) modes.push([f0 * Math.pow(f1 / f0, r()), d0 + r() * (d1 - d0), (.3 + r() * .7) * amp / Math.sqrt(count)]);
+  return modal(n, modes, r, .02); }
+// debris and rattle: scattered tiny noise clicks after the blow
+function rattle(r, sec, count, f0, f1, at0, span, amp = 1, q = 1.5) { const n = N(sec);
+  return grains(n, count, span, (o, at, r) => click(o, at, amp * (.25 + r() * .75) * Math.exp(-(at - at0) / (span * .5)), f0 + r() * (f1 - f0), q, r, .0015 + r() * .004), r, at0); }
+// a fibrous tear: band noise gated by a ragged flutter (fibres parting one after another)
+function tear(r, sec, f, q, rate, tau) { const n = N(sec), g = new Float32Array(n); let a = 0, next = 0;
+  for (let i = 0; i < n; i++) { if (i >= next) { a = r() < .65 ? .3 + r() * .7 : .05; next = i + Math.round(SR / (rate * (.6 + r() * .8))); } g[i] = a; }
+  return mul(mul(bp(white(n, r), f, q), lp1(g, 300)), ad(n, .002, tau)); }
+// a cellulose crack: a hard woody split, fast stick-slip through dry, damped bodies
+function woodCrack(r, sec, f, dens) { const c = creak(sec, .0012 / dens, .004 / dens, [[f, 2.2, 1], [f * 2.3, 2.6, .5], [f * 4.1, 3, .25]], r, .5);
+  return mul(c, ad(c.length, .0005, sec * .3)); }
+// pressurised air or sap leaving a chamber: a short burst of noise sweeping down through a band
+function gush(r, sec, f0, f1, q, tau) { const n = N(sec); return mul(filt(white(n, r), 'bp', t => f1 + (f0 - f1) * Math.exp(-t / (tau * .6)), q), ad(n, .002, tau)); }
 
 // ---------------- Rootweb, vines, placement ----------------
 def('web_creep', 4, (r, v) => { const sec = .9;
@@ -68,18 +98,18 @@ def('rotate', 2, (r, v) => { const sec = .2;
   return verb(lp(mul(cr, env(cr.length, [[0, 0], [.02, 1], [.14, .5], [sec, 0]])), 5000), .3, .5, .1, .2); });
 
 // ---------------- hive structures under attack ----------------
-def('org_hit', 4, (r, v) => { const sec = .32, n = N(sec);
-  // a round striking living tissue: a wet slap and a short tear of fibres
-  const slap = mul(bp(white(n, r), 650 + v * 120, 1.2), ad(n, .001, .03));
-  const o = mix(n, [slap, 1], [thump(r, sec, 140, 70, .05, .2), .7], [fibre(r, .14, 6, 1500, 4), .35, .015]);
-  bubble(o, .02 + r() * .03, 300 + r() * 200, .02, .3); return lp(o, 5200); });
+def('org_hit', 4, (r, v) => { const sec = .3, n = N(sec);
+  // a round striking soft living tissue: a wet, dull thud, a fibrous tear, and a little sap spatter (no drops of water)
+  const o = mix(n, [thud(r, sec, 150 + v * 15, 55, .045, .7), 1], [body(n, r, 900, .025, .001, 'pink'), .5], [tear(r, .16, 1400 + v * 200, 1.4, 260, .05), .45, .006]);
+  addTo(o, rattle(r, .25, 5, 1500, 3000, .02, .12, .25, 2), 0, 1);
+  return lp(o, 6000); });
 
 def('org_burst', 3, (r, v) => { const sec = 1.6, n = N(sec);
-  // a growth bursting: a deep wet rupture, tearing fibres, then sap spattering down
-  const rup = mul(lp(brown(n, r), t => 1800 * Math.exp(-t / .25) + 160), ad(n, .004, .3));
-  const tear = mul(creak(.5, .004, .009, [[700, 3, 1], [1600, 4, .5]], r, .6), env(N(.5), [[0, 1], [.5, 0]]));
-  const o = mix(n, [rup, 1.1], [thump(r, sec, 95 + v * 10, 38, .22, .2), .9], [tear, .3, .02]);
-  for (let k = 0; k < 18; k++) { const at = .1 + r() * 1.1; bubble(o, at, 250 + r() * 700, .01 + r() * .02, .12 + r() * .12, 1.2); click(o, at, .08, 2500 + r() * 2000, 2, r); }
+  // a growth bursting: a deep wet rupture, fibres tearing apart, and torn tissue and sap spattering down (no bubbling)
+  const rup = body(n, r, t => 1800 * Math.exp(-t / .25) + 160, .3, .004);
+  const tr = mul(creak(.5, .004, .009, [[700, 3, 1], [1600, 4, .5]], r, .6), env(N(.5), [[0, 1], [.5, 0]]));
+  const o = mix(n, [rup, 1.1], [thud(r, sec, 95 + v * 10, 34, .22, .6), .9], [tr, .3, .02], [tear(r, .6, 1100, 1, 90, .2), .45, .03]);
+  addTo(o, rattle(r, sec, 26, 400, 2200, .1, 1.0, .3, 1.2), 0, 1);
   return verb(lp(o, 5000), .65, .45, .28, 1); });
 
 def('heal', 1, (r) => { const sec = 1.3, n = N(sec);
@@ -151,58 +181,65 @@ def('gate', 2, (r, v) => { const sec = .5, n = N(sec);
   return lp(o, 3000); });
 
 // ---------------- hive weapons ----------------
-def('thorn_spit', 3, (r, v) => { const sec = .3, n = N(sec);
-  // Thorn Spitter: a hard wet spit and the thorn's whistle away
-  const o = new Float32Array(n); click(o, 0, .9, 1900 + v * 200, 1.5, r, .004);
-  const pth = mul(filt(white(n, r), 'bp', t => 3200 - 1800 * t / .12, 2), ad(n, .001, .04));
-  addTo(o, pth, .002, .7); addTo(o, thump(r, .2, 220 + v * 20, 120, .03, .2), 0, .5); bubble(o, .01, 650 + v * 80, .012, .3);
-  return verb(o, .35, .5, .12, .25); });
-def('flak_puff', 2, (r, v) => { const sec = .5, n = N(sec);
-  // Spore Flak: a pressurised pod popping and a hiss of spores
-  const pop = thump(r, .3, 260, 90, .03, .6);
-  const hiss = mul(filt(white(n, r), 'bp', t => 4200 - 1600 * t / sec, 1), ad(n, .004, .1));
-  return verb(mix(n, [pop, .9], [hiss, .5, .006]), .45, .45, .2, .4); });
-def('mortar_launch', 2, (r, v) => { const sec = .8, n = N(sec);
-  // Seed Mortar: a deep hollow pod-gun thoomp
-  const o = mix(n, [thump(r, sec, 140 + v * 10, 42, .12, .3), 1], [mul(lp(brown(n, r), 600), ad(n, .002, .09)), .7]);
-  bubble(o, .03, 210, .05, .3, .2); return verb(lp(o, 2500), .6, .5, .3, .7); });
-def('seed_burst', 3, (r, v) => { const sec = 1.0, n = N(sec);
-  // a seed shell landing and bursting: a heavy splat and a spray
-  const o = mix(n, [mul(lp(brown(n, r), t => 2500 * Math.exp(-t / .1) + 200), ad(n, .002, .14)), 1], [thump(r, sec, 110, 45, .12, .3), .8]);
-  for (let k = 0; k < 14; k++) { bubble(o, .02 + r() * .5, 300 + r() * 800, .012, .14, 1); click(o, .02 + r() * .5, .06, 3000 + r() * 2000, 2, r); }
-  return verb(lp(o, 6000), .6, .4, .25, .7); });
-def('lance', 2, (r, v) => { const sec = .7, n = N(sec);
-  // Sunlance: stored light let go: a bright, glassy surge with a sizzle
-  const e = env(n, [[0, 0], [.015, 1], [.12, .5], [sec, 0]], 1.5);
-  const tone = mix(n, [osc(n, t => 880 - 300 * t), .4], [osc(n, t => 1320 - 420 * t), .25], [osc(n, t => 2210 - 600 * t), .12]);
-  const siz = mul(hp(white(n, r), 3500), env(n, [[0, 0], [.01, .5], [.2, .15], [sec, 0]]));
-  return verb(mix(n, [mul(tone, e), .6], [siz, .3]), .6, .3, .3, .7); });
+def('thorn_spit', 3, (r, v) => { const sec = .35, n = N(sec);
+  // Thorn Spitter: a sharp muscular snap, a pressurised discharge, and the thorn hissing away
+  const o = mix(n, [thud(r, sec, 190 + v * 15, 70, .03, .5), .9], [snap(n, r, 2600, .002), .9], [gush(r, .22, 4200, 1300, 1.3, .045), .55, .003],
+    [tear(r, .08, 2200, 1.6, 900, .02), .3]);
+  return verb(lp(sat(o, 1.6), 9000), .3, .5, .1, .25); });
+def('flak_puff', 2, (r, v) => { const sec = .6, n = N(sec);
+  // Spore Flak: the sac clenches, then a forceful clustered discharge, a burst of spores spreading out
+  const squeeze = mul(lp(brown(n, r), 300), env(n, [[0, 0], [.05, .5], [.07, 0], [sec, 0]], 1.5));
+  const o = mix(n, [squeeze, .6], [thud(r, sec, 170, 60, .05, .6), .9, .06], [snap(n, r, 1800, .003), .6, .06]);
+  for (let k = 0; k < 7; k++) addTo(o, gush(r, .16, 3600 + r() * 1800, 1500, 1.1, .03), .065 + k * (.009 + r() * .01), .32);
+  return verb(lp(o, 9000), .45, .45, .18, .4); });
+def('mortar_launch', 2, (r, v) => { const sec = 1.0, n = N(sec);
+  // Seed Mortar: heavy tissue clenching, then the seed pod thrown out with a deep, fibrous thoomp
+  const clench = mul(woodCrack(r, .12, 260, .7), env(N(.12), [[0, 0], [.08, 1], [.12, 0]]));
+  const o = mix(n, [clench, .35], [thud(r, sec, 120 + v * 10, 38, .14, .9), 1.1, .1], [body(n, r, 700, .07), .8, .1], [gush(r, .3, 1600, 400, .9, .08), .45, .105]);
+  return verb(lp(sat(o, 1.4), 4500), .6, .5, .25, .7); });
+def('seed_burst', 3, (r, v) => { const sec = 1.1, n = N(sec);
+  // a seed shell landing: the husk cracks, the pod ruptures with fibrous tearing, and soil and seed fragments fall
+  const o = mix(n, [snap(n, r, 1500, .004), .7], [thud(r, sec, 110 + v * 8, 40, .15, 1), 1.1], [body(n, r, t => 2400 * Math.exp(-t / .08) + 220, .16), .9],
+    [tear(r, .35, 900 + v * 150, 1, 140, .1), .5, .01]);
+  addTo(o, rattle(r, sec, 22, 500, 2400, .06, .55, .35, 1.2), 0, 1);
+  return verb(lp(sat(o, 1.5), 6500), .6, .45, .22, .7); });
+def('lance', 2, (r, v) => { const sec = .9, n = N(sec);
+  // Sunlance: light drawn in and focused (a rising, fluttering surge of filtered noise), then let go as a concentrated, searing burst
+  const charge = mul(mul(filt(pink(n, r), 'bp', t => 500 + 2600 * Math.min(1, t / .22), 3), env(n, [[0, 0], [.2, 1], [.23, 0], [sec, 0]], 1.4)),
+    osc(n, t => 28 + 30 * t, 'tri').map(s => .7 + .3 * s));
+  const sear = mul(filt(white(n, r), 'bp', t => 5200 - 2600 * Math.min(1, (t - .22) / .4), .9), env(n, [[0, 0], [.22, 0], [.235, 1], [.45, .25], [sec, 0]]));
+  const o = mix(n, [charge, .55], [sear, .55], [thud(r, .4, 160, 60, .05, .4), .6, .225], [snap(n, r, 3000, .003), .5, .225]);
+  return verb(lp(o, 11000), .55, .3, .25, .6); });
 
 // ---------------- ants ----------------
 def('ant_scuttle', 1, (r) => { const L = 3, sec = L + 1, n = N(sec);
   // many small legs on soil: clustered chitin ticks over a soft rustle (one bed for the whole swarm, scaled by how many are moving)
   const o = new Float32Array(n); let t = 0; while (t < sec) { const burst = 2 + Math.floor(r() * 4); for (let k = 0; k < burst; k++) click(o, t + k * (.012 + r() * .01), .25 + r() * .5, 3200 + r() * 3500, 4, r, .0012); t += .03 + r() * .07; }
   const rust = mul(bp(pink(n, r), 2400, .7), .12); return loopify(mix(n, [o, 1], [rust, 1]), L, .5); }, { loop: 3 });
-def('mite_fire', 3, (r, v) => { const sec = .16, n = N(sec), o = new Float32Array(n);
-  // Mite Ant: a tiny sharp spit
-  click(o, 0, .8, 3600 + v * 400, 2, r, .002); addTo(o, mul(filt(white(n, r), 'bp', t => 5000 - 2500 * t / .06, 2), ad(n, .001, .02)), 0, .5); bubble(o, .004, 1100 + v * 120, .008, .3);
-  return verb(o, .2, .5, .08, .15); });
-def('thornback_fire', 3, (r, v) => { const sec = .24, n = N(sec), o = new Float32Array(n);
-  click(o, 0, .9, 2600 + v * 300, 1.6, r, .003); addTo(o, mul(filt(white(n, r), 'bp', t => 4200 - 2400 * t / .1, 2), ad(n, .001, .03)), 0, .6);
-  addTo(o, thump(r, .15, 320, 170, .02, .2), 0, .4); bubble(o, .006, 800 + v * 90, .01, .3); return verb(o, .3, .5, .1, .2); });
+def('mite_fire', 3, (r, v) => { const sec = .18, n = N(sec);
+  // Mite Ant: a small gland flicking a bead of sap: a tiny muscular tick and a hiss
+  const o = mix(n, [snap(n, r, 3200, .0015), .7], [gush(r, .1, 5200, 2200, 1.4, .02), .5, .002], [thud(r, .1, 280, 140, .012, .4), .35]);
+  return verb(lp(o, 10000), .2, .5, .06, .12); });
+def('thornback_fire', 3, (r, v) => { const sec = .26, n = N(sec);
+  // Thornback Ant: a hard flick of the back and a thorn snapping loose
+  const o = mix(n, [snap(n, r, 2400, .002), .9], [thud(r, .18, 240 + v * 20, 100, .02, .5), .55], [gush(r, .15, 4400, 1700, 1.4, .03), .5, .002],
+    [woodCrack(r, .05, 1300, 1.4), .3]);
+  return verb(lp(sat(o, 1.5), 9000), .3, .5, .08, .18); });
 def('bulwark_fire', 2, (r, v) => { const sec = .7, n = N(sec);
-  // Bulwark Ant: an acid seed lobbed from the pod: a thick gloop
-  const o = mix(n, [thump(r, sec, 170 + v * 15, 70, .07, .25), 1], [squelch(r, .35, 260, 900, 300, 5, 6, [180, 500]), .6, .01]);
-  return verb(lp(o, 3500), .45, .5, .2, .4); });
-def('ant_hit', 4, (r, v) => { const sec = .14, n = N(sec);
-  // a hit on chitin: a hard little tick and crunch
-  const o = modal(n, [[2100 + v * 250, .025, .5], [3900 + v * 300, .015, .3], [5600, .01, .2]], r, .1); click(o, 0, .6, 3000, 1.5, r, .002);
-  addTo(o, fibre(r, .08, 5, 2600, 3), .005, .4); return o; });
+  // Bulwark Ant: the seed pod's heavy muscular heave, and an acid seed lobbed out with a thick sap rush
+  const o = mix(n, [thud(r, sec, 150 + v * 15, 50, .08, .8), 1], [body(n, r, 600, .05), .6], [gush(r, .3, 1800, 500, .9, .07), .5, .01],
+    [tear(r, .12, 700, 1.2, 180, .04), .3, .005]);
+  return verb(lp(sat(o, 1.3), 4000), .45, .5, .18, .4); });
+def('ant_hit', 4, (r, v) => { const sec = .16, n = N(sec);
+  // a hit on chitin: a dry crunch with a little body (a crack through the shell, not a tick with a pitch)
+  const o = mix(n, [snap(n, r, 2000, .002), .7], [thud(r, sec, 230 + v * 20, 100, .02, .5), .6], [body(n, r, 2600, .012, .0005, 'white'), .35]);
+  addTo(o, rattle(r, sec, 9, 1800, 4200, .002, .045, .45, 2.5), 0, 1);
+  return lp(o, 9000); });
 def('ant_die', 3, (r, v) => { const sec = .9, n = N(sec);
-  // an ant killed: a chitin crunch, a soft wet pop, sap fizzing out
+  // an ant killed: its shell crunching, a soft wet burst, and fragments scattering
   const crunch = grains(N(.12), 22, .09, (o, at, r) => click(o, at, .3 + r() * .7, 1800 + r() * 3000, 3, r, .0015), r);
-  const o = mix(n, [crunch, .9], [thump(r, sec, 200 + v * 20, 90, .05, .25), .6, .02]);
-  for (let k = 0; k < 12; k++) bubble(o, .06 + r() * .5, 600 + r() * 900, .008 + r() * .01, .12, 1.4);
+  const o = mix(n, [crunch, .9], [thud(r, sec, 190 + v * 20, 70, .06, .7), .7, .01], [tear(r, .25, 1300, 1.2, 200, .07), .35, .02]);
+  addTo(o, rattle(r, sec, 12, 900, 3000, .06, .5, .25, 1.5), 0, 1);
   return verb(lp(o, 7000), .4, .5, .15, .4); });
 
 // ---------------- human machines ----------------
@@ -233,27 +270,29 @@ def('eng_jet', 1, (r) => { const L = 4, sec = L + 1, n = N(sec);
 def('eng_bomber', 1, (r) => engine(r, 4, 48, [[95, 2, 1.2], [300, 3, .6], [1600, 4, .15]], .1, 2100, 0, 0, 90), { loop: 4 });
 
 // a gunshot: a sharp crack, a low muzzle thump, the action's metallic clack, an outdoor slap-back
-function gun(r, sec, crackF, body, clack, tail, room) { const n = N(sec);
+function gun(r, sec, crackF, body0, clack, tail, room) { const n = N(sec);
+  // a gun: the muzzle crack, the blast, the barrel's low punch, and the breech or recoil clack as broadband noise (it used to ring as a note)
   const crack = mul(hp(white(n, r), crackF), ad(n, .0004, .012));
   const blast = mul(lp(white(n, r), 2600), ad(n, .0008, .035));
-  const o = mix(n, [crack, .8], [blast, .9], [mul(osc(n, t => body[1] + (body[0] - body[1]) * Math.exp(-t / .02)), ad(n, .001, body[2])), 1]);
-  if (clack) addTo(o, modal(N(.15), [[clack, .04, .4], [clack * 2.31, .03, .25], [clack * 3.9, .02, .15]], r, .05), .035, .5);
+  const o = mix(n, [crack, .8], [blast, .9], [thud(r, sec, body0[0], body0[1], body0[2], .7), 1]);
+  if (clack) { addTo(o, mul(bp(white(N(.05), r), clack, 1.4), ad(N(.05), .0005, .01)), .03, .35); addTo(o, cluster(N(.08), r, clack * .8, clack * 3, 40, .003, .008, .25), .03, 1); }
   return verb(lp(sat(o, 2.2), 9000), room, .45, tail, .6); }
 def('gun_scout', 3, (r, v) => gun(r, .6, 1800, [150 + v * 10, 60, .06], 1900 + v * 120, .2, .4));
 def('gun_mg', 3, (r, v) => gun(r, .4, 2400, [190 + v * 10, 90, .03], 2600 + v * 150, .14, .3));
-def('gun_jet', 2, (r, v) => { const sec = .5, n = N(sec), o = new Float32Array(n);
-  // Interceptor cannon: a short ripping burst
-  for (let k = 0; k < 4; k++) addTo(o, gun(r, .2, 2800, [230, 120, .015], 0, .05, .2), k * .045, .7); return verb(o, .4, .4, .15, .4); });
-def('cannon', 2, (r, v) => { const sec = 1.6, n = N(sec);
-  // Siege Tank and Hail Cannon: a heavy gun, a deep boom and a long outdoor tail
-  const o = mix(n, [gun(r, 1.0, 900, [90 + v * 8, 35, .18], 900, .3, .7), 1], [mul(lp(brown(n, r), t => 900 * Math.exp(-t / .3) + 80), ad(n, .002, .4)), .8]);
+def('gun_jet', 2, (r, v) => { const sec = .55, n = N(sec), o = new Float32Array(n);
+  // Interceptor cannon: a short ripping burst of rounds
+  for (let k = 0; k < 5; k++) addTo(o, gun(r, .2, 3000, [260, 110, .012], 0, .05, .2), k * .038 + (r() - .5) * .006, .65 + r() * .2); return verb(o, .4, .4, .15, .4); });
+def('cannon', 2, (r, v) => { const sec = 1.8, n = N(sec);
+  // Siege Tank and Hail Cannon: a forceful crack, the deep blast and the shove of the recoil, and a long outdoor tail
+  const o = mix(n, [gun(r, 1.0, 900, [95 + v * 8, 32, .16], 700, .3, .7), 1], [body(n, r, t => 900 * Math.exp(-t / .3) + 80, .35, .002), .8],
+    [cluster(N(.3), r, 400, 2200, 70, .006, .02, .35), 1, .05]);
   return lp(o, 7000); });
-def('flame', 3, (r, v) => { const sec = .55, n = N(sec);
-  // Flame Tank: a burst of burning fuel, roaring with ragged flutter
-  const fl = new Float32Array(n); let a = 0; for (let i = 0; i < n; i++) { if (i % 220 === 0) a = .5 + r() * .5; fl[i] = a; }
-  const roar = mul(mul(lp(mix(n, [brown(n, r), 1], [pink(n, r), .6]), 1400), lp1(fl, 40)), env(n, [[0, 0], [.04, 1], [.35, .8], [sec, 0]]));
-  const hiss = mul(bp(white(n, r), 3500, .8), env(n, [[0, 0], [.03, .5], [.3, .3], [sec, 0]]));
-  return mix(n, [sat(roar, 1.4), 1], [hiss, .25]); });
+def('flame', 3, (r, v) => { const sec = .65, n = N(sec);
+  // Flame Tank: a valve opening on pressurised fuel (a hard hiss), the ignition whump, and a ragged, roaring jet
+  const fl = new Float32Array(n); let a = 0; for (let i = 0; i < n; i++) { if (i % 200 === 0) a = .45 + r() * .55; fl[i] = a; }
+  const roar = mul(mul(lp(mix(n, [brown(n, r), 1], [pink(n, r), .6]), 1500), lp1(fl, 45)), env(n, [[0, 0], [.06, 1], [.4, .8], [sec, 0]]));
+  const hiss = mul(bp(white(n, r), 3800, .8), env(n, [[0, 0], [.008, .9], [.05, .35], [.4, .25], [sec, 0]]));
+  return mix(n, [sat(roar, 1.5), 1], [hiss, .35], [thud(r, .3, 110, 45, .05, .9), .5, .04]); });
 def('zap', 2, (r, v) => { const sec = .5, n = N(sec);
   // Lancer: an electric discharge, a rising whine snapping into a crackling buzz
   const w = mul(osc(n, t => 600 + 3000 * Math.min(1, t / .08), 'saw'), env(n, [[0, 0], [.08, .5], [.09, 0], [sec, 0]]));
@@ -261,23 +300,27 @@ def('zap', 2, (r, v) => { const sec = .5, n = N(sec);
   return verb(lp(mix(n, [w, .3], [buzz, .6]), 9000), .5, .3, .2, .4); });
 def('flak_gun', 2, (r, v) => gun(r, .9, 1300, [120, 50, .1], 1200, .3, .6));
 def('shell_boom', 3, (r, v) => { const sec = 2.2, n = N(sec);
-  // a shell or bomb exploding: a crack, a deep boom, falling dirt
-  const o = mix(n, [mul(hp(white(n, r), 1200), ad(n, .0005, .02)), .6], [mul(lp(brown(n, r), t => 3000 * Math.exp(-t / .15) + 120), ad(n, .002, .45)), 1.3],
-    [mul(osc(n, t => 30 + 40 * Math.exp(-t / .08)), ad(n, .003, .45)), 1]);
-  for (let k = 0; k < 30; k++) click(o, .1 + r() * 1.2, .05 + r() * .08, 600 + r() * 2500, 1.5, r, .004);
+  // a shell or bomb exploding on the ground: a crack, a deep boom, and soil and stone falling back
+  const o = mix(n, [snap(n, r, 1200, .006), .7], [body(n, r, t => 3000 * Math.exp(-t / .15) + 120, .45, .002), 1.3], [thud(r, sec, 75, 28, .3, .5), 1]);
+  addTo(o, rattle(r, sec, 34, 500, 2800, .12, 1.1, .4, 1.3), 0, 1);
   return verb(lp(sat(o, 1.6), 6500), .75, .5, .3, 1.4); });
-def('metal_hit', 4, (r, v) => { const sec = .35, n = N(sec), f = 900 + v * 230;
-  // a thorn or seed striking a hull: a dull clank with an inharmonic ring
-  const o = modal(n, [[f, .09, .6], [f * 2.76, .06, .35], [f * 5.4, .035, .2], [f * 8.9, .02, .1]], r, .04);
-  click(o, 0, .7, 2500, 1, r, .003); addTo(o, thump(r, .15, 180, 90, .02, .4), 0, .4); return verb(o, .3, .4, .1, .2); });
-def('metal_heavy', 2, (r, v) => { const sec = .7, n = N(sec), f = 300 + v * 90;
-  const o = modal(n, [[f, .25, .6], [f * 2.32, .16, .4], [f * 4.25, .1, .25], [f * 6.8, .06, .12]], r, .05);
-  click(o, 0, .8, 1500, 1, r, .005); addTo(o, thump(r, .3, 120, 55, .06, .4), 0, .6); return verb(o, .4, .4, .15, .4); });
+def('metal_hit', 4, (r, v) => { const sec = .3, n = N(sec);
+  // a round striking a vehicle hull: a hard metallic strike, the hull's dull body, and a brief rattle (no ringing note)
+  const o = mix(n, [snap(n, r, 2400, .0025), .8], [cluster(n, r, 700 + v * 60, 5200, 70, .004, .016, .9), 1], [thud(r, sec, 170 + v * 12, 70, .03, .6), .65],
+    [body(n, r, 1800, .02, .0005, 'white'), .3]);
+  addTo(o, rattle(r, sec, 7, 2000, 5000, .03, .12, .3, 3), 0, 1);
+  return verb(lp(o, 10000), .25, .45, .08, .2); });
+def('metal_heavy', 2, (r, v) => { const sec = .7, n = N(sec);
+  // a heavy blow on armour or an HDF structure: a crunching strike, a deep structural body and rattling parts
+  const o = mix(n, [snap(n, r, 1600, .004), .8], [cluster(n, r, 300 + v * 40, 3200, 90, .008, .03, 1), 1], [thud(r, sec, 110 + v * 10, 40, .07, .8), .9],
+    [body(n, r, 1200, .05), .5]);
+  addTo(o, rattle(r, sec, 14, 900, 4000, .05, .4, .35, 2.5), 0, 1);
+  return verb(lp(sat(o, 1.3), 8000), .4, .45, .14, .4); });
 def('veh_explode', 3, (r, v) => { const sec = 2.6, n = N(sec);
-  // a vehicle destroyed: a blast, a metallic crash, fuel whoomph and debris rattling down
-  const o = mix(n, [mul(lp(brown(n, r), t => 3500 * Math.exp(-t / .18) + 150), ad(n, .002, .5)), 1.3], [mul(osc(n, t => 32 + 50 * Math.exp(-t / .07)), ad(n, .002, .5)), .9],
-    [mul(hp(white(n, r), 1500), ad(n, .0005, .03)), .5]);
-  for (let k = 0; k < 16; k++) { const f = 700 + r() * 3000; addTo(o, modal(N(.25), [[f, .05, .3], [f * 2.4, .03, .2]], r, .1), .15 + r() * 1.3, .2 + r() * .3); }
+  // a vehicle destroyed: a blast, a metallic crash, a fuel whoomph and debris rattling down
+  const o = mix(n, [body(n, r, t => 3500 * Math.exp(-t / .18) + 150, .5, .002), 1.3], [thud(r, sec, 82, 30, .35, .5), .9], [snap(n, r, 1500, .008), .5],
+    [cluster(N(.6), r, 300, 4000, 110, .01, .04, 1), .9, .01]);
+  addTo(o, rattle(r, sec, 40, 700, 4200, .15, 1.4, .45, 2.5), 0, 1);
   return verb(lp(sat(o, 1.7), 7000), .8, .5, .3, 1.5); });
 def('ram_blast', 1, (r) => { const sec = 1.8, n = N(sec);
   // Rammer Drone detonating against a growth: sharper and drier than a tank going up
@@ -286,8 +329,8 @@ def('ram_blast', 1, (r) => { const sec = 1.8, n = N(sec);
 def('struct_fall', 2, (r, v) => { const sec = 2.4, n = N(sec);
   // a human building collapsing: metal groaning and crashing down
   const groan = mul(creak(1.2, .012, .02, [[140, 5, 1], [360, 6, .5], [900, 7, .2]], r, .3), env(N(1.2), [[0, 0], [.2, 1], [1.2, 0]]));
-  const o = mix(n, [groan, .5], [mul(lp(brown(n, r), t => 2000 * Math.exp(-(t - .3) / .3) + 150), ad(n, .01, .6, .3)), 1.1]);
-  for (let k = 0; k < 18; k++) { const f = 400 + r() * 2200; addTo(o, modal(N(.3), [[f, .08, .3], [f * 2.7, .05, .2]], r, .1), .3 + r() * 1.5, .2 + r() * .3); }
+  const o = mix(n, [groan, .5], [mul(lp(brown(n, r), t => 2000 * Math.exp(-(t - .3) / .3) + 150), ad(n, .01, .6, .3)), 1.1], [cluster(N(.8), r, 250, 3500, 110, .01, .045, 1), .8, .3]);
+  addTo(o, rattle(r, sec, 40, 400, 3000, .3, 1.6, .45, 1.8), 0, 1);
   return verb(lp(sat(o, 1.4), 6000), .8, .45, .3, 1.4); });
 
 // ---------------- interface ----------------
@@ -399,5 +442,34 @@ def('ice_crack', 2, (r, v) => { const sec = 1.6, n = N(sec);
   return verb(lp(o, 6000), .8, .4, .45, 1.2); });
 def('far_clank', 2, (r, v) => { const sec = 2, n = N(sec), f = 260 + v * 120;
   return verb(lp(modal(n, [[f, .4, .5], [f * 2.3, .3, .3], [f * 3.9, .2, .2]], r, .05), 1200), .9, .6, .5, 1.4); });
+
+// ---------------- v47 impacts by target material ----------------
+// Bark Wall, Great Bark and Ironbark: progressively denser cellulose cracks with more resistance (a woody split, not a knock with a pitch)
+def('imp_bark', 3, (r, v) => { const sec = .3, n = N(sec);
+  const o = mix(n, [snap(n, r, 1800, .003), .6], [woodCrack(r, .08, 900 + v * 120, 1), .8], [thud(r, sec, 190 + v * 15, 80, .035, .7), .8], [tear(r, .12, 2400, 1.5, 400, .035), .25, .01]);
+  addTo(o, rattle(r, sec, 6, 1200, 2600, .015, .1, .3, 2), 0, 1); return lp(o, 8000); });
+def('imp_bark_heavy', 3, (r, v) => { const sec = .45, n = N(sec);
+  const o = mix(n, [snap(n, r, 1400, .004), .7], [woodCrack(r, .12, 620 + v * 90, 1.3), 1], [thud(r, sec, 140 + v * 10, 55, .06, .8), 1], [body(n, r, 700, .05), .45]);
+  addTo(o, rattle(r, sec, 10, 800, 2200, .02, .18, .35, 1.8), 0, 1); return lp(sat(o, 1.2), 7000); });
+def('imp_ironbark', 3, (r, v) => { const sec = .4, n = N(sec);
+  // Ironbark: bark grown dense and hard, so a hit cracks sharply and is shrugged off
+  const o = mix(n, [snap(n, r, 2600, .0025), .9], [woodCrack(r, .07, 1300 + v * 150, 2), .7], [cluster(n, r, 500, 2600, 50, .004, .012, .45), 1], [thud(r, sec, 160 + v * 12, 60, .05, .7), .9]);
+  addTo(o, rattle(r, sec, 8, 1500, 3500, .015, .12, .3, 2.5), 0, 1); return lp(sat(o, 1.3), 9000); });
+// HDF buildings: a hard structural clang and crunch of concrete and plate
+def('imp_struct', 3, (r, v) => { const sec = .5, n = N(sec);
+  const o = mix(n, [snap(n, r, 1800, .003), .8], [cluster(n, r, 350 + v * 50, 3800, 80, .006, .025, .8), 1], [thud(r, sec, 130 + v * 10, 50, .05, .8), .8], [body(n, r, 2200, .03, .0005, 'pink'), .45]);
+  addTo(o, rattle(r, sec, 16, 600, 3000, .02, .3, .4, 1.4), 0, 1); return verb(lp(o, 9000), .35, .45, .1, .3); });
+// rounds striking bare rock: a sharp crack and a scatter of stone chips
+def('imp_rock', 3, (r, v) => { const sec = .35, n = N(sec);
+  const o = mix(n, [snap(n, r, 3000, .002), .8], [thud(r, sec, 200 + v * 20, 90, .02, .5), .5], [body(n, r, 3200, .01, .0004, 'white'), .3]);
+  addTo(o, rattle(r, sec, 12, 2500, 6500, .004, .16, .5, 2.5), 0, 1); return verb(lp(o, 11000), .3, .4, .08, .2); });
+// soil: a dull ground thump with a little grit
+def('imp_ground', 2, (r, v) => { const sec = .4, n = N(sec);
+  const o = mix(n, [thud(r, sec, 120 + v * 15, 45, .05, 1), 1], [body(n, r, 800, .04), .6]);
+  addTo(o, rattle(r, sec, 10, 600, 2000, .02, .25, .25, 1.2), 0, 1); return lp(o, 5000); });
+// a flame jet licking a growth: a searing hiss and the crackle of tissue scorching
+def('imp_burn', 2, (r, v) => { const sec = .5, n = N(sec);
+  const o = mix(n, [mul(bp(white(n, r), 3000, .7), env(n, [[0, 0], [.03, .6], [.3, .3], [sec, 0]])), .6], [tear(r, sec, 1200, 1, 120, .2), .4]);
+  addTo(o, rattle(r, sec, 14, 1500, 4500, .01, .4, .35, 2), 0, 1); return lp(o, 9000); });
 
 module.exports = S;

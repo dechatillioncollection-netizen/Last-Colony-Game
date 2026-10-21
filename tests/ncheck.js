@@ -15,7 +15,7 @@ const URL=process.env.URL||'http://localhost:8123/index.html';
        if(sp==='seed'||sp==='bloom'){w+=t.split(/\s+/).length;n++;}}}
      perMission[m]={hiveLines:n,wordsPerLine:+(w/n).toFixed(1)};}
    R.firstSpeciesName=first;R.hiveFirstPerson=hiveFirstPerson;R.hiveSaysName=seedName;R.hiveWordsPerLine=perMission;
-   const m1=MIS.landfall;R.mission1BriefingClean=!NAME.test(m1.desc+m1.tip+m1.name);R.tutorialClean=!TUT.some(s=>NAME.test(s.title+s.text));
+   const m1=MIS.landfall;R.mission1BriefingClean=!NAME.test(m1.desc+m1.tip+m1.name);R.tutorialClean=!TUT.some(s=>NAME.test(s.title+(s.text||'')+['lead','do','info','done'].map(f=>tutVal(s[f],{})).join(' ')));   // v47: a panel's copy is in lead, do, info and done
    const src=document.documentElement.innerHTML;R.plAnt=(src.match(/Pl-Ant/gi)||[]).length;R.brandt=(src.match(/Brandt/gi)||[]).length;
    R.sci=CHARS.sci;R.speakers=Object.keys(CHARS);R.menu=document.querySelector('#ovcard li').textContent.slice(0,90);
    // v34 radio and hive lines from the in-mission events follow the same rules
