@@ -16,6 +16,9 @@
 				"DepotPath" "."
 				"recursive" "1"
 			}
+			"FileExclusion" "Updater.exe"   // Steam updates the game itself
+			"FileExclusion" "updater"
+			"FileExclusion" "updater.json"
 		}
 		"1000002" // Linux and Steam Deck
 		{
@@ -25,6 +28,9 @@
 				"DepotPath" "."
 				"recursive" "1"
 			}
+			"FileExclusion" "Updater.exe"   // Steam updates the game itself
+			"FileExclusion" "updater"
+			"FileExclusion" "updater.json"
 		}
 		"1000003" // macOS (the Intel build runs on every Mac; Apple silicon runs it through Rosetta)
 		{

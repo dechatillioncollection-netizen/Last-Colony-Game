@@ -11,7 +11,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  let app=await launch();let w=await app.firstWindow();const errs=[];w.on('pageerror',e=>errs.push(e.message));await w.waitForTimeout(3000);
  const b=await w.evaluate(async()=>({desk:DESK,ver:lcDesktop.version,plat:lcDesktop.platform,mode:await Store.init(),url:location.protocol,node:typeof require,
    quit:!$('m-quit').hidden,full:await lcDesktop.isFullScreen(),vw:VW,vh:VH,ultra:!!QUALITY.ultra}));
- T('the desktop bridge is there and nothing else of Node is',b.desk&&b.ver==='0.5.0'&&b.plat==='linux'&&b.url==='file:'&&b.node==='undefined',b);
+ T('the desktop bridge is there and nothing else of Node is',b.desk&&b.ver===require(path.join(__dirname,'../electron/package.json')).version&&b.plat==='linux'&&b.url==='file:'&&b.node==='undefined',b);
  T('saves are kept as files',b.mode==='files');
  T('the main menu has Quit',b.quit);
  T('the first run opens full screen',b.full&&b.vw===1920&&b.vh===1080,{full:b.full,vw:b.vw,vh:b.vh});
@@ -80,7 +80,14 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  const intro=await w.evaluate(()=>({on:INTRO.on,mode:INTRO.mode,t:INTRO.t}));
  T('a new campaign plays the intro in the app',intro.on&&intro.mode==='first'&&intro.t>0,intro);
  T('the campaign is saved as a file',fs.existsSync(path.join(sv,'campaign.json')));
- await app.close();
+ // v51: in a match, Esc opens the pause menu, which has Quit in the app; Quit saves the game and closes the app
+ await w.evaluate(()=>{introSkip();while(DLG.open)skipDlg();G=null;startGame('survival');G.sel=0;G.selU=0;G.selUs=[];G.tool=null;renderPanel(true);document.activeElement&&document.activeElement.blur();});await w.waitForTimeout(300);
+ await w.keyboard.press('Escape');await w.waitForTimeout(300);
+ const pm=await w.evaluate(()=>({open:!$('pmenu').hidden,quit:!$('pmQuit').hidden,note:$('pmNote').textContent,dlg:DLG.open,intro:INTRO.on,sel:G&&G.sel,selU:G&&G.selU,tool:G&&G.tool,over:G&&G.over,G:!!G,tech:$('tech').hidden}));
+ const closed2=new Promise(r=>app.process().once('exit',()=>r(true)));
+ await w.click('#pmQuit').catch(()=>{});const q2=await Promise.race([closed2,sleep(10000).then(()=>false)]);
+ T('in a match Esc opens the pause menu, and its Quit saves and closes the app',pm.open&&pm.quit&&/Quit/.test(pm.note)&&q2&&fs.existsSync(path.join(sv,'auto.json')),{pm,q2,files:fs.readdirSync(sv)});
+ if(!q2)await app.close();
  T('no page errors',errs.length===0,errs);
  fs.writeFileSync('elcheck50_result.json',JSON.stringify({checks:ck,trace:R.trace,up:R.up},null,1));
  const pass=ck.filter(c=>c[1]).length;console.log(pass+' of '+ck.length+' pass');process.exit(pass===ck.length?0:1);

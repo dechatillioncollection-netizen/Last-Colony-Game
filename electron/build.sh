@@ -5,6 +5,9 @@
 # Output: electron/out/Last Colony-<platform>-<arch>/ and electron/out/LastColony-<Platform>.zip
 # Needs Node 18+ and npm. electron-packager and the Electron runtime are fetched on first use.
 # steamworks.js (Steam overlay and achievements) is bundled; the game runs the same without Steam.
+# The Windows and Linux folders also get the updater (Updater.exe / updater, built from updater/ with Go 1.22+) and updater.json,
+# which say where it looks for new releases. Steam leaves these out (steam/app_build.vdf) because Steam updates the game itself.
+UPDATE_REPO="${UPDATE_REPO:-dechatillioncollection-netizen/last-colony}"
 set -euo pipefail
 cd "$(dirname "$0")"
 ELECTRON=33.2.1
@@ -35,13 +38,17 @@ pack() { # platform arch
   esac
   echo "built $dir"
 }
+updater() { # GOOS exe-name folder asset
+  (cd updater && CGO_ENABLED=0 GOOS="$1" GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "../out/$3/$2" .)
+  printf '{\n  "repo": "%s",\n  "asset": "%s"\n}\n' "$UPDATE_REPO" "$4" > "out/$3/updater.json"
+}
 zipit() { # folder zipname
   (cd out && rm -f "$2" && zip -qry "$2" "$1") && echo "zipped out/$2"
 }
 for t in "${targets[@]}"; do
   case "$t" in
-    win)   pack win32 x64;   zipit "Last Colony-win32-x64" LastColony-Windows.zip ;;
-    linux) pack linux x64;   zipit "Last Colony-linux-x64" LastColony-Linux.zip ;;
+    win)   pack win32 x64;   updater windows Updater.exe "Last Colony-win32-x64" LastColony-Windows.zip; zipit "Last Colony-win32-x64" LastColony-Windows.zip ;;
+    linux) pack linux x64;   updater linux updater "Last Colony-linux-x64" LastColony-Linux.zip; zipit "Last Colony-linux-x64" LastColony-Linux.zip ;;
     mac)   pack darwin x64;  zipit "Last Colony-darwin-x64" LastColony-macOS-Intel.zip
            pack darwin arm64; zipit "Last Colony-darwin-arm64" LastColony-macOS-AppleSilicon.zip ;;
     *) echo "unknown target $t (use win, linux or mac)"; exit 1 ;;

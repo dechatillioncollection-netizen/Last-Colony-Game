@@ -105,6 +105,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .mode b{display:block;font-family:var(--f-display);font-weight:400;font-size:16px;color:var(--amber);margin-bottom:4px}
 .mode span{color:var(--muted);font-size:14px;line-height:1.4}
 #overlay .go{font-family:var(--f-display);font-size:18px;padding:9px 24px;background:var(--amber);color:#142008;border-color:var(--amber)}
+#pmenu{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:#0c0a0ecc;padding:16px}
+#pmenu .scard{max-width:340px}.pmacts{display:grid;gap:8px}.pmacts button{padding:10px 12px;font-size:16px;text-align:left}
 #settings{position:fixed;inset:0;z-index:11;display:grid;place-items:center;background:#0c0a0ecc;padding:16px}
 .scard{background:var(--slate);border:1px solid var(--edge);padding:16px 18px;max-width:420px;width:100%}
 .scard h2{margin:0 0 12px;font-family:var(--f-display);font-weight:400;font-size:18px;color:var(--amber)}
@@ -226,7 +228,7 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
   <span id="items"></span>
   <span class="it" id="pow"><span class="lbl">Vigor</span><b>0</b></span>
   <button id="techBtn" title="Evolve new growths (T)">Evolution</button>
-  <button id="setBtn" title="Settings">Settings</button><button id="saveBtn" title="Save, load or exit">Save</button>
+  <button id="pmBtn" title="Pause menu (Esc)">Menu</button><button id="setBtn" title="Settings">Settings</button><button id="saveBtn" title="Save, load or exit">Save</button>
   <button id="cmdBtn" title="Switch what your swarm does (C)">Swarm: Defend</button>
   <span id="wave"><span class="lbl" id="w-lbl">Wave 1</span><b id="w-t">0:00</b><span class="lbl">Enemies</span><b id="w-e">0</b><button id="skip" title="Call the next wave now">Next wave</button></span>
   <span class="speed"><button id="sp0" title="Pause (Space)">❚❚</button><button id="sp1" class="on">1×</button><button id="sp2">2×</button><button id="sp3">4×</button></span>
@@ -241,6 +243,7 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
   <div id="techbar"><h2>EVOLUTION</h2><p>Evolving spends items from your Bloom. Each growth unlocks once the one before it has evolved. The game is paused while this is open.</p><span id="techitems"></span><button id="techClose">Close (T)</button></div>
   <div id="techScroll"><div id="techInner"></div></div>
 </div>
+<div id="pmenu" hidden><div class="scard"><h2>PAUSED</h2><div class="pmacts"><button id="pmResume" class="go">Resume</button><button id="pmSettings">Settings</button><button id="pmSaves">Save or load</button><button id="pmMenu">Main menu</button><button id="pmQuit" hidden>Quit game</button></div><p class="snote" id="pmNote">Main menu and Quit save your game to the autosave slot first.</p></div></div>
 <div id="settings" hidden><div class="scard"><h2>SETTINGS</h2>
   <div class="qlbl">Graphics quality</div>
   <div class="qbar" role="radiogroup" aria-label="Graphics quality"><button data-q="low" role="radio">Low</button><button data-q="medium" role="radio">Medium</button><button data-q="high" role="radio">High</button><button data-q="epic" role="radio">Epic</button><button data-q="ultra" role="radio" class="dsk" hidden>Ultra</button></div>
@@ -357,11 +360,11 @@ const B={
     desc:'Hatches swarm warriors from items fed in by vine. Select it to choose what hatches. Uses 30 vigor.'},
 };
 const U={
-  mite:{name:'Mite Ant',hp:110,spd:1.5,r:.27,range:6,dmg:6,reload:.6,bspd:13,cost:[[CU,12],[PB,6]],time:6,air:false,ground:true,
+  mite:{name:'Mite Ant',hp:110,spd:1.5,r:.27,range:6,dmg:6,reload:.6,bspd:13,cost:[[CU,12],[PB,6]],time:10,air:false,ground:true,
     desc:'A small, cheap ant grown from copper and lead. Weak alone, but a pack can pick off outposts and scouts.'},
-  tank:{name:'Thornback Ant',hp:260,spd:1.2,r:.38,range:8.5,dmg:11,reload:.5,bspd:14,cost:[[SI,10],[PB,10]],time:10,air:true,ground:true,
+  tank:{name:'Thornback Ant',hp:260,spd:1.2,r:.38,range:8.5,dmg:11,reload:.5,bspd:14,cost:[[SI,10],[PB,10]],time:15,air:true,ground:true,
     desc:'A quick, cheap warrior ant that spits thorns at ground and air.'},
-  htank:{name:'Bulwark Ant',hp:800,spd:.75,r:.55,large:true,range:12,dmg:34,reload:1.3,bspd:12,splash:.9,cost:[[SI,25],[GRAPH,20],[TI,15]],time:20,air:false,ground:true,
+  htank:{name:'Bulwark Ant',hp:800,spd:.75,r:.55,large:true,range:12,dmg:34,reload:1.3,bspd:12,splash:.9,cost:[[SI,25],[GRAPH,20],[TI,15]],time:30,air:false,ground:true,
     desc:'A huge armoured ant that lobs acid seeds. Ground targets only, with splash.'},
 };
 const CATS=[
@@ -1326,6 +1329,13 @@ function proximity(b){
 }
 
 // --- item transport ---
+// v51: where a pod or chamber sends what it hatches; rings out from the rally point, skipping rock and spots another ant is already holding
+function rallySpot(b){const [wx,wy]=b.rally;
+  for(let r=0;r<10;r++){const m=r?Math.max(6,Math.round(2*Math.PI*r)):1;
+    for(let j=0;j<m;j++){const a=j/m*2*Math.PI,x=wx+r*.85*Math.cos(a),y=wy+r*.85*Math.sin(a),i=tileAt(x,y);if(i<0||solidTile(i,0))continue;
+      if(!G.units.some(u=>!u.dead&&u.hold&&Math.hypot(u.hold[0]-x,u.hold[1]-y)<.5))return [x,y];}}
+  return [wx,wy];}
+const isHatchery=b=>!!b&&b.team===0&&!!B[b.t].factory;
 function unitOk(k){return G.unlocked.has(k==='tank'?'factory':k==='mite'?'nest':k);}
 function factoryNeeds(b,item){const c=U[b.unit].cost.find(([i])=>i===item);return c&&b.inv[item]<c[1]*2;}
 function accepts(b,item,src){
@@ -1715,6 +1725,14 @@ function growSite(b,dt){const p0=Math.max(0,b.built);b.built=Math.min(1,b.built+
   if(p1>p0)b.hp=Math.min(b.max,b.hp+b.max*.9*(p1-p0));if(b.built>=1){b.built=1;snd('grown',b);if(GATE[b.t])G.dirty=true;if(!VINE[b.t])G.fx.push({k:'grown',x:b.x+b.size/2,y:b.y+b.size/2,r:b.size*.7,life:.45,max:.45});}}
 function bAlpha(b){return isSite(b)?.2+.45*Math.max(0,b.built):.4+.6*b.built;}
 // a site: a membrane outline closing round it, roots reaching in from the corners as it grows, and a growth bar
+function drawRally(c,b,time){const cx=(b.x+b.size/2)*T,cy=(b.y+b.size/2)*T,rx=b.rally[0]*T,ry=b.rally[1]*T;c.save();
+  c.strokeStyle='rgba(166,224,90,.7)';c.lineWidth=1.5;c.setLineDash([5,4]);c.lineDashOffset=-(time*14)%9;c.beginPath();c.moveTo(cx,cy);c.lineTo(rx,ry);c.stroke();c.setLineDash([]);
+  c.fillStyle='rgba(166,224,90,.22)';c.beginPath();c.ellipse(rx,ry,7,3.5,0,0,7);c.fill();
+  c.strokeStyle='#d4f59a';c.lineWidth=1.6;c.beginPath();c.moveTo(rx,ry);c.lineTo(rx,ry-15);c.stroke();
+  c.fillStyle='#a6e05a';c.beginPath();c.moveTo(rx,ry-15);c.quadraticCurveTo(rx+6,ry-14+Math.sin(time*4)*1.2,rx+10,ry-11);c.quadraticCurveTo(rx+5,ry-9,rx,ry-8);c.closePath();c.fill();c.restore();}
+// the hatch bar under a pod or chamber with an egg growing (own side only); the same look as a growth bar, in the swarm's green
+function drawHatchBar(c,b){const S=b.size*T,x=b.x*T,y=b.y*T,bw=Math.max(8,S-10);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(x+(S-bw)/2,y+S-5,bw,3);
+  c.fillStyle=b.prog>=1?'#ffd25a':'#a6e05a';c.fillRect(x+(S-bw)/2,y+S-5,bw*Math.min(1,b.prog),3);}
 function drawSite(c,b){const p=Math.max(0,b.built),S=b.size*T,x=b.x*T,y=b.y*T;c.save();
   c.strokeStyle='rgba(120,214,214,.75)';c.lineWidth=1.5;c.setLineDash([3,3]);c.lineDashOffset=-(G.time*12)%6;c.strokeRect(x+1.5,y+1.5,S-3,S-3);c.setLineDash([]);
   if(!VINE[b.t]){c.strokeStyle='rgba(110,200,206,.8)';c.lineWidth=Math.max(1.2,S/22);c.lineCap='round';const L=S*.45*p;
@@ -1989,9 +2007,14 @@ function updBlock(b,dt){
     if(b.out>0&&offload(b,d.out))b.out--;
     return;}
   case 'nest':case 'factory':{
-    const u=U[b.unit];const ok=unitOk(b.unit)&&u.cost.every(([i,n])=>b.inv[i]>=n)&&G.units.length<UNIT_CAP;b.wants=ok;
-    if(ok){b.prog+=dt*(d.power?G.powSat:1)/u.time;if(b.prog>=1){b.prog=0;for(const [i,n] of u.cost)b.inv[i]-=n;
-      NARROW=u.large?1:0;let sp;try{sp=exitTile(b);}finally{NARROW=0;}const nu=spawnUnit(b.unit,sp[0],sp[1]);nu.ang=nu.tang=b.ang;snd('hatch',sp[0],sp[1]);msg(`${u.name} hatched.`,'good');}}
+    // v51: the egg is laid (its cost taken) as soon as the items are in, then grows for the ant's hatch time. A save from before v51 that was
+    // part-way through keeps its progress: its items are still in the pod, so they are taken here and the egg carries on from where it was.
+    if(!b.egg&&unitOk(b.unit)&&U[b.unit].cost.every(([i,n])=>b.inv[i]>=n)&&G.units.length<UNIT_CAP){for(const [i,n] of U[b.unit].cost)b.inv[i]-=n;b.egg=b.unit;}
+    b.wants=!!b.egg&&b.prog<1;
+    if(b.egg){const u=U[b.egg];if(b.prog<1)b.prog=Math.min(1,b.prog+dt*(d.power?G.powSat:1)/u.time);
+      if(b.prog>=1&&G.units.length<UNIT_CAP){const k=b.egg;b.prog=0;b.egg=null;
+        NARROW=u.large?1:0;let sp;try{sp=exitTile(b);}finally{NARROW=0;}const nu=spawnUnit(k,sp[0],sp[1]);nu.ang=nu.tang=b.ang;if(b.rally)nu.hold=rallySpot(b);
+        snd('hatch',sp[0],sp[1]);msg(`${u.name} hatched.`,'good');}}
     return;}
   case 'combustion':
     if(b.burn<=0&&b.inv[COAL]>0){b.inv[COAL]--;b.burn=2;if(b.team===0)snd('feed',b);}
@@ -2237,6 +2260,9 @@ cv.addEventListener('pointerup',e=>{
   const o=blockAt(Math.floor(wx),Math.floor(wy)),sel=selAnts();
   // with ants selected, a tap on open ground sends them there
   if(sel.length&&!o){const i=tileAt(wx,wy);if(i>=0&&!solidTile(i,0)){sendAnts(sel,wx,wy);snd('ui','ui_select',.7);msg(sel.length>1?`${sel.length} ants moving out.`:`${U[sel[0].t].name} moving out.`);return;}}
+  const hb=G.blocks.get(G.sel);
+  if(isHatchery(hb)&&!o&&!sel.length){const i=tileAt(wx,wy);if(i>=0&&!solidTile(i,0)){hb.rally=[wx,wy];snd('ui','ui_select',.7);
+    msg(`${bname(hb)}: new ants will walk here.`);renderPanel(true);return;}}
   G.selU=0;G.selUs=[];G.sel=o?o.id:0;if(o)snd('ui','ui_select');renderPanel(true);
 });
 cv.addEventListener('wheel',e=>{e.preventDefault();
@@ -2248,6 +2274,9 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Alt'||e.key==='F4')e.preventDefault();
   if(INTRO.on){introKey(e);return;}
   if(DLG.open){dlgKey(e);return;}
+  if(e.key==='Escape'&&!$('settings').hidden){$('settings').hidden=true;snd('ui','ui_close');return;}
+  if(e.key==='Escape'&&!$('saves').hidden){closeSaves();return;}
+  if(!$('pmenu').hidden){if(e.key==='Escape'){e.preventDefault();pmClose();}return;}
   if(!G||G.over)return;const k=e.key.toLowerCase();
   if(k==='t'){toggleTech();return;}
   if(!document.getElementById('tech').hidden){if(k==='escape')toggleTech(false);return;}
@@ -2255,7 +2284,7 @@ window.addEventListener('keydown',e=>{
   if(k===' '){e.preventDefault();setSpeed(G.paused?G.speed:0);}
   else if(k==='f4'){DBG.nav=!DBG.nav;DBG.inv=[];msg(DBG.nav?'Route debug view on (F4 to hide).':'Route debug view off.');}
   else if(k==='escape'&&mouse.down&&!mouse.down.cancel){mouse.down.cancel=true;msg('Placement cancelled.');snd('ui','ui_cancel');}
-  else if(k==='escape'){if(G.tool)setTool(null);else{G.sel=0;G.selU=0;G.selUs=[];renderPanel(true);}}
+  else if(k==='escape'){if(G.tool)setTool(null);else if(G.sel||G.selU||(G.selUs&&G.selUs.length)){G.sel=0;G.selU=0;G.selUs=[];renderPanel(true);}else pmOpen();}
   else if(k==='r'){if(!rotateTool(e.shiftKey?-1:1))G.rot=(G.rot+(e.shiftKey?3:1))%4;}
   else if(k==='c'){setCommand(G.command==='attack'?'defend':'attack');}
   else if(k==='q'){const [wx,wy]=s2w(mouse.x,mouse.y),o=blockAt(Math.floor(wx),Math.floor(wy));if(o&&o.team===0&&o.t!=='core'&&G.unlocked.has(o.t)){G.tool=null;selectTab(catOf(o.t));setTool(o.t);G.rot=o.rot;}}
@@ -4131,6 +4160,7 @@ function render(){
     if(!(vineP&&!b.team&&VINE[b.t])){if(SET.hd)ctx.imageSmoothingEnabled=true;drawBlock(ctx,b.t,b.x*T,b.y*T,b.rot,b,time,b.team);if(SET.hd)ctx.imageSmoothingEnabled=false;}
     if(b.built<1)ctx.restore();
     if(b.bt&&b.built<1)drawSite(ctx,b);
+    if(b.egg&&b.team===0&&b.built>=1)drawHatchBar(ctx,b);
     if(b.hit>0){ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(b.x*T,b.y*T,S,S);}
     if(G.sel===b.id){ctx.strokeStyle=TEAM_COL[b.team];ctx.lineWidth=2;ctx.strokeRect(b.x*T-1,b.y*T-1,S+2,S+2);
       const tu=B[b.t].tur;if(tu){ctx.strokeStyle='rgba(166,224,90,.35)';ctx.beginPath();ctx.arc((b.x+b.size/2)*T,(b.y+b.size/2)*T,tu.range*T,0,7);ctx.stroke();}
@@ -4176,6 +4206,7 @@ function render(){
   if(SET.hd&&SET.hq)drawHQWorld(tx0,ty0,tx1,ty1);
   drawFog();
   if(G.tool&&G.tool!=='remove')drawReach(ctx);
+  {const hb=G.blocks.get(G.sel);if(isHatchery(hb)&&hb.rally)drawRally(ctx,hb,time);}
   if(G.tool&&G.tool!=='remove'&&mouse.in){
     const t=G.tool,d=B[t],[wx,wy]=s2w(mouse.x,mouse.y),md=mouse.down;
     const b=placeOrigin(t,wx,wy);
@@ -4330,7 +4361,9 @@ function renderPanel(force){
   const d=B[b.t];
   let h=`<h3 class="${b.team?'enemy':''}">${bname(b).toUpperCase()}</h3><div class="hpbar"><i id="p-hp"></i></div><div class="row">Health <b id="p-hpt"></b></div><div id="p-dyn"></div>`;
   if(b.team===0&&b.t==='sorter')h+=`<div class="acts">`+IT.map((it,i)=>`<button data-cfg="${i}" class="${b.cfg===i?'on':''}" title="${it.n}: ${it.d}"><span class="it"><i style="background:${it.c}"></i>${it.n}</span></button>`).join('')+`</div>`;
-  else if(b.team===0&&d.factory)h+=`<div class="acts">`+(d.units||Object.keys(U)).map(k=>`<button data-unit="${k}" class="${b.unit===k?'on':''}" ${unitOk(k)?'':'disabled'} title="${U[k].desc}">${U[k].name}${unitOk(k)?'':' (locked)'}</button>`).join('')+`</div>`;
+  else if(b.team===0&&d.factory)h+=`<div class="acts">`+(d.units||Object.keys(U)).map(k=>`<button data-unit="${k}" class="${b.unit===k?'on':''}" ${unitOk(k)?'':'disabled'} title="${U[k].desc}">${U[k].name}${unitOk(k)?'':' (locked)'}</button>`).join('')+`</div>`+
+    `<p class="tip">Each ant grows from an egg: its items are taken when the egg is laid, then it hatches after ${(d.units||[]).map(k=>`${U[k].time} s (${U[k].name})`).join(', ')}. Click or tap open ground to set a rally point; new ants walk there.</p>`+
+    (b.rally?`<div class="acts"><button data-act="rally0">Clear rally point</button></div>`:``);
   else h+=`<p>${b.team===1&&b.t==='core'?'The colony core. Its drills belt ore here, the same way your vines feed you, and it spends what arrives on war machines and repairs. Its turrets and machines are fed by their own belts. Destroy it to win.':d.desc}</p>`;
   if(b.t!=='core'&&b.team===0)h+=`<div class="acts"><button data-act="remove">Reabsorb (Del)</button></div>`;
   panel.innerHTML=h;updatePanel();
@@ -4353,7 +4386,9 @@ function updatePanel(){
     if(b.t==='core')eh+=stockRows();if(b.t==='lancer'||b.t==='smelter')eh+=`<div class="row">Colony power <b>${Math.round(G.epow*100)}%</b></div>`;dyn.innerHTML=eh;return;}
   if(d.tier)h+=b.oreItem>=0?`<div class="row">Gathering <b>${(b.oreCount*d.rate*(b.oreItem===TI?.7:1)*60).toFixed(0)} ${IT[b.oreItem].n.toLowerCase()}/min</b></div>`+(b.out>=10?`<div class="row">Status <b style="color:var(--red)">Output blocked</b></div>`:''):'';
   if(d.input)h+=`<div class="row">Input <b>${d.input.map(([i,n])=>`${b.inv[i]} ${IT[i].n.toLowerCase()}`).join(', ')}</b></div><div class="row">Output buffer <b>${b.out} ${IT[d.out].n.toLowerCase()}</b></div>`+(d.power?`<div class="row">Vigor <b>${Math.round(G.powSat*100)}%</b></div>`:'');
-  if(d.factory){const u=U[b.unit];h+=`<div class="row">Hatching <b>${u.name}</b></div><div class="row">Needs <b>${u.cost.map(([i,n])=>`${b.inv[i]}/${n} ${IT[i].n.toLowerCase()}`).join(', ')}</b></div><div class="row">Progress <b>${Math.round(b.prog*100)}%</b></div>`+(d.power?`<div class="row">Vigor <b>${Math.round(G.powSat*100)}%</b></div>`:``)+(G.units.length>=UNIT_CAP?`<div class="row">Status <b style="color:var(--red)">Swarm limit reached</b></div>`:'');}
+  if(d.factory){const u=U[b.unit],e=b.egg&&U[b.egg],left=e?Math.ceil(e.time*(1-b.prog)/Math.max(.05,d.power?G.powSat:1)):0;
+    h+=`<div class="row">Hatching <b>${u.name}</b></div>`+(e?`<div class="row">Egg <b>${b.prog>=1?'ready, waiting for room in the swarm':`${e.name}, ${Math.round(b.prog*100)}%, about ${left} s`}</b></div>`:`<div class="row">Egg <b>waiting for items</b></div>`)+
+    `<div class="row">${e?'Next egg':'Needs'} <b>${u.cost.map(([i,n])=>`${b.inv[i]}/${n} ${IT[i].n.toLowerCase()}`).join(', ')}</b></div><div class="row">Rally point <b>${b.rally?'set':'none (ants wait by the Bloom)'}</b></div>`+(d.power?`<div class="row">Vigor <b>${Math.round(G.powSat*100)}%</b></div>`:``)+(G.units.length>=UNIT_CAP?`<div class="row">Status <b style="color:var(--red)">Swarm limit reached</b></div>`:'');}
   if(b.t==='combustion')h+=`<div class="row">Coal <b>${b.inv[COAL]}</b></div><div class="row">Status <b>${b.burn>0?'Burning, +60 vigor':'Idle, feed it coal'}</b></div>`;
   if(d.tur&&d.tur.ammo){const am=Object.keys(b.ammo).filter(k=>b.ammo[k]>0).map(k=>`${b.ammo[k]} ${IT[k].n.toLowerCase()}`);h+=`<div class="row">Ammo <b style="${am.length?'':'color:var(--red)'}">${am.length?am.join(', '):'empty'}</b></div>`;}
   if(b.t==='lancer')h+=`<div class="row">Vigor <b>${Math.round(G.powSat*100)}%</b></div>`;
@@ -4365,7 +4400,9 @@ function updatePanel(){
 }
 panel.addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn||!G)return;const b=G.blocks.get(G.sel);if(!b||b.team!==0)return;
   if(btn.dataset.cfg!==undefined){b.cfg=b.cfg===+btn.dataset.cfg?-1:+btn.dataset.cfg;renderPanel(true);}
-  if(btn.dataset.unit){b.unit=btn.dataset.unit;b.prog=0;for(let i=0;i<7;i++){if(b.inv[i]&&G.items[i]<G.cap)G.items[i]+=b.inv[i];b.inv[i]=0;}renderPanel(true);}
+  if(btn.dataset.unit){if(btn.dataset.unit===b.unit)return;if(b.egg){for(const [i,n] of U[b.egg].cost)if(G.items[i]<G.cap)G.items[i]+=n;b.egg=null;}
+    b.unit=btn.dataset.unit;b.prog=0;for(let i=0;i<7;i++){if(b.inv[i]&&G.items[i]<G.cap)G.items[i]+=b.inv[i];b.inv[i]=0;}renderPanel(true);}
+  if(btn.dataset.act==='rally0'){b.rally=null;msg(`${bname(b)}: rally point cleared.`);renderPanel(true);}
   if(btn.dataset.act==='remove')deconstruct(b);});
 
 const msgEl=$('msgs');let lastMsg='',lastMsgT=0;
@@ -5110,12 +5147,20 @@ async function importSave(file){
     else{msg((note||'Nothing to load in that file.').trim(),'good');renderSlots();if(!$('planet').hidden){PL.dirty=true;renderSectorCard();updatePlanetBar();}}}
   catch(e){msg('Could not import: '+e.message,'alert');}}
 $('saveBtn').onclick=()=>openSaves();
+$('pmBtn').onclick=()=>pmOpen();$('pmResume').onclick=()=>pmClose();$('pmSettings').onclick=()=>openSettings();$('pmSaves').onclick=()=>openSaves();
+$('pmMenu').onclick=()=>pmLeave(showMenu);$('pmQuit').onclick=()=>pmLeave(()=>{try{lcDesktop.quit();}catch(e){}});
+$('pmenu').onclick=e=>{if(e.target.id==='pmenu')pmClose();};
 $('savesClose').onclick=()=>closeSaves();
 $('saves').onclick=e=>{if(e.target.id==='saves')closeSaves();};
 $('expBtn').onclick=()=>exportSave();
 $('impBtn').onclick=()=>$('impFile').click();
 $('impFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importSave(f);};
 $('quitBtn').onclick=async()=>{if(G&&G.held&&!G.over){leaveSector();return;}const camp=G&&G.mission;if(G&&!G.over)await saveTo('auto');G=null;closeSaves();if(camp)openPlanet();else showMenu();};
+let pmWas=false;
+function pmOpen(){if(!G||G.over||!$('pmenu').hidden)return;pmWas=G.paused;G.paused=true;setSpeed(0);$('pmQuit').hidden=!DESK;$('pmNote').textContent=DESK?'Main menu and Quit save your game to the autosave slot first.':'Main menu saves your game to the autosave slot first.';$('pmenu').hidden=false;snd('ui','ui_open');$('pmResume').focus();}
+function pmClose(){if($('pmenu').hidden)return;$('pmenu').hidden=true;snd('ui','ui_close');if(G&&!G.over){G.paused=pmWas;setSpeed(G.paused?0:G.speed);}}
+// leave the match: the game is saved first (a captured sector keeps its own save), as Exit in the save screen does
+async function pmLeave(then){if(G&&!G.over){if(G.held)await saveSector();else await saveTo('auto');}$('pmenu').hidden=true;$('settings').hidden=true;G=null;then();}
 function showMenu(){$('tut').hidden=true;$('ovcard').innerHTML=MENU_HTML;$('overlay').hidden=false;bindModes();}
 // autosave every few minutes of play
 let autoT=0;function autosaveTick(dt){if(!G||G.over||G.paused)return;autoT+=dt;if(autoT>=180){autoT=0;if(G.held)saveSector();else saveTo('auto');}}

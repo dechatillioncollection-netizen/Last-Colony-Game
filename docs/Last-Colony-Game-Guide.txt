@@ -84,7 +84,8 @@ Building controls
 - During a vine drag the wheel (or R) turns the line. A straight line turns as a whole, as in Mindustry: every vine faces the chosen way, which lets you lay a row of vines side by side that all feed one way, or reverse a line. A line with corners keeps them: one notch turns its end vine, and two notches reverse the whole flow so items run from the end back to the start. The label says "line turned", "end turned" or "flow reversed". While Ctrl is held the staircase keeps its own turns; let go of Ctrl to apply the chosen direction. Turning never changes the cost, the growth time or the 5-tile vine reach, and a tile that cannot be placed stays refused. When you release, the next Vine starts facing the way the line ended.
 - Hold Ctrl while dragging vines to lay a staircase of orthogonal vines along the diagonal. You can press or release Ctrl part-way through a drag; the preview changes at once.
 - If the Bloom cannot pay for the whole line, the tiles nearest the Rootweb are placed first, as far as it can pay, and the message says how many were skipped and why. Tiles that are refused cost nothing.
-- Press Esc during a drag to cancel it: nothing is placed and nothing is paid. Esc otherwise drops the chosen growth or clears the selection.
+- Press Esc during a drag to cancel it: nothing is placed and nothing is paid. Esc otherwise drops the chosen growth or clears the selection, and with nothing chosen or selected it pauses the game and opens the menu.
+- The pause menu (Esc, or Menu in the top bar): Resume, Settings, Save or load, Main menu, and in the desktop app Quit game. Main menu and Quit save the game to the autosave slot first. Esc closes Settings or the save screen and returns to the menu, and Esc in the menu resumes.
 - Hold Alt to see a fine grid over every tile you could physically build on: open ground and ore, on or off the Rootweb, but not rock, deep water, growths or growing sites. Only the tiles on screen are drawn. The placement preview still says whether a spot needs Rootweb or is out of reach.
 - Placement messages say what is allowed: most growths must be placed on Rootweb, only Root Taps and Deep Roots can go on ore beyond it, a Root Tap needs exposed ore crystals under it, and a Vine beyond the Rootweb can extend 5 connected tiles.
 - F4 shows the enemy route view (for curious players and testing): the shared route field the HDF follow to your Bloom, structures it would have to break through tinted red, each enemy's role, target (red line), objective (yellow) and local path (orange), and a flash where the route field was rebuilt.
@@ -139,6 +140,10 @@ The Test Range also shows HDF versions of the Titanium Conveyor, Sorter, Solar P
 Units
 
 Ants hatch from your Spawning Pods and Brood Chambers. HDF machines arrive in waves, or are paid for by a colony core in base attacks.
+
+Hatching: each ant grows from an egg. As soon as a pod or chamber holds the items for one ant, it lays the egg and takes those items, and the ant hatches after its hatch time: Mite Ant 10 s, Thornback Ant 15 s, Bulwark Ant 30 s (a Brood Chamber short of vigor grows its egg more slowly). A bar under the pod shows how far the egg has grown, and selecting it shows the time left. Items that arrive meanwhile wait for the next egg. When the swarm is at its limit, no egg is laid, and an egg that is ready waits until there is room. Switching what a chamber hatches gives back the items of the egg it was growing.
+
+Rally points: select a Spawning Pod or Brood Chamber and click or tap open ground. Every ant it hatches from then on walks to that spot, and they stand side by side round it. A dashed line and a small flag show the spot while the pod is selected. Clear rally point (in its panel) sends new ants back to waiting by the Bloom. The Swarm button still gives every ant the same order, rally point or not.
 
 - Mite Ant (Nymbri Hive, hits ground): Small and cheap, grown from copper and lead. Weak alone, dangerous in packs. Looks: the smallest ant, round-bodied with a big head and a pale leaf bud on its back, and quick short steps.
 - Thornback Ant (Nymbri Hive, hits ground and air): Quick warrior that spits thorns. Grown from chitin and lead. Looks: long legs, a narrow waist and a crest of pale thorns raked back along its body, with a long thorn spine on its back.
@@ -230,7 +235,8 @@ Both modes start with every growth already evolved and their own starting stock 
 The desktop app (Steam, itch.io and download)
 
 - The desktop app is the same game in its own window, for Windows, Linux (including Steam Deck) and macOS. It opens full screen the first time. F11 or Alt+Enter switches between full screen and a window, and Settings has a Full screen switch too. The app remembers which you chose and the window's size.
-- The main menu has a Quit button.
+- The main menu has a Quit button, and so does the pause menu (Esc) during a match.
+- Downloaded from a zip (not Steam or itch.io): run Updater.exe (on Linux, updater) in the game's folder to get the newest version. It asks GitHub for the newest release, downloads it, checks it and replaces the game files. Your saves are not touched. Close the game first.
 - Saves are kept as files in the app's own folder, so Steam Cloud can carry them between computers. The first time the app needs a save, it brings over any save an older version kept, on its own.
 - Settings, then Graphics quality, has a fifth preset in the app: Ultra. It is everything in Epic, drawn at up to twice your screen's resolution for sharper edges and artwork, with denser drifting dust.
 - Steady frame rate (in Settings, on at first) keeps the game smooth. If frames start to slow, it lowers the drawing resolution a step at a time, never below 75% of your screen's, and raises it again slowly once there is room. Nothing else about the picture or the game changes. Turn it off to keep the chosen resolution whatever happens.

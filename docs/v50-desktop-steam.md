@@ -54,6 +54,10 @@ The Mac builds are not signed. A downloaded copy will be blocked by Gatekeeper u
 
 Steam's Mac depot uses the Intel build. It runs on every Mac, and on Apple silicon through Rosetta.
 
+## The updater (v51)
+
+From v51 the Windows and Linux folders also hold an updater that fetches the newest GitHub release. Steam leaves it out, because Steam updates the game itself. See `docs/v51-hatching-rally-pause-updater.md`.
+
 ## Putting it on Steam
 
 1. **Join Steamworks.** Sign up at partner.steamgames.com. You will need to give bank and tax details and pay the Steam Direct fee: US$100 per game, paid back after the game earns US$1,000.
