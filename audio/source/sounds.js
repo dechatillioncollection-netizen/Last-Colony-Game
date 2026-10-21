@@ -472,4 +472,47 @@ def('imp_burn', 2, (r, v) => { const sec = .5, n = N(sec);
   const o = mix(n, [mul(bp(white(n, r), 3000, .7), env(n, [[0, 0], [.03, .6], [.3, .3], [sec, 0]])), .6], [tear(r, sec, 1200, 1, 120, .2), .4]);
   addTo(o, rattle(r, sec, 14, 1500, 4500, .01, .4, .35, 2), 0, 1); return lp(o, 9000); });
 
+// ---------------- v48 intro cinematic ----------------
+// sparse and restrained: a high, thin orbit hum, radio static, the ground's room tone, a distant industrial resonance, soil moving and
+// living tissue. Nothing here is a melody or a stinger.
+// orbit: a very low, slowly beating hum with faint far radio hiss over it
+def('intro_orbit', 1, (r) => { const L = 16, sec = L + 2, n = N(sec), g = driftL(r, L, [1, 2]), h = driftL(r, L, [3, 5]);
+  const hum = lp(mix(n, [osc(n, t => 46 * (1 + .004 * g(t))), .5], [osc(n, t => 69.3 * (1 + .003 * h(t))), .22], [lp(brown(n, r), 120), .7]), 260);
+  const hiss = mul(bp(white(n, r), 2600, .5), new Float32Array(n).map((_, i) => .12 + .1 * h(i / SR)));
+  return loopify(mix(n, [hum, 1], [hiss, .35]), L, 2); }, { loop: 16 });
+// a short burst of radio static under a line of radio traffic
+def('intro_static', 2, (r, v) => { const sec = 1.4, n = N(sec);
+  const st = mul(bp(white(n, r), 1900 + v * 300, .7), env(n, [[0, 0], [.03, .7], [.5, .35], [1.1, .25], [sec, 0]]));
+  const crk = grains(n, 40, sec * .9, (d, at, r) => click(d, at, .2 + r() * .5, 2500 + r() * 2500, 2, r, .002), r);
+  return mix(n, [st, .7], [crk, .5]); });
+// beneath the soil: a close, muffled room tone of earth: deep pressure, faint trickles of grit, slow settling
+def('intro_under', 1, (r) => { const L = 16, sec = L + 2, n = N(sec), g = driftL(r, L, [1, 3]);
+  const deep = mul(lp(brown(n, r), 75), new Float32Array(n).map((_, i) => .65 + .35 * g(i / SR)));
+  const grit = grains(n, 70, sec, (d, at, r) => click(d, at, .05 + r() * .12, 700 + r() * 900, 2.5, r, .004 + r() * .01), r);
+  return loopify(mix(n, [deep, 1.2], [lp(grit, 2200), .6], [lp(pink(n, r), 300), .12]), L, 2); }, { loop: 16 });
+// far away, through the rock: a heavy industrial resonance that swells and passes (a drill, perhaps; never named)
+def('intro_drill', 1, (r) => { const sec = 6.5, n = N(sec), g = driftL(r, sec, [3, 5]);
+  const thr = new Float32Array(n); for (let i = 0; i < n; i++) { const t = i / SR; thr[i] = Math.max(0, Math.sin(t * 2 * Math.PI * 7.3)) ** 3; }
+  const body = mul(lp(brown(n, r), 110), thr);
+  const tone = lp(mix(n, [osc(n, t => 31 * (1 + .01 * g(t))), .5], [osc(n, 62.4), .18]), 140);
+  const sw = env(n, [[0, 0], [1.6, .6], [3.2, 1], [4.8, .55], [sec, 0]]);
+  return mul(mix(n, [body, 1.4], [tone, .8], [mul(bp(pink(n, r), 180, 1.2), thr), .5]), sw); });
+// living tissue: one slow, soft pulse of fluid through a membrane (a muffled push and release, no pitch)
+def('intro_pulse', 2, (r, v) => { const sec = 1.8, n = N(sec);
+  const push = mul(lp(brown(n, r), 160), env(n, [[0, 0], [.18, 1], [.45, .35], [.6, .55], [1.1, .1], [sec, 0]]));
+  const wet = mul(filt(pink(n, r), 'bp', t => 260 + 160 * Math.exp(-t * 3), 1.4), env(n, [[0, 0], [.2, .5], [.7, .1], [sec, 0]]));
+  return lp(mix(n, [push, 1.3], [wet, .35 + v * .1]), 900); });
+// soil shifting and lifting: a slow grind of grit and small stones turning over
+def('intro_soil', 2, (r, v) => { const sec = 3.2, n = N(sec);
+  const grind = mul(lp(brown(n, r), 260), env(n, [[0, 0], [.6, .8], [2.2, .6], [sec, 0]]));
+  const stones = grains(n, 60 + v * 20, sec * .9, (d, at, r) => click(d, at, .15 + r() * .5, 500 + r() * 1400, 2, r, .004 + r() * .012), r);
+  const fall = grains(n, 120, sec, (d, at, r) => click(d, at, .04 + r() * .1, 2500 + r() * 3000, 2, r, .002), r);
+  return mix(n, [grind, 1], [stones, .7], [lp(fall, 6000), .35]); });
+// the first Bloom opening: wet tissue unfolding, a long soft fibrous creak and a breath of air as the petals part
+def('intro_bloom', 1, (r) => { const sec = 4.5, n = N(sec);
+  const unfold = mul(filt(pink(n, r), 'bp', t => 300 + 500 * Math.min(1, t / 3), 1.6), env(n, [[0, 0], [1, .5], [2.6, .8], [3.6, .3], [sec, 0]]));
+  const fib = grains(n, 90, sec * .85, (d, at, r) => click(d, at, .05 + r() * .2, 600 + r() * 900, 3, r, .003 + r() * .008), r, .4);
+  const air = mul(lp(hp(white(n, r), 900), 3500), env(n, [[0, 0], [2.4, 0], [3, .25], [sec, 0]]));
+  return mix(n, [unfold, 1], [fib, .6], [air, .4], [mul(lp(brown(n, r), 90), env(n, [[0, 0], [1.5, .6], [sec, 0]])), .7]); });
+
 module.exports = S;

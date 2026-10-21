@@ -122,6 +122,19 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .vrow input{accent-color:var(--amber);width:100%;margin:0}.vrow output{color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
 .snote{color:var(--muted);font-size:13px;line-height:1.4;margin:0 0 10px}
 /* planet sector map */
+#intro{position:fixed;inset:0;z-index:40;--lb:0px;transition:opacity .45s}#intro[hidden]{display:none}#intro.out{opacity:0}
+#introCv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#intro .ibar{position:absolute;left:0;right:0;height:var(--lb);background:#000}#intro .ibar.top{top:0}#intro .ibar.bot{bottom:0}
+#introTitle,#introRadio,#introCap{position:absolute;left:50%;transform:translateX(-50%);text-align:center;opacity:0;transition:opacity 1s ease;pointer-events:none;width:min(720px,calc(100% - 32px))}
+#introTitle.on,#introRadio.on,#introCap.on{opacity:1}
+#introTitle{top:calc(var(--lb) + 16vh)}#introTitle b{display:block;font-family:var(--f-display);font-weight:400;letter-spacing:.32em;font-size:clamp(26px,5vw,46px);color:#e9e4f4;text-shadow:0 2px 16px #000}
+#introTitle span{display:block;margin-top:10px;font-size:clamp(13px,1.8vw,16px);letter-spacing:.2em;text-transform:uppercase;color:#b9b3c8;text-shadow:0 1px 8px #000}
+#introRadio{bottom:calc(var(--lb) + 22px);font-size:clamp(14px,2vw,17px);line-height:1.45;color:#e6e8ea;text-shadow:0 1px 6px #000,0 0 2px #000}
+#introRadio .lbl{display:block;font-family:var(--f-display);font-size:11px;letter-spacing:.14em;color:#d7b45a;margin-bottom:4px}
+#introCap{top:calc(var(--lb) + 9vh);font-size:clamp(20px,3.2vw,30px);font-style:italic;letter-spacing:.08em;color:#cdb8f2;text-shadow:0 0 18px rgba(120,80,200,.6),0 1px 4px #000}
+#introSkip{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(var(--lb) + 14px);opacity:.75;font-size:13px}#introSkip:hover,#introSkip:focus-visible{opacity:1}
+@media (max-width:700px){#introRadio{bottom:calc(var(--lb) + 58px)}}@media (pointer:coarse) and (not (pointer:fine)){#introSkip kbd{display:none}}
+body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,body.intro-on #fpsBox{opacity:0;pointer-events:none}#top,#bottom,#msgs{transition:opacity .9s}
 #planet{position:fixed;inset:0;z-index:7;background:radial-gradient(ellipse at 40% 50%,#1a1328 0%,#07060a 70%);display:flex;flex-direction:column}
 #pbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:8px 12px;background:#17131bf0;border-bottom:2px solid var(--edge);font-size:14px}
 #pbar h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:16px;color:var(--amber)}
@@ -238,7 +251,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <button id="setClose">Close</button></div></div>
 <div id="sgal" hidden><div class="scard"></div></div>
 <div id="planet" hidden>
-  <div id="pbar"><h2>NERETH</h2><span id="pitems"></span><button id="pTech">Evolution</button><button id="pSaves">Saves</button><button id="pBack">Main menu</button></div>
+  <div id="pbar"><h2>NERETH</h2><span id="pitems"></span><button id="pTech">Evolution</button><button id="pSaves">Saves</button><button id="pIntro" title="Watch the opening again. Your campaign is not changed.">Replay intro</button><button id="pBack">Main menu</button></div>
   <div id="pwrap"><canvas id="pcv"></canvas><div id="pcard"></div></div>
 </div>
 <div id="saves" hidden><div class="scard"><h2>SAVES</h2><p id="saveWhere" class="lbl"></p><div id="slotList"></div>
@@ -251,6 +264,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <div class="cfoot"><span>Click, tap or press Space · <b id="commCount"></b></span><button id="commSkip" title="Skip this conversation (Esc)">Skip ▸▸</button></div></div>
   <div class="cport" id="cport1"><canvas width="264" height="264"></canvas><span></span></div>
 </div></div>
+<div id="intro" hidden><canvas id="introCv"></canvas><div class="ibar top"></div><div class="ibar bot"></div><div id="introTitle"><b></b><span></span></div><div id="introRadio"><span class="lbl"></span><span class="txt"></span></div><div id="introCap"></div><button id="introSkip" aria-label="Skip the intro">Skip <kbd>Esc</kbd></button></div>
 <div id="overlay">
   <div class="card" id="ovcard">
     <h1>LAST COLONY</h1>
@@ -2215,6 +2229,7 @@ cv.addEventListener('wheel',e=>{e.preventDefault();
   cam.z=clamp(cam.z*(e.deltaY<0?1.12:1/1.12),.5,2.5);cam.x=wx*T-e.offsetX/cam.z;cam.y=wy*T-e.offsetY/cam.z;clampCam();},{passive:false});
 window.addEventListener('keydown',e=>{
   if(e.key==='Alt'||e.key==='F4')e.preventDefault();
+  if(INTRO.on){introKey(e);return;}
   if(DLG.open){dlgKey(e);return;}
   if(!G||G.over)return;const k=e.key.toLowerCase();
   if(k==='t'){toggleTech();return;}
@@ -4680,7 +4695,7 @@ const Store={mode:'local',db:null,uid:null,ready:null,
 const BASE_TECH=TECH.filter(t=>!t[1]).map(t=>t[0]);
 const GLOBAL_CAP=10000;
 let CAMP=null;
-function freshCamp(){return {v:1,flags:{},researched:new Set(BASE_TECH),captured:{},global:[0,0,0,0,0,0,0],last:Date.now()};}
+function freshCamp(){return {v:1,flags:{v48:1},researched:new Set(BASE_TECH),captured:{},global:[0,0,0,0,0,0,0],last:Date.now()};}
 function campToJSON(c){return JSON.stringify({v:1,flags:c.flags||{},researched:[...c.researched],captured:c.captured,global:c.global,last:c.last});}
 function campFromJSON(s){try{const o=JSON.parse(s);if(!o||!o.researched)return null;const c=freshCamp();c.researched=new Set([...BASE_TECH,...o.researched]);c.captured=o.captured||{};c.global=(o.global||[]).concat([0,0,0,0,0,0,0]).slice(0,7);c.last=o.last||Date.now();c.flags=o.flags||{};return c;}catch(e){return null;}}
 async function loadCamp(){await Store.init();const s=await Store.get('campaign');let c=s&&campFromJSON(s);
@@ -4793,7 +4808,7 @@ function renderSectorCard(){
   if(cap)h+=`<div class="row">Produces <b>${cap.rates.map((v,i)=>v?`<span class="it"><i style="background:${IT[i].c}"></i>+${v}/min</span>`:'').join(' ')}</b></div>`;
   const why=cap?'':st==='locked'?`Capture ${MISSIONS[k-1].name} first.`:miss.length?`Evolve ${miss.map(nameOf).join(', ')} first.`:'';
   h+=`<div class="acts"><button class="go" id="launch" ${why?'disabled':''}>${cap?'Return to sector':'Launch'}</button></div>`+(why?`<p class="why">${why}</p>`:'');
-  el.innerHTML=h;const b=$('launch');if(b)b.onclick=()=>{if(why)return;if(cap)returnToSector(m.id);else startMission(m.id);};
+  el.innerHTML=h;const b=$('launch');if(b)b.onclick=()=>{if(why)return;if(cap)returnToSector(m.id);else if(m.id==='landfall'&&introDue())introStart('first');else startMission(m.id);};
 }
 async function openPlanet(){
   if(!CAMP)await loadCamp();
@@ -4812,10 +4827,12 @@ function closePlanet(){$('planet').hidden=true;}
 $('pBack').onclick=()=>{closePlanet();showMenu();};
 $('pTech').onclick=()=>toggleTech(true);
 $('pSaves').onclick=()=>openSaves();
+$('pIntro').onclick=()=>introStart('replay');
+$('introSkip').onclick=()=>introSkip();
 
 // ---------- missions ----------
-function startMission(id){const m=MIS[id];closePlanet();$('overlay').hidden=true;$('tech').hidden=true;newGame(m.kind==='attack'?'siege':'survival',m);
-  if(G.story)storyBegin();else msg(`${m.name}: ${m.kind==='attack'?'destroy the colony core':`survive ${m.waves} waves`}.`,'good');}
+function startMission(id,held){const m=MIS[id];closePlanet();$('overlay').hidden=true;$('tech').hidden=true;newGame(m.kind==='attack'?'siege':'survival',m);
+  if(held)return;if(G.story)storyBegin();else msg(`${m.name}: ${m.kind==='attack'?'destroy the colony core':`survive ${m.waves} waves`}.`,'good');}
 // A captured sector keeps your base. The colony is gone from it and no more waves come, so you can go back
 // with new evolutions (a Deep Root for titanium, say) and grow it further. Its Bloom's intake sets what it produces.
 function makeHeld(){
@@ -5517,7 +5534,7 @@ function sndUnlock(){if(SND.ctx){if(SND.ctx.state==='suspended'&&!document.hidde
 for(const ev of ['pointerdown','keydown','touchend'])window.addEventListener(ev,sndUnlock,{capture:true,passive:true});
 // the sounds come as one script of base64 MP3s, so they load the same way from a web page and from the Windows app's files
 function sndLoad(){if(SND.loading||SND.ready)return;SND.loading=true;
-  const go=()=>{const L=window.LC_SOUNDS;if(!L){SND.loading=false;return;}const names=Object.keys(L);let i=0;
+  const go=()=>{const L=window.LC_SOUNDS;if(!L){SND.loading=false;return;}const names=Object.keys(L).sort((a,b)=>(b.startsWith('intro_')|0)-(a.startsWith('intro_')|0));let i=0;
     const next=()=>{if(i>=names.length){SND.ready=true;SND.loading=false;return;}const n=names[i++];
       const bin=atob(L[n]),u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);
       SND.ctx.decodeAudioData(u.buffer).then(a=>{SND.buf[n]=a;const m=/^(.*)_(\d+)$/.exec(n);if(m)SND.nvar[m[1]]=Math.max(SND.nvar[m[1]]||0,+m[2]+1);}).catch(()=>{}).then(next);};
@@ -5653,6 +5670,7 @@ function sndAmbient(dt){if(!sndReady('a')){if(Object.keys(SND.amb).length)sndAmb
 function sndTick(dt){if(!SND.on||!SND.ctx)return;SND.tAcc+=dt;if(SND.tAcc<.1)return;const T0=SND.tAcc;SND.tAcc=0;
   try{const c=SND.ctx,t=c.currentTime,duck=DLG.open?1:0;
     SND.bus.sd.gain.setTargetAtTime(duck?.5:1,t,.3);SND.bus.ad.gain.setTargetAtTime(duck?.7:1,t,.4);
+    if(INTRO.on){if(Object.keys(SND.amb).length)sndAmbStop();for(const k in SND.beds)sndBedStop(k);return;}   // v48: the intro has its own sound
     if(!SND.ready)return;
     sndAmbient(T0);
     if(!G||G.over){for(const k in SND.beds)sndBedStop(k);for(const e of [...SND.eng.keys()])sndEngStop(e);return;}
@@ -5764,6 +5782,258 @@ function sgalOpen(){sndUnlock();let h='<h2>SOUND TEST</h2><p id="sgalNote" class
   el.querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{sndUnlock();for(let k=0;k<40;k++)setTimeout(()=>{const n=SGAL_CROWD[k%SGAL_CROWD.length];
     delete SND.cool[n];sndPlay(n,{vol:.5+.5*((k*7)%5)/4,pri:n.startsWith('metal_heavy')||n==='cannon'?3:2});},k*50);sgalNote();});}
 
+// ---------- v48: the intro cinematic ----------
+// ---------- v48: the intro cinematic ----------
+// About a minute, drawn live on its own canvas over the game: Nereth from orbit, the Landfall meadow with a survey truck on the track,
+// down through the soil to the dormant cluster, a resonance passing through the rock, the cluster stirring and the first Rootweb reaching,
+// then up to the surface where the first Bloom opens, and into the real Landfall camera. Every frame is a pure function of the clock (t,
+// in seconds), so it plays the same each time and can be shown at any moment.
+// The mission is created underneath when the intro starts (that is where the meadow comes from) but it does not run: the game is paused,
+// its story waits, and nothing steps until the hand-off, which starts the Root-Link opening exactly as a normal launch would.
+// First play: Launch on Landfall in a new campaign. Replay: the Intro button on the planet screen, which never touches a mission in
+// progress (it is only offered when none is) and goes back to the planet afterwards. Skip: the button, Esc or Enter, at any moment.
+const INTRO={on:false,mode:null,t:0,last:0,raf:0,ending:false,cues:new Set(),beds:{},hold:false,low:false,soil:null,cloud:null,stars:null,sph:null,sphT:-1,tend:null,sacs:null,strands:null};
+const INTRO_END=61,INTRO_HAND=58;
+// the Bloom's opening frame at the hand-off: exactly where a normal launch puts the camera
+function introGameCam(){return [G.coreX+1.5+6,G.coreY+1.5,1];}
+// a campaign that existed before v48 never has the intro forced on it (only a brand new one does), and a finished tutorial counts as seen
+function introDue(){const f=CAMP&&CAMP.flags||{};return !!CAMP&&f.v48&&!f.intro&&!f.tut1&&!f.firstContact&&!Object.keys(CAMP.captured||{}).length;}
+const ism=(a,b,t)=>{const x=clamp((t-a)/(b-a),0,1);return x*x*(3-2*x);};
+const ilerp=(a,b,k)=>a+(b-a)*k;
+// what is said, and when: [from, to, kind, who, text]. Radio is the frontier going about its day; the hive's instincts are single words.
+const INTRO_LINES=[
+  [1.4,7.4,'title','NERETH','Human Frontier Territory'],
+  [10.2,13.8,'radio','SURVEY TWO','Control, Survey Two. Marker forty-one is in. Moving east along the track.'],
+  [14.2,17.6,'radio','FRONTIER CONTROL','Copy, Survey Two. Drill crew hit hard rock past the ridge. Expect some noise out your way.'],
+  [17.9,20.2,'radio','SURVEY TWO','Copy. Quiet out here otherwise.'],
+  [22.2,24.8,'inst','','Dark.'],[25.4,28,'inst','','Still.'],[28.8,31.6,'inst','','Pressure.'],
+  [35.2,37.8,'inst','','Movement.'],[40.2,42.8,'inst','','Reach.'],[44.6,47.4,'inst','','Hunger.'],
+  [52.6,56.4,'radio','SURVEY TWO','Control, Survey Two. Heading back to camp before dark.'],
+  [58.3,60.7,'title','MISSION 1','LANDFALL'],
+];
+// sounds: [time, name, options]. Beds (b) fade in and out; everything goes through the game's mixer, so the sliders and Mute apply.
+const INTRO_CUES=[
+  [0,'bed','intro_orbit',{to:.85,fade:2.5}],[1.2,'sfx','intro_static',{vol:.25}],
+  [8.2,'bed','amb_meadow',{to:.7,fade:2}],[8.6,'bedoff','intro_orbit',{fade:2.2}],[9.4,'bed','eng_scout',{to:.18,fade:1.5}],
+  [10.1,'sfx','comm_radio',{vol:.6}],[10.2,'sfx','intro_static',{vol:.3}],[14.1,'sfx','comm_radio',{vol:.6}],[14.2,'sfx','intro_static',{vol:.3}],[17.8,'sfx','comm_radio',{vol:.5}],
+  [19.4,'bedoff','eng_scout',{fade:1.2}],[20,'bedoff','amb_meadow',{fade:1.6}],[20.2,'bed','intro_under',{to:.9,fade:2}],[20.6,'sfx','intro_soil',{vol:.35}],
+  [24,'sfx','intro_pulse',{vol:.45}],[30.2,'sfx','intro_pulse',{vol:.5}],
+  [32.4,'sfx','intro_drill',{vol:.85}],[34.6,'sfx','intro_soil',{vol:.4}],[36.2,'sfx','intro_pulse',{vol:.6}],
+  [38.4,'sfx','intro_drill',{vol:.7}],[39.4,'sfx','intro_pulse',{vol:.65}],[41.6,'sfx','web_creep',{vol:.9}],[42,'sfx','intro_pulse',{vol:.7}],[43.8,'sfx','web_creep',{vol:.9}],
+  [44.4,'sfx','intro_pulse',{vol:.75}],[46.4,'sfx','intro_pulse',{vol:.8}],[47.2,'sfx','web_creep',{vol:1}],
+  [48.4,'sfx','intro_soil',{vol:.6}],[49.6,'bed','amb_meadow',{to:.6,fade:2.5}],[50.6,'bedoff','intro_under',{fade:2.5}],[51,'sfx','intro_bloom',{vol:.9}],
+  [52.5,'sfx','comm_radio',{vol:.35}],[52.6,'sfx','intro_static',{vol:.18}],[55.6,'sfx','intro_pulse',{vol:.45}],
+  [58.4,'bedoff','amb_meadow',{fade:2.4}],
+];
+function introSnd(name,o){if(!SND.on||!SND.ctx||SND.ctx.state!=='running'||sndEff().s<=0)return;const c=SND.ctx,buf=sndBuf(name);if(!buf)return;
+  const src=c.createBufferSource(),g=c.createGain();src.buffer=buf;g.gain.value=(o.vol==null?1:o.vol);src.connect(g);g.connect(SND.bus.s);src.start();}
+function introBed(name,to,fade){if(!SND.ctx||!SND.bus||!SND.buf[name])return;let b=INTRO.beds[name];const c=SND.ctx,t=c.currentTime;
+  if(!b){const src=c.createBufferSource(),g=c.createGain();src.buffer=SND.buf[name];src.loop=true;g.gain.value=0;src.connect(g);g.connect(SND.bus.a);src.start();b=INTRO.beds[name]={src,g};}
+  b.g.gain.cancelScheduledValues(t);b.g.gain.setTargetAtTime(to,t,fade/3);}
+function introBedOff(name,fade){const b=INTRO.beds[name];if(!b)return;delete INTRO.beds[name];try{const t=SND.ctx.currentTime;b.g.gain.cancelScheduledValues(t);b.g.gain.setTargetAtTime(0,t,fade/3);b.src.stop(t+fade*1.6+.1);}catch(e){}}
+function introBedsOff(fade){for(const k of Object.keys(INTRO.beds))introBedOff(k,fade);}
+// cues fire once as the clock passes them; a bed that should already be playing (the sounds finished loading late) is started then
+function introCues(t){for(let k=0;k<INTRO_CUES.length;k++){const [at,kind,name,o]=INTRO_CUES[k];if(t<at||INTRO.cues.has(k))continue;
+  if(kind!=='bedoff'&&!SND.buf[name]&&!SND.nvar[name]){if(t-at<4)continue;}   // waiting for the sounds to decode, for a little while
+  INTRO.cues.add(k);if(t-at>4&&kind==='sfx')continue;
+  if(kind==='bed')introBed(name,o.to,o.fade);else if(kind==='bedoff')introBedOff(name,o.fade);else introSnd(name,o);}}
+
+// ---- the start, the end, skipping
+function introStart(mode){if(INTRO.on)return;sndUnlock();
+  if(mode==='replay'&&G&&!G.over)return;   // never over a game in progress
+  Object.assign(INTRO,{on:true,mode,t:0,last:0,ending:false,cues:new Set(),beds:{},hold:false});INTRO.low=SET.q==='low';
+  // the meadow, the Bloom and the hand-off camera all come from the real mission, created now but held still
+  if(mode==='first')startMission('landfall',true);else{closePlanet();$('overlay').hidden=true;newGame('survival',MIS.landfall);}
+  setSpeed(0);G.introHold=true;
+  introPrep();
+  const el=$('intro');el.hidden=false;el.classList.remove('out');document.body.classList.add('intro-on');if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  INTRO.raf=requestAnimationFrame(introLoop);}
+function introSkip(){if(!INTRO.on||INTRO.ending)return;INTRO.ending=true;$('intro').classList.add('out');introBedsOff(.6);setTimeout(introFinish,450);}
+function introFinish(){if(!INTRO.on)return;INTRO.on=false;INTRO.ending=true;cancelAnimationFrame(INTRO.raf);introBedsOff(1.2);
+  $('intro').hidden=true;$('intro').classList.remove('out');document.body.classList.remove('intro-on');for(const k of ['introCap','introRadio','introTitle'])$(k).classList.remove('on');
+  if(G)G.introHold=false;
+  if(INTRO.mode==='first'){if(CAMP){CAMP.flags=CAMP.flags||{};CAMP.flags.intro=1;saveCamp();}
+    if(G&&G.mission==='landfall'){const [x,y,z]=introGameCam();cam.z=z;centerOn(x,y);setSpeed(1);if(G.story)storyBegin();}}
+  else{G=null;openPlanet();}}
+// Escape or Enter skip. Space (the game's pause key) is not a skip, so it cannot end the intro by accident, unless the player has tabbed onto Skip.
+function introKey(e){if(e.key==='Escape'||e.key==='Enter'){e.preventDefault();introSkip();}else if(e.key===' '){e.preventDefault();if(document.activeElement===$('introSkip'))introSkip();}}
+function introLoop(now){if(!INTRO.on)return;const dt=INTRO.last?Math.min(.1,(now-INTRO.last)/1000):0;INTRO.last=now;
+  if(!INTRO.hold&&!document.hidden)INTRO.t+=dt;const t=INTRO.t;
+  introCues(t);introDraw(t);
+  if(t>=INTRO_END)introFinish();else INTRO.raf=requestAnimationFrame(introLoop);}
+
+// ---- prepared once per play: stars, the planet texture, clouds, the soil, the cluster and its tendrils (all seeded, nothing random)
+function introPrep(){const lo=INTRO.low;
+  if(!INTRO.stars){INTRO.stars=[];for(let k=0;k<420;k++)INTRO.stars.push([hash(k,1,48),hash(k,2,48),hash(k,3,48),hash(k,4,48)]);}
+  if(!PL.tex)PL.tex=planetTex();
+  if(!INTRO.cloud){const S=256,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d'),id=g.createImageData(S,S),D=id.data;
+    for(let y=0;y<S;y++)for(let x=0;x<S;x++){const u=x/S*6,v=y/S*6,n=vnoise3(u,v,1.7)*.55+vnoise3(u*2.1,v*2.1,4.2)*.3+vnoise3(u*4.3,v*4.3,8.8)*.15,a=clamp((n-.42)*3.2,0,1),o=(y*S+x)*4;
+      D[o]=236;D[o+1]=232;D[o+2]=244;D[o+3]=a*255;}g.putImageData(id,0,0);INTRO.cloud=c;}
+  if(!INTRO.soil||INTRO.soil.lo!==lo)INTRO.soil=introSoil(lo);
+  if(!INTRO.sacs){const S=[];const pts=[[0,0,62],[-70,18,44],[64,22,48],[-22,-52,38],[34,-46,34],[-48,-30,30],[10,58,40],[-80,-12,24],[88,-12,26]];
+    pts.forEach(([x,y,r],k)=>S.push({x,y,r,ph:hash(k,7,48)*6.28,w:hash(k,8,48)}));INTRO.sacs=S;
+    // vascular strands between the sacs and out into the soil
+    const st=[];for(let k=1;k<S.length;k++){const a=S[0],b=S[k];st.push([a.x,a.y,(a.x+b.x)/2+(hash(k,9,48)-.5)*40,(a.y+b.y)/2+(hash(k,10,48)-.5)*40,b.x,b.y]);}
+    for(let k=0;k<7;k++){const a=k/7*6.28+.3,L=120+hash(k,11,48)*60;st.push([Math.cos(a)*50,Math.sin(a)*40,Math.cos(a+.3)*L*.6,Math.sin(a+.3)*L*.6,Math.cos(a)*L,Math.sin(a)*L*.8]);}
+    INTRO.strands=st;
+    // the first Rootweb: branching tendrils that reach mostly up and out, each growing in after the last
+    const T=[];const grow=(x,y,a,len,depth,t0,k)=>{const n=8,pts=[[x,y]];let ang=a,px=x,py=y;for(let i=1;i<=n;i++){ang+=(hash(k,i,49)-.5)*.5;px+=Math.cos(ang)*len/n;py+=Math.sin(ang)*len/n;pts.push([px,py]);}
+      T.push({pts,t0,w:Math.max(.8,3.2-depth*1.1),depth});if(depth<2)for(let j=0;j<2;j++){const p=pts[3+j*3];grow(p[0],p[1],ang+(j?.7:-.7)+(hash(k,j,50)-.5)*.3,len*.55,depth+1,t0+.9+j*.5,k*7+j+1);}};
+    for(let k=0;k<9;k++){const a=-Math.PI/2+(k-4)*.36+(hash(k,1,51)-.5)*.2;grow(Math.cos(a)*55,Math.sin(a)*45,a,170+hash(k,2,51)*120,0,38.6+k*.55,k+3);}
+    for(let k=0;k<4;k++){const a=(k<2?Math.PI:0)+(k%2?.35:-.25);grow(Math.cos(a)*60,Math.sin(a)*30,a,130+hash(k,3,51)*60,1,40.4+k*.7,k+40);}
+    INTRO.tend=T;}}
+// a cross-section of the ground: topsoil, darker clay, stone, pebbles, old dead roots and seams of damp, drawn once
+function introSoil(lo){const W=1400,H=1500,s=lo?.5:1,c=document.createElement('canvas');c.width=W*s;c.height=H*s;const g=c.getContext('2d');g.scale(s,s);c.lo=lo;
+  const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#3a2a1c');gr.addColorStop(.12,'#2c2017');gr.addColorStop(.45,'#1c1611');gr.addColorStop(.8,'#141116');gr.addColorStop(1,'#0e0c10');g.fillStyle=gr;g.fillRect(0,0,W,H);
+  // strata: soft bands
+  for(let k=0;k<9;k++){const y=120+k*150+hash(k,1,52)*60;g.fillStyle=`rgba(${k%2?60:20},${k%2?44:16},${k%2?30:14},${.12+hash(k,2,52)*.1})`;g.beginPath();g.moveTo(0,y);
+    for(let x=0;x<=W;x+=70)g.lineTo(x,y+Math.sin(x*.004+k)*18+hash(x,k,53)*10);g.lineTo(W,y+60);for(let x=W;x>=0;x-=70)g.lineTo(x,y+60+Math.sin(x*.005+k*2)*14);g.fill();}
+  // grit
+  const n=lo?2500:6000;for(let k=0;k<n;k++){const x=hash(k,3,52)*W,y=hash(k,4,52)*H,b=hash(k,5,52);g.fillStyle=b<.5?`rgba(90,70,52,${.18+b*.3})`:`rgba(10,8,8,${.2+b*.2})`;g.fillRect(x,y,1+b*2,1+b*1.5);}
+  // pebbles and stones, lit softly from above
+  for(let k=0;k<(lo?40:80);k++){const x=hash(k,6,52)*W,y=120+hash(k,7,52)*(H-140),r=4+hash(k,8,52)**2*(y>H*.55?46:22),a=hash(k,9,52)*3;
+    if(Math.hypot(x-W/2,y-H*.62)<200)continue;
+    g.save();g.translate(x,y);g.rotate(a);const st=g.createRadialGradient(-r*.3,-r*.35,r*.1,0,0,r);st.addColorStop(0,'#3a3438');st.addColorStop(1,'#1a171b');g.fillStyle=st;
+    g.beginPath();g.ellipse(0,0,r,r*(.55+hash(k,10,52)*.35),0,0,7);g.fill();g.restore();}
+  // old dead roots and fibres (not the hive's: brown, dry)
+  g.lineCap='round';for(let k=0;k<(lo?26:50);k++){let x=hash(k,11,52)*W,y=hash(k,12,52)*H*.5;g.strokeStyle=`rgba(96,72,50,${.25+hash(k,13,52)*.3})`;g.lineWidth=.6+hash(k,14,52)*1.6;g.beginPath();g.moveTo(x,y);
+    let a=Math.PI/2+(hash(k,15,52)-.5);for(let i=0;i<10;i++){a+=(hash(k,i,54)-.5)*.6;x+=Math.cos(a)*14;y+=Math.sin(a)*14;g.lineTo(x,y);}g.stroke();}
+  // damp seams
+  for(let k=0;k<14;k++){const x=hash(k,16,52)*W,y=200+hash(k,17,52)*(H-300);const m=g.createRadialGradient(x,y,2,x,y,90);m.addColorStop(0,'rgba(60,70,90,.16)');m.addColorStop(1,'rgba(60,70,90,0)');g.fillStyle=m;g.fillRect(x-90,y-90,180,180);}
+  return c;}
+
+// ---- drawing
+function introDraw(t){const cv=$('introCv'),dpr=Math.min(INTRO.low?1:1.5,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,W,H);
+  INTRO.opaque=t<51.6;
+  if(t<10.6)introOrbit(g,W,H,t);
+  if(t>=8.4&&t<22)introMeadow(g,W,H,t);
+  if(t>=19.6&&t<52.2)introUnder(g,W,H,t);
+  if(t>=50.4)introSurface(g,W,H,t);
+  if(t>=INTRO_HAND&&INTRO.mode==='replay'){g.fillStyle=`rgba(0,0,0,${ism(INTRO_HAND,INTRO_END-.4,t)})`;g.fillRect(0,0,W,H);}
+  introText(t);
+  // letterbox: in from the start, out at the hand-off
+  const lb=Math.round(Math.min(H*.11,90)*(1-ism(INTRO_HAND,INTRO_HAND+1.6,t)));$('intro').style.setProperty('--lb',lb+'px');}
+// scene 1: Nereth from orbit, slowly closing on the hemisphere where Landfall lies, then down into the cloud
+function introOrbit(g,W,H,t){const k=ism(0,9.6,t);g.fillStyle='#04030a';g.fillRect(0,0,W,H);
+  for(const [x,y,b,d] of INTRO.stars){const px=((x*W-t*(4+d*10))%W+W)%W,py=y*H;const tw=.75+.25*Math.sin(t*(.6+d)+x*40);g.fillStyle=`rgba(225,228,255,${(.12+b*.55)*tw*(1-ism(7,9,t))})`;const s=b>.92?2:1;g.fillRect(px,py,s,s);}
+  const R=Math.min(W,H)*(.3+.62*k*k),cx=W*.5,cy=H*(.64+.42*k*k);
+  // the planet, re-shaded every few frames (it turns slowly)
+  const S=INTRO.low?180:300;if(!INTRO.sph){INTRO.sph=document.createElement('canvas');INTRO.sph.width=INTRO.sph.height=S;}
+  if(Math.abs(t-INTRO.sphT)>.12||INTRO.sph.width!==S){INTRO.sphT=t;if(INTRO.sph.width!==S)INTRO.sph.width=INTRO.sph.height=S;introSphere(INTRO.sph,S,t);}
+  const at=g.createRadialGradient(cx,cy,R*.95,cx,cy,R*1.16);at.addColorStop(0,'rgba(150,120,210,.38)');at.addColorStop(1,'rgba(150,120,210,0)');g.fillStyle=at;g.beginPath();g.arc(cx,cy,R*1.16,0,7);g.fill();
+  g.imageSmoothingEnabled=true;g.drawImage(INTRO.sph,cx-R,cy-R,R*2,R*2);
+  // high cloud drifting over the day side
+  g.save();g.beginPath();g.arc(cx,cy,R*.995,0,7);g.clip();g.globalAlpha=.28;const cs=R*2.6,ox=((t*.012*R)%cs);for(let q=-1;q<=1;q++)g.drawImage(INTRO.cloud,cx-R*1.3+ox+q*cs,cy-R*1.3,cs,cs);
+  const sh=g.createLinearGradient(cx-R*.6,cy-R*.6,cx+R,cy+R);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,8,.55)');g.globalAlpha=1;g.fillStyle=sh;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();
+  // the sunlit limb and haze
+  const lim=g.createRadialGradient(cx-R*.3,cy-R*.4,R*.2,cx,cy,R*1.02);lim.addColorStop(.86,'rgba(200,190,255,0)');lim.addColorStop(1,'rgba(200,190,255,.22)');g.fillStyle=lim;g.beginPath();g.arc(cx,cy,R*1.02,0,7);g.fill();
+  // into the atmosphere: a pale haze, then cloud
+  const hz=ism(5.8,8.6,t);if(hz>0){g.fillStyle=`rgba(196,200,214,${hz*.85})`;g.fillRect(0,0,W,H);}
+  const cl=ism(7.2,9,t)*(1-ism(9.6,10.6,t));if(cl>0){g.globalAlpha=cl;const s=Math.max(W,H)*(1.4+(t-7)*.35);g.drawImage(INTRO.cloud,W/2-s/2,H/2-s/2,s,s);g.globalAlpha=1;}}
+function introSphere(c,S,t){const g=c.getContext('2d'),id=g.createImageData(S,S),D=id.data,{TW,TH,img}=PL.tex;
+  const yaw=.42-t*.012,tilt=.14,cy=Math.cos(yaw),sy=Math.sin(yaw),ct=Math.cos(tilt),st=Math.sin(tilt),L=[-.5,.45,.74];
+  for(let py=0;py<S;py++)for(let px=0;px<S;px++){const nx=(px+.5)/S*2-1,ny=1-(py+.5)/S*2,r2=nx*nx+ny*ny;if(r2>1)continue;const nz=Math.sqrt(1-r2);
+    const y0=ny*ct+nz*st,z0=-ny*st+nz*ct,wx=nx*cy-z0*sy,wz=nx*sy+z0*cy,lat=Math.asin(clamp(y0,-1,1)),lon=Math.atan2(wx,wz);
+    const ti=Math.min(TW-1,((lon/(2*Math.PI)+.5)*TW)|0),tj=Math.min(TH-1,((.5-lat/Math.PI)*TH)|0),k=(tj*TW+ti)*4;
+    const lit=clamp(nx*L[0]+ny*L[1]+nz*L[2],0,1)*.9+.08,o=(py*S+px)*4;D[o]=img[k]*lit;D[o+1]=img[k+1]*lit;D[o+2]=img[k+2]*lit;D[o+3]=255;}
+  g.putImageData(id,0,0);}
+// the survey truck's place on the track at time t (tiles), and its heading
+function introTruck(t){const tr=(MIS.landfall.ops.find(o=>o[0]==='track')||[0,[[71,32],[29,38]]])[1].map(([x,y])=>[x+.5,y+.5]);
+  let d;if(t<22)d=ilerp(4,24,ism(8.4,21,t));else d=ilerp(24,6,ism(48,62,t));
+  let s=d;for(let k=0;k<tr.length-1;k++){const [ax,ay]=tr[k],[bx,by]=tr[k+1],L=Math.hypot(bx-ax,by-ay);if(s<=L||k===tr.length-2){const f=clamp(s/L,0,1);return [ax+(bx-ax)*f,ay+(by-ay)*f,Math.atan2(by-ay,bx-ax)+(t<22?0:Math.PI)];}s-=L;}
+  return [tr[0][0],tr[0][1],0];}
+// scene 2: the meadow from above (the real Landfall ground), the camera following the track west over the truck to the hollow by the rocks
+function introMeadow(g,W,H,t){const C=[G.coreX+1.5,G.coreY+1.5],tk=introTruck(t);
+  const f=ism(8.4,18.4,t),dn=ism(18.2,21.2,t);
+  let x=ilerp(tk[0]+2,C[0]+4,f*f),y=ilerp(tk[1]-1,C[1],f),z=ilerp(.8,1,f)*ilerp(1,2.4,dn);
+  x=ilerp(x,C[0],dn);y=ilerp(y,C[1],dn);
+  {const hw=W/(T*z)/2,hh=H/(T*z)/2;x=clamp(x,Math.min(hw,MW/2),Math.max(MW-hw,MW/2));y=clamp(y,Math.min(hh,MH/2),Math.max(MH-hh,MH/2));}   // keep the frame on the map
+  introGround(g,W,H,x,y,z,1);
+  // cloud shadows drifting over the meadow
+  g.save();g.globalCompositeOperation='multiply';for(let k=0;k<5;k++){const cx=((hash(k,1,55)*1.6-.3+t*.012)%1.6-.3)*W,cy=hash(k,2,55)*H,r=(160+hash(k,3,55)*200)*z;
+    const m=g.createRadialGradient(cx,cy,r*.1,cx,cy,r);m.addColorStop(0,'rgba(120,130,140,.55)');m.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=m;g.fillRect(cx-r,cy-r,r*2,r*2);}g.restore();
+  // the survey truck and its dust
+  const sx=(tk[0]-x)*T*z+W/2,sy=(tk[1]-y)*T*z+H/2;
+  for(let k=0;k<(INTRO.low?6:14);k++){const age=(k/14+t*.9)%1,bx=tk[0]-Math.cos(tk[2])*(.8+age*2.2)+(hash(k,4,55)-.5)*.6,by=tk[1]-Math.sin(tk[2])*(.8+age*2.2)+(hash(k,5,55)-.5)*.6;
+    g.fillStyle=`rgba(190,170,140,${.22*(1-age)})`;g.beginPath();g.arc((bx-x)*T*z+W/2,(by-y)*T*z+H/2,(.3+age*.7)*T*z,0,7);g.fill();}
+  g.save();g.translate(sx,sy);g.rotate(tk[2]);g.scale(z,z);try{g.translate(-24,-12);PROP_DRAW.truck(g,48,24,0);}catch(e){}g.restore();
+  // a slow light on the survey markers (no flashing)
+  for(const o of MIS.landfall.ops)if(o[0]==='prop'&&o[1]==='marker'){const mx=(o[2]+.5-x)*T*z+W/2,my=(o[3]+.2-y)*T*z+H/2,b=.35+.3*Math.sin(t*1.6+o[2]);g.fillStyle=`rgba(255,120,80,${b})`;g.beginPath();g.arc(mx,my,2.2*z,0,7);g.fill();}
+  // out of the cloud at the start; into the dark of the soil at the end
+  const cl=1-ism(8.4,10.6,t);if(cl>0){g.globalAlpha=cl;const s=Math.max(W,H)*(2.2+(t-8)*.6);g.drawImage(INTRO.cloud,W/2-s/2,H/2-s/2,s,s);g.globalAlpha=1;}
+  if(dn>0){g.fillStyle=`rgba(20,14,10,${ism(19.4,21.6,t)})`;g.fillRect(0,0,W,H);}}
+// the real ground under a camera at tile (x,y), zoom z (relative to the game's own scale)
+function introGround(g,W,H,x,y,z,a){const src=SET.hd?hdCanvas:terrCanvas,k=SET.hd?HDR/T:1;g.save();g.globalAlpha=a;g.fillStyle='#1d2416';g.fillRect(0,0,W,H);g.imageSmoothingEnabled=true;
+  const vw=W/(T*z),vh=H/(T*z),x0=x-vw/2,y0=y-vh/2,cx0=Math.max(0,x0),cy0=Math.max(0,y0),cx1=Math.min(MW,x0+vw),cy1=Math.min(MH,y0+vh);
+  if(cx1>cx0&&cy1>cy0)g.drawImage(src,cx0*T*k,cy0*T*k,(cx1-cx0)*T*k,(cy1-cy0)*T*k,(cx0-x0)*T*z,(cy0-y0)*T*z,(cx1-cx0)*T*z,(cy1-cy0)*T*z);g.restore();}
+// scenes 3 and 4: beneath the soil. u is the scene's own unit; the cluster sits at (0,0), the surface at y=-560
+function introUnder(g,W,H,t){const u=Math.min(W,H)/760,a=ism(33.5,46,t),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
+  let camY=ilerp(-470,30,ism(19.8,25.5,t));camY=ilerp(camY,-500,ism(48,51.6,t));const zz=ilerp(1.35,1.6,ism(22,46,t))*ilerp(1,.8,ism(48,51.6,t));
+  // the resonance: the ground trembles very slightly while it passes
+  let sh=0;if(!rm)for(const t0 of [32.4,38.4]){const e=ism(t0,t0+2.4,t)*(1-ism(t0+3.4,t0+6.2,t));sh+=Math.sin(t*2*Math.PI*7.3)*e*1.6;}
+  g.save();g.translate(W/2+sh*u,H/2+sh*.4*u);g.scale(u*zz,u*zz);g.translate(0,-camY);
+  const S=INTRO.soil,sw=1400,shh=1500;g.imageSmoothingEnabled=true;g.drawImage(S,-sw/2,-560-40,sw,shh);
+  // the surface line above: the meadow's roots and grass, seen from below
+  g.fillStyle='#4a5a32';g.fillRect(-sw/2,-560-140,sw,100);for(let k=0;k<160;k++){const x=-sw/2+k*(sw/160);g.strokeStyle='rgba(70,96,46,.9)';g.lineWidth=2;g.beginPath();g.moveTo(x,-600);g.lineTo(x+(hash(k,1,56)-.5)*10,-600-8-hash(k,2,56)*14);g.stroke();}
+  g.fillStyle='rgba(10,8,6,.0)';
+  // grit trickling down while the ground trembles
+  const fall=ism(32.4,33.4,t)*(1-ism(37,38.4,t))+ism(38.4,39.4,t)*(1-ism(43,45,t))+ism(48,49,t);
+  if(fall>0)for(let k=0;k<(INTRO.low?40:110);k++){const x=(hash(k,1,57)-.5)*900,sp=40+hash(k,2,57)*70,y=-480+((t*sp+hash(k,3,57)*600)%600);g.fillStyle=`rgba(120,96,70,${.5*fall})`;g.fillRect(x,y,2,2);}
+  // dust motes in the dark
+  for(let k=0;k<(INTRO.low?14:34);k++){const x=(hash(k,4,57)-.5)*700+Math.sin(t*.2+k)*12,y=(hash(k,5,57)-.5)*500+Math.cos(t*.17+k)*10;g.fillStyle=`rgba(190,170,220,${.05+.06*hash(k,6,57)})`;g.fillRect(x,y,1.6,1.6);}
+  introCluster(g,t,a);
+  g.restore();
+  // a dim, close vignette; it lifts a little as the cluster wakes
+  const v=g.createRadialGradient(W/2,H/2,Math.min(W,H)*.15,W/2,H/2,Math.max(W,H)*.7);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,`rgba(0,0,0,${.78-.25*a})`);g.fillStyle=v;g.fillRect(0,0,W,H);
+  // in from the meadow's dark, out to the surface's light
+  const fin=1-ism(20,22.4,t);if(fin>0){g.fillStyle=`rgba(20,14,10,${fin})`;g.fillRect(0,0,W,H);}}
+// the dormant cluster: translucent sacs, faint vascular strands, rare slow pulses; waking, it swells, pulses faster and sends out tendrils
+function introCluster(g,t,a){const S=INTRO.sacs;
+  const per=ilerp(5.2,1.7,a),pul=Math.max(0,Math.sin(((t-20)/per)*Math.PI*2))**6*ilerp(.35,1,a);
+  // tendrils first, under the sacs
+  g.lineCap='round';g.lineJoin='round';
+  for(const d of INTRO.tend){const p=ism(d.t0,d.t0+3.2+d.depth,t);if(p<=0)continue;const P=d.pts,m=(P.length-1)*p,n=Math.floor(m);
+    const path=()=>{g.beginPath();g.moveTo(P[0][0],P[0][1]);for(let i=1;i<=n;i++)g.lineTo(P[i][0],P[i][1]);if(n<P.length-1){const f=m-n;g.lineTo(P[n][0]+(P[n+1][0]-P[n][0])*f,P[n][1]+(P[n+1][1]-P[n][1])*f);}};
+    g.strokeStyle='rgba(150,90,220,.18)';g.lineWidth=d.w*3.2;path();g.stroke();g.strokeStyle=`rgba(190,140,255,${.55+.25*pul})`;g.lineWidth=d.w;path();g.stroke();
+    if(p<1){const f=m-n,q=n<P.length-1?[P[n][0]+(P[n+1][0]-P[n][0])*f,P[n][1]+(P[n+1][1]-P[n][1])*f]:P[n];g.fillStyle='rgba(200,255,150,.6)';g.beginPath();g.arc(q[0],q[1],d.w*1.1,0,7);g.fill();}}
+  // vascular strands, with fluid moving along them once awake
+  for(let k=0;k<INTRO.strands.length;k++){const [x0,y0,cx,cy,x1,y1]=INTRO.strands[k];g.strokeStyle=`rgba(150,100,200,${.14+.22*a})`;g.lineWidth=1.4;g.beginPath();g.moveTo(x0,y0);g.quadraticCurveTo(cx,cy,x1,y1);g.stroke();
+    if(a>.05)for(let j=0;j<3;j++){const s=((t*ilerp(.05,.4,a)+j/3+k*.13)%1),q=1-s,px=q*q*x0+2*q*s*cx+s*s*x1,py=q*q*y0+2*q*s*cy+s*s*y1;g.fillStyle=`rgba(200,255,160,${.5*a})`;g.beginPath();g.arc(px,py,1.6,0,7);g.fill();}}
+  // the sacs: membranes relax and swell as it wakes
+  for(const s of S){const br=1+.03*Math.sin(t*.5+s.ph)+.08*a+.04*pul,r=s.r*br;
+    const f=g.createRadialGradient(s.x-r*.25,s.y-r*.3,r*.1,s.x,s.y,r);f.addColorStop(0,`rgba(140,90,190,${.32+.25*a+.2*pul})`);f.addColorStop(.7,`rgba(70,40,100,${.28+.15*a})`);f.addColorStop(1,'rgba(40,20,60,.12)');
+    g.fillStyle=f;g.beginPath();g.ellipse(s.x,s.y,r,r*(.82+.1*s.w),s.w*.6,0,7);g.fill();
+    g.strokeStyle=`rgba(190,150,240,${.3-.12*a})`;g.lineWidth=1.2;g.stroke();
+    // the faint living light inside
+    const c=g.createRadialGradient(s.x,s.y,0,s.x,s.y,r*.55);c.addColorStop(0,`rgba(180,250,120,${.05+.2*pul+.12*a})`);c.addColorStop(1,'rgba(180,250,120,0)');g.fillStyle=c;g.beginPath();g.arc(s.x,s.y,r*.55,0,7);g.fill();}}
+// scene 5: the surface. The live game is revealed through a widening opening around the Bloom while the ground shifts aside; the camera
+// settles exactly where a normal launch puts it
+function introSurface(g,W,H,t){const C=[G.coreX+1.5,G.coreY+1.5],[gx,gy,gz]=introGameCam(),k=ism(51,INTRO_HAND,t);
+  if(INTRO.mode==='first'||INTRO.mode==='replay'){cam.z=ilerp(1.75,gz,k);const x=ilerp(C[0],gx,k),y=ilerp(C[1],gy,k);centerOn(x,y);}
+  const cx=(C[0]*T-cam.x)*cam.z,cy=(C[1]*T-cam.y)*cam.z,z=cam.z,vx=cam.x/T+W/cam.z/T/2,vy=cam.y/T+H/cam.z/T/2;
+  // the ground over everything, with the opening cut out of it (soft edged)
+  const cover=1-ism(55.4,INTRO_HAND+.4,t);
+  if(cover>0){g.save();introGround(g,W,H,vx,vy,z,cover);g.globalCompositeOperation='destination-out';const r=ilerp(.2,9.5,ism(51,56.2,t))*T*z;
+    const m=g.createRadialGradient(cx,cy,r*.55,cx,cy,r);m.addColorStop(0,'rgba(0,0,0,1)');m.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=m;g.fillRect(0,0,W,H);g.restore();
+    // soil pushed aside at the edge of the opening
+    const rr=r*.8;for(let q=0;q<(INTRO.low?40:110);q++){const a=hash(q,1,58)*6.283,d=rr*(.85+hash(q,2,58)*.35)*(1+ism(51,56,t)*.08),s=(1+hash(q,3,58)*2.5)*z;
+      g.fillStyle=`rgba(${70+hash(q,4,58)*40|0},${50+hash(q,5,58)*30|0},34,${.55*cover})`;g.fillRect(cx+Math.cos(a)*d,cy+Math.sin(a)*d,s,s);}}
+  // a soft living light as the Bloom opens
+  const gl=ism(51,53.5,t)*(1-ism(55.5,INTRO_HAND+1,t));if(gl>0){g.save();g.globalCompositeOperation='lighter';const R=5*T*z,m=g.createRadialGradient(cx,cy,0,cx,cy,R);
+    m.addColorStop(0,`rgba(150,110,220,${.28*gl*(.8+.2*Math.sin(t*1.4))})`);m.addColorStop(1,'rgba(150,110,220,0)');g.fillStyle=m;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();}
+  // from below ground to above: the last of the soil scene fades off
+  const up=1-ism(50.4,52.2,t);if(up>0){g.fillStyle=`rgba(20,14,10,${up})`;g.fillRect(0,0,W,H);}}
+// captions: the title cards, radio lines with who is speaking, and the hive's instincts (single words, never a voice of its own)
+function introText(t){let cap='',rad=null,tit=null;for(const L of INTRO_LINES){if(t<L[0]||t>L[1])continue;if(L[2]==='inst')cap=L[4];else if(L[2]==='radio')rad=L;else tit=L;}
+  const set=(id,on,fill)=>{const el=$(id);if(on&&el.dataset.k!==on){el.dataset.k=on;fill(el);}el.classList.toggle('on',!!on);};
+  set('introCap',cap,el=>{el.textContent=cap;});
+  set('introRadio',rad&&rad[4],el=>{el.querySelector('.lbl').textContent='RADIO · '+rad[3];el.querySelector('.txt').textContent=rad[4];});
+  set('introTitle',tit&&tit[3],el=>{el.querySelector('b').textContent=tit[3];el.querySelector('span').textContent=tit[4];});}
+// for tests and screenshots: show the intro at a given moment, with its clock held there
+function introSeek(t){INTRO.t=t;INTRO.hold=true;introDraw(t);}
+
 // ---------- loop ----------
 let last=performance.now(),acc=0,frame=0;
 // F3: frame rate readout, and which renderer draws the Rootweb
@@ -5779,7 +6049,7 @@ function loop(now){
     if(keys.has('w')||keys.has('arrowup'))py-=1;if(keys.has('s')||keys.has('arrowdown'))py+=1;
     if((px||py)&&!CINE.lock){cineUser();cam.x+=px*sp;cam.y+=py*sp;clampCam();}
     autosaveTick(dt);storyFrame();if(!G.paused&&!G.over)radioTick(dt);if(!G.paused&&!G.over&&!DLG.open){acc+=dt*G.speed;let n=0;while(acc>=STEP&&n<20){step(STEP);acc-=STEP;n++;}if(n>=20)acc=0;}
-    render();
+    if(!(INTRO.on&&INTRO.opaque))render();
     if(frame%3===0)renderMini();
     if(frame%8===0)updateHUD();
   }else render();

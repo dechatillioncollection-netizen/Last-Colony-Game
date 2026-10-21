@@ -3,6 +3,8 @@ const {chromium}=require(process.env.PW||'playwright');
  p.on('pageerror',e=>errs.push(e.message+' '+(e.stack||'').split('\n')[1]));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
  await p.goto('file://'+process.cwd()+'/index.html');await p.waitForTimeout(500);
  await p.click('#m-campaign');await p.waitForTimeout(800);await p.click('#launch');await p.waitForTimeout(900);
+  // v48: a new campaign opens with the intro; skip it (Escape) to reach Landfall
+  if(await p.evaluate(()=>typeof INTRO!=='undefined'&&INTRO.on)){await p.keyboard.press('Escape');await p.waitForTimeout(700);}
  await p.screenshot({path:'s_intro1.png'});
  const st=()=>p.evaluate(()=>{const G=window.__game();return {s:G.story&&G.story.s,k:G.story&&G.story.k,dlg:DLG.open,time:+G.time.toFixed(1),cd:+G.countdown.toFixed(1),wave:G.wave};});
  console.log('at start',JSON.stringify(await st()));

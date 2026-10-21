@@ -135,6 +135,8 @@ let pass=0,fail=0;const ok=(c,m,d)=>{if(c){pass++;console.log('PASS',m,d!==undef
  // ---- campaign: the event camera and the Mission 1 patrol
  const fc=async(f)=>{const p=await open(f,{clear:true});
    await p.click('#m-campaign');await p.waitForTimeout(800);await p.click('#launch');await p.waitForTimeout(900);
+  // v48: a new campaign opens with the intro; skip it (Escape) to reach Landfall
+  if(await p.evaluate(()=>typeof INTRO!=='undefined'&&INTRO.on)){await p.keyboard.press('Escape');await p.waitForTimeout(700);}
    for(let k=0;k<60&&await p.evaluate(()=>DLG.open);k++){await p.keyboard.press('Space');await p.waitForTimeout(40);}
    const pre=await p.evaluate(()=>{const G=window.__game();G.webFree=true;window.__seq=[];const ns=nextSeq;nextSeq=function(){const k=DLG.queue[0];if(k)__seq.push(k);return ns.apply(this,arguments);};
      for(let r=5;r<12;r++){if(tryPlace('duo',G.core.x+r,G.core.y-2,0,true))break;}for(const b of G.blocks.values())if(b.t==='duo'){b.built=1;b.bt=0;}

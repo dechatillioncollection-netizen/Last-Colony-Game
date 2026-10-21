@@ -4,9 +4,9 @@ Every sound in Last Colony is original. None is sampled or licensed from anyone:
 
 | Path | Contents |
 | --- | --- |
-| `sounds.js` | all 164 sounds as MP3 (mono, 44.1 kHz), base64 inside one script that sets `window.LC_SOUNDS`. The game loads it after the player's first click or key press. It is a script rather than a folder of MP3s because the Windows app opens the game from disk (`file://`), where a page can't fetch files but can load a script. |
+| `sounds.js` | all 174 sounds as MP3 (mono, 44.1 kHz), base64 inside one script that sets `window.LC_SOUNDS`. The game loads it after the player's first click or key press. It is a script rather than a folder of MP3s because the Windows app opens the game from disk (`file://`), where a page can't fetch files but can load a script. |
 | `source/dsp.js` | the synthesis toolkit: noise colours, filters, envelopes, resonator banks for metal, bubbles for wet sounds, stick-slip creaks, grains, a small reverb, and seamless loop crossfades |
-| `source/sounds.js` | one recipe per sound (81 recipes, several with 2 to 4 variations). Since v47 every combat shot and impact is built from noise (transients, noise bodies, fast-falling thuds, dense inharmonic metal clusters), never from pitched modes or bubbles |
+| `source/sounds.js` | one recipe per sound (88 recipes, several with 2 to 4 variations). Since v47 every combat shot and impact is built from noise (transients, noise bodies, fast-falling thuds, dense inharmonic metal clusters), never from pitched modes or bubbles. The seven `intro_` recipes (v48) are the opening cinematic's orbit hum, radio static, underground bed, distant drill resonance, tissue pulse, soil and Bloom opening |
 | `source/tonal.js` | measures how pitched a sound is (strongest narrow spectral peak against its surroundings, in dB) |
 | `source/tonalcheck.js` | fails if any combat sound peaks above 22 dB, so nothing rings as a note: `node tonalcheck.js out/wav` |
 | `source/make.js` | renders every recipe to WAV, levels it and encodes MP3 with ffmpeg; writes `manifest.json` |

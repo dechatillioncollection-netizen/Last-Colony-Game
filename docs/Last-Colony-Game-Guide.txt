@@ -1,7 +1,7 @@
 Last Colony: Game Guide
 =======================
 
-October 19, 2026
+October 21, 2026
 
 Game overview
 
@@ -159,6 +159,8 @@ Campaign synopsis
 The campaign is five sectors on the planet Nereth, played in order from a spinning globe. It traces first contact through to the fall of the last human colony. In Missions 1 to 3 each side only talks to itself, and the Seed Cluster speaks to the humans directly for the first time in Mission 5.
 
 How the campaign works: each captured sector keeps producing resources into a shared global stock. Evolutions are paid from that stock and kept for every later sector. You can return to a captured sector with your base still running, for example to mine titanium once you have Deep Roots.
+
+The opening: the first time you launch Landfall in a new campaign, a short intro of about a minute plays first. It goes from Nereth in orbit to the meadow where a survey crew is at work, then down into the soil where something old is stirring, and ends where Landfall begins. Press Skip, Esc or Enter to skip it at any point; the mission starts the same way either way. It plays only once per campaign, and never for a campaign you started before it was added or when you load a save. To watch it again, press Replay intro on the planet screen. This does not change your campaign and puts you back on the planet screen afterwards.
 
 Rootweb in the campaign: every sector has a fixed map. The Bloom's own Rootweb only grows within its reach (11 tiles in Landfall, up to 18 in The Last Colony), which always covers the copper, lead and sand you need first. Plant Rootweb Nodes to carry the Rootweb further, toward the bigger coal and titanium fields. With a build tool selected, a dashed ring shows the Bloom's reach and each node's radius. Short radio messages from the HDF and remarks from the hive appear in the message feed as the waves go on; they never pause the game. Survival and Base Siege have no reach limit.
 
