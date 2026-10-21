@@ -1,0 +1,39 @@
+"AppBuild"
+{
+	// Replace 1000000 with your Steam App ID and 1000001-1000003 with your depot IDs (Steamworks > App Admin > SteamPipe > Depots)
+	"AppID" "1000000"
+	"Desc" "Last Colony desktop build"
+	"ContentRoot" "../out/"
+	"BuildOutput" "./output/"
+	// "SetLive" "beta"   // uncomment to put each upload straight on a beta branch
+	"Depots"
+	{
+		"1000001" // Windows
+		{
+			"FileMapping"
+			{
+				"LocalPath" "Last Colony-win32-x64/*"
+				"DepotPath" "."
+				"recursive" "1"
+			}
+		}
+		"1000002" // Linux and Steam Deck
+		{
+			"FileMapping"
+			{
+				"LocalPath" "Last Colony-linux-x64/*"
+				"DepotPath" "."
+				"recursive" "1"
+			}
+		}
+		"1000003" // macOS (the Intel build runs on every Mac; Apple silicon runs it through Rosetta)
+		{
+			"FileMapping"
+			{
+				"LocalPath" "Last Colony-darwin-x64/*"
+				"DepotPath" "."
+				"recursive" "1"
+			}
+		}
+	}
+}

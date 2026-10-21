@@ -1,1 +1,11 @@
-{ "name": "last-colony", "productName": "Last Colony", "version": "0.2.0", "main": "main.js" }
+{
+  "name": "last-colony",
+  "productName": "Last Colony",
+  "version": "0.5.0",
+  "description": "Last Colony",
+  "main": "main.js",
+  "private": true,
+  "optionalDependencies": {
+    "steamworks.js": "0.4.0"
+  }
+}

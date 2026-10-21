@@ -1,13 +1,49 @@
 #!/usr/bin/env bash
-# Builds the Windows desktop version into electron/out/LastColony-Windows.zip.
-# Needs Node and npx; electron-packager is fetched on first use.
+# Builds the desktop app as plain folders (what Steam and itch.io upload) and a zip of each.
+#   ./build.sh                 Windows, Linux and macOS (Intel and Apple silicon)
+#   ./build.sh win linux       only those
+# Output: electron/out/Last Colony-<platform>-<arch>/ and electron/out/LastColony-<Platform>.zip
+# Needs Node 18+ and npm. electron-packager and the Electron runtime are fetched on first use.
+# steamworks.js (Steam overlay and achievements) is bundled; the game runs the same without Steam.
 set -euo pipefail
 cd "$(dirname "$0")"
+ELECTRON=33.2.1
+targets=("$@"); [ ${#targets[@]} -eq 0 ] && targets=(win linux mac)
+
 rm -rf app && mkdir app
-cp main.js package.json app/
+cp main.js preload.js package.json app/
+cp icons/icon.png app/
 cp ../index.html app/
 cp -r ../art app/art && rm -rf app/art/source
 mkdir -p app/audio && cp ../audio/sounds.js app/audio/
-npx --yes electron-packager app "Last Colony" --platform=win32 --arch=x64 --electron-version=33.2.1 --out=out --overwrite
-cd out && rm -f LastColony-Windows.zip && zip -qr LastColony-Windows.zip "Last Colony-win32-x64"
-echo "built electron/out/LastColony-Windows.zip"
+(cd app && npm install --omit=dev --no-audit --no-fund --no-package-lock >/dev/null)
+
+mkdir -p out
+pack() { # platform arch
+  npx --yes @electron/packager@20.3.0 app "Last Colony" --platform="$1" --arch="$2" --electron-version=$ELECTRON \
+    --icon=icons/icon --out=out --overwrite --no-asar --app-copyright="Last Colony" \
+    --win32metadata.ProductName="Last Colony" --win32metadata.FileDescription="Last Colony" \
+    --app-bundle-id=com.lastcolony.game --app-category-type=public.app-category.strategy-games >/dev/null
+  local dir="out/Last Colony-$1-$2" sw
+  sw="$dir/resources/app/node_modules/steamworks.js/dist"
+  [ "$1" = darwin ] && sw="$dir/Last Colony.app/Contents/Resources/app/node_modules/steamworks.js/dist"
+  # keep only this platform's Steam library
+  case "$1" in
+    win32) rm -rf "$sw/linux64" "$sw/osx" "$sw/win64/steam_api64.lib" ;;
+    linux) rm -rf "$sw/win64" "$sw/osx" ;;
+    darwin) rm -rf "$sw/win64" "$sw/linux64"; [ "$2" = x64 ] && rm -f "$sw/osx/steamworksjs.darwin-arm64.node"; [ "$2" = arm64 ] && rm -f "$sw/osx/steamworksjs.darwin-x64.node" ;;
+  esac
+  echo "built $dir"
+}
+zipit() { # folder zipname
+  (cd out && rm -f "$2" && zip -qry "$2" "$1") && echo "zipped out/$2"
+}
+for t in "${targets[@]}"; do
+  case "$t" in
+    win)   pack win32 x64;   zipit "Last Colony-win32-x64" LastColony-Windows.zip ;;
+    linux) pack linux x64;   zipit "Last Colony-linux-x64" LastColony-Linux.zip ;;
+    mac)   pack darwin x64;  zipit "Last Colony-darwin-x64" LastColony-macOS-Intel.zip
+           pack darwin arm64; zipit "Last Colony-darwin-arm64" LastColony-macOS-AppleSilicon.zip ;;
+    *) echo "unknown target $t (use win, linux or mac)"; exit 1 ;;
+  esac
+done

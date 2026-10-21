@@ -109,7 +109,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .scard{background:var(--slate);border:1px solid var(--edge);padding:16px 18px;max-width:420px;width:100%}
 .scard h2{margin:0 0 12px;font-family:var(--f-display);font-weight:400;font-size:18px;color:var(--amber)}
 .qlbl{color:var(--text);font-weight:600;font-size:14px;margin-bottom:6px}
-.qbar{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--edge);margin-bottom:8px}
+.qbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));border:1px solid var(--edge);margin-bottom:8px}
 .qbar button{border:0;border-right:1px solid var(--edge);border-radius:0;padding:8px 4px;background:var(--slate-2);color:var(--muted);font-size:14px}
 .qbar button:last-child{border-right:0}
 .qbar button.on{background:var(--amber-dim);color:var(--text);font-weight:600}
@@ -243,8 +243,10 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
 </div>
 <div id="settings" hidden><div class="scard"><h2>SETTINGS</h2>
   <div class="qlbl">Graphics quality</div>
-  <div class="qbar" role="radiogroup" aria-label="Graphics quality"><button data-q="low" role="radio">Low</button><button data-q="medium" role="radio">Medium</button><button data-q="high" role="radio">High</button><button data-q="epic" role="radio">Epic</button></div>
+  <div class="qbar" role="radiogroup" aria-label="Graphics quality"><button data-q="low" role="radio">Low</button><button data-q="medium" role="radio">Medium</button><button data-q="high" role="radio">High</button><button data-q="epic" role="radio">Epic</button><button data-q="ultra" role="radio" class="dsk" hidden>Ultra</button></div>
   <p id="qdesc" class="qdesc"></p><p id="qgpu" class="qdesc qnote"></p>
+  <label class="opt dsk" hidden><input type="checkbox" id="optSteady"><span><b>Steady frame rate</b><br>If frames start to slow, the drawing resolution drops (never below 75% of your screen’s) and comes back when there is room again. Nothing else changes.</span></label>
+  <label class="opt dsk" hidden><input type="checkbox" id="optFull"><span><b>Full screen</b><br>F11 or Alt+Enter also switch it.</span></label>
   <label class="opt"><input type="checkbox" id="optFog"><span><b>Fog of war</b><br>Ground you have never seen stays black, and enemies are only visible near your growths, Rootweb and ants.</span></label>
   <div class="qlbl">Audio</div>
   <div class="vrow"><label for="vol_m">Master volume</label><input type="range" id="vol_m" min="0" max="100" step="1"><output id="volv_m" for="vol_m">80%</output></div>
@@ -261,7 +263,7 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
   <div id="pwrap"><canvas id="pcv"></canvas><div id="pcard"></div></div>
 </div>
 <div id="saves" hidden><div class="scard"><h2>SAVES</h2><p id="saveWhere" class="lbl"></p><div id="slotList"></div>
-  <div class="acts"><button id="expBtn" title="Download this game and your campaign progress as a file">Export to file</button><button id="impBtn" title="Load a save file exported from the web version or the Windows app">Import file</button><input type="file" id="impFile" accept=".json,application/json" hidden></div>
+  <div class="acts"><button id="expBtn" title="Download this game and your campaign progress as a file">Export to file</button><button id="impBtn" title="Load a save file exported from the web version or the desktop app">Import file</button><input type="file" id="impFile" accept=".json,application/json" hidden></div>
   <div class="acts"><button id="quitBtn">Exit to main menu</button><button id="savesClose">Close</button></div></div></div>
 <div id="tut" hidden><span id="tutStep"></span><b id="tutTitle"></b><p id="tutLead" hidden></p><p id="tutText"></p><p id="tutInfo"></p><p id="tutHint" hidden></p><div id="tutActs"></div><details id="tutKeys"><summary>Controls</summary><ul class="keys"><li><kbd>WASD</kbd>, arrow keys or middle-drag: move the camera. On touch, drag with one finger when no growth is chosen</li><li>Mouse wheel: zoom (with no Vine chosen). <kbd>H</kbd>: back to the Bloom. Click the minimap to jump there</li><li>Left-click: place or select. Drag a Vine to lay a route; with nothing chosen, drag a box to select ants</li><li><kbd>Ctrl</kbd> while dragging a Vine: a diagonal, staircase route</li><li><kbd>R</kbd> or the mouse wheel: rotate the planned Vine (<kbd>Shift</kbd>+<kbd>R</kbd> turns it back)</li><li><kbd>Esc</kbd>: cancel a drag, put the growth away, or clear the selection</li><li>Right-click, or <kbd>X</kbd> and drag: reabsorb growths. <kbd>Delete</kbd> reabsorbs the selected one</li><li><kbd>Alt</kbd> (hold): show the ground you can grow on</li><li><kbd>Q</kbd>: copy the growth under the pointer. <kbd>1</kbd> to <kbd>0</kbd>: quick picks (1 Vine, 4 Root Tap, 5 Thorn Spitter)</li><li><kbd>C</kbd> or the Swarm button: switch every ant between Defend and Attack</li><li><kbd>T</kbd>: evolution. <kbd>Space</kbd>: pause. The 1×, 2× and 4× buttons set the speed</li></ul></details><div class="tbar"><i id="tutBar"></i></div></div>
 <div id="commbg" hidden><div id="comm">
@@ -284,8 +286,9 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
       <button class="mode" id="m-campaign"><b>CAMPAIGN</b><span>Five hand-made sectors on the planet Nereth. Each one you capture feeds your global stock, which pays for evolution.</span></button>
       <button class="mode" id="m-survival"><b>SURVIVAL</b><span>Hold your Bloom against 25 waves of colony war machines dropped into the red zone. Every growth starts evolved.</span></button>
       <button class="mode" id="m-siege"><b>BASE SIEGE</b><span>The last human colony sits across the map. Its drills and belts feed its turrets and pay for its machines, just like your vines feed you. Cut its supply, hatch a swarm and destroy its core. Every growth starts evolved.</span></button>
-      <button class="mode" id="m-load"><b>LOAD GAME</b><span>Continue a saved game, or import a save file from the web version or the Windows app.</span></button>
+      <button class="mode" id="m-load"><b>LOAD GAME</b><span>Continue a saved game, or import a save file from the web version or the desktop app.</span></button>
       <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics, fog of war and sound.</span></button>
+      <button class="mode" id="m-quit" hidden><b>QUIT</b><span>Close Last Colony.</span></button>
     </div>
     <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> or the wheel rotates a Vine before you place it (during a drag: a straight line turns whole; a line with corners keeps them and turns its end, or reverses) &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms (with no Vine chosen) &middot; <kbd>Space</kbd> pause.</p>
   </div>
@@ -749,10 +752,14 @@ function stepWeb(dt){
 const QUALITY={low:{hd:0,hq:0,art:0,gl:0,dpr:1},medium:{hd:1,hq:0,art:1,gl:0,dpr:1},high:{hd:1,hq:0,art:1,gl:1,dpr:1.5},epic:{hd:1,hq:1,art:1,gl:1,dpr:2}};
 // the Windows desktop app runs inside Electron: there every preset draws the ground and Rootweb on the graphics card
 const APP=/\bElectron\//.test(navigator.userAgent);if(APP){QUALITY.low.gl=1;QUALITY.medium.gl=1;}
+// v50: the desktop app adds Ultra: everything in Epic, drawn at up to twice the screen's resolution (supersampled), with denser drifting dust
+const DESK=!!window.lcDesktop;if(DESK)QUALITY.ultra={hd:1,hq:1,art:1,gl:1,dpr:2,ss:2};
+const DYN={on:true,cur:0,max:1,min:.75,ema:0,work:0,period:16.7,iv:[],tick:0,lastUp:0,lastDown:0,wait:8000};   // the steady-frame-rate guard (see dynFrame)
+try{DYN.on=localStorage.getItem('lc_steady')!=='0';}catch(e){}
 const SET={hd:true,hq:true,fog:true,art:true,gl:true,q:'high',dpr:1.5};try{SET.art=localStorage.getItem('lc_art')!=='0';SET.gl=localStorage.getItem('lc_gl')!=='0';SET.hd=localStorage.getItem('lc_hd')!=='0';SET.hq=localStorage.getItem('lc_hq')!=='0';SET.fog=localStorage.getItem('lc_fog')!=='0';
   // the stored preset; before presets existed, work it out from the switches; a first-time player starts on High
   const q=localStorage.getItem('lc_quality');
-  if(QUALITY[q])SET.q=q;else if(localStorage.getItem('lc_hd')===null){SET.q='high';const Q=QUALITY.high;SET.hd=!!Q.hd;SET.hq=!!Q.hq;SET.art=!!Q.art;if(localStorage.getItem('lc_gl')===null)SET.gl=!!Q.gl;}
+  if(q==='ultra'&&!QUALITY.ultra)SET.q='epic';else if(QUALITY[q])SET.q=q;else if(localStorage.getItem('lc_hd')===null){SET.q='high';const Q=QUALITY.high;SET.hd=!!Q.hd;SET.hq=!!Q.hq;SET.art=!!Q.art;if(localStorage.getItem('lc_gl')===null)SET.gl=!!Q.gl;}
   else SET.q=!SET.hd?'low':!SET.art||!SET.gl?'medium':SET.hq?'epic':'high';
   SET.dpr=QUALITY[SET.q].dpr;}catch(e){}
 if(APP){SET.gl=true;try{if(localStorage.getItem('lc_gl')==='0')localStorage.setItem('lc_gl','1');}catch(e){}}
@@ -2087,7 +2094,11 @@ function endGame(win){
 // ---------- camera & input ----------
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const cam={x:0,y:0,z:1};let VW=0,VH=0,DPR=1;
-function resize(){DPR=Math.min(SET.dpr||2,window.devicePixelRatio||1);VW=cv.clientWidth;VH=cv.clientHeight;cv.width=VW*DPR;cv.height=VH*DPR;}
+function resize(){VW=cv.clientWidth;VH=cv.clientHeight;const base=window.devicePixelRatio||1;
+  if(DESK){const Q=QUALITY[SET.q]||{},cap=Math.sqrt(12.5e6/Math.max(1,VW*VH));   // never more than about 12.5 million pixels
+    DYN.max=Math.max(base*.5,Math.min(Q.ss?Q.ss*base:Math.min(SET.dpr||2,base),cap));DYN.min=Math.min(DYN.max,base)*.75;   // as low as 75% of the screen resolution, whatever the preset
+    DPR=DYN.on?clamp(DYN.cur||DYN.max,DYN.min,DYN.max):DYN.max;DYN.cur=DPR;cv.width=Math.round(VW*DPR);cv.height=Math.round(VH*DPR);}
+  else{DPR=Math.min(SET.dpr||2,base);cv.width=VW*DPR;cv.height=VH*DPR;}}
 window.addEventListener('resize',resize);resize();
 function centerOn(tx,ty){cam.x=tx*T-VW/2/cam.z;cam.y=ty*T-VH/2/cam.z;clampCam();}
 function clampCam(){const mw=MW*T,mh=MH*T,vw=VW/cam.z,vh=VH/cam.z;cam.x=clamp(cam.x,-vw*.3,mw-vw*.7);cam.y=clamp(cam.y,-vh*.3,mh-vh*.7);}
@@ -2865,7 +2876,7 @@ function drawHQWorld(tx0,ty0,tx1,ty1){const rt=performance.now()/1000,c=ctx;if(b
     // occasional ripple rings
     if(h<.12){const ph=(rt*.33+h2*9)%1;c.globalAlpha=(1-ph)*.4;c.strokeStyle='rgb(170,215,230)';c.lineWidth=1;c.beginPath();c.ellipse((x+.5)*T,(y+.5)*T,2+ph*T*.55,(2+ph*T*.55)*.6,0,0,7);c.stroke();}}
   c.restore();}
-function drawDust(){const now=performance.now()/1000,dt=Math.min(.1,now-(dustT||now));dustT=now;const n=Math.round(VW*VH/16000);
+function drawDust(){const now=performance.now()/1000,dt=Math.min(.1,now-(dustT||now));dustT=now;const n=Math.round(VW*VH/(SET.q==='ultra'?9000:16000));
   if(!dust||dust.length!==n){dust=Array.from({length:n},()=>({x:Math.random(),y:Math.random(),d:.3+Math.random()*.9,s:1+Math.random()*3,p:Math.random()*7}));}
   const c=ctx;c.save();c.imageSmoothingEnabled=true;c.globalCompositeOperation='lighter';
   for(const m of dust){m.x+=(.006+Math.sin(now*.3+m.p)*.004)*m.d*dt;m.y+=(Math.cos(now*.23+m.p*1.7)*.004+.0015)*m.d*dt;
@@ -4682,19 +4693,24 @@ function buildMissionMap(m){
 // ---------- Storage: your claude.ai account when the page runs there, this browser otherwise ----------
 const Store={mode:'local',db:null,uid:null,ready:null,
   init(){if(this.ready)return this.ready;
-    this.ready=(async()=>{try{if(window.claude&&typeof claude.use==='function'){const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
+    this.ready=(async()=>{if(window.lcDesktop&&lcDesktop.saves){this.mode='files';return this.mode;}try{if(window.claude&&typeof claude.use==='function'){const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
       if(db&&user){const id=await user.id();if(id){this.db=db;this.uid=id;this.mode='cloud';}}}}catch(e){}return this.mode;})();return this.ready;},
   ref(k){return this.db.collection('data/users/'+this.uid).doc(k);},
   async get(k){if(this.mode==='cloud'){try{const meta=await this.ref(k).get();if(!meta.exists)return null;const d=meta.data();
       if(!d.n)return d.s||null;let s='';for(let c=0;c<d.n;c++){const p=await this.ref(k+'~'+c).get();if(!p.exists)return null;s+=p.data().s;}return s;}catch(e){return null;}}
+    if(this.mode==='files'){try{const v=await lcDesktop.saves.get(k);if(v!=null)return v;
+      // the first run of a build with file saves: bring over what the older app kept in its browser storage
+      const l=localStorage.getItem('lc_'+k);if(l!=null){await lcDesktop.saves.set(k,l);return l;}return null;}catch(e){return null;}}
     try{return localStorage.getItem('lc_'+k);}catch(e){return null;}},
   async set(k,v){if(this.mode==='cloud'){try{const CH=200000;if(v.length<=CH){await this.ref(k).set({s:v});}
       else{const n=Math.ceil(v.length/CH);for(let c=0;c<n;c++)await this.ref(k+'~'+c).set({s:v.slice(c*CH,(c+1)*CH)});await this.ref(k).set({n});}return true;}
       catch(e){this.mode='local';msg('Could not save to your account here, saving in this browser instead.','alert');}}
+    if(this.mode==='files'){try{await lcDesktop.saves.set(k,v);try{localStorage.removeItem('lc_'+k);}catch(_){}return true;}catch(e){msg('Could not write the save file. Use Export to file instead.','alert');return false;}}
     try{localStorage.setItem('lc_'+k,v);return true;}catch(e){msg('This browser would not store the save. Use Export to file instead.','alert');return false;}},
   async del(k){if(this.mode==='cloud'){try{const r=await this.ref(k).get();const n=r.exists&&r.data().n||0;for(let c=0;c<n;c++)await this.ref(k+'~'+c).delete();await this.ref(k).delete();}catch(e){}return;}
+    if(this.mode==='files'){try{await lcDesktop.saves.del(k);}catch(e){}}
     try{localStorage.removeItem('lc_'+k);}catch(e){}},
-  where(){return this.mode==='cloud'?'Saves are kept in your claude.ai account, so they follow you to any device.':'Saves are kept in this browser. Use Export to move one to another device or to the web version.';}
+  where(){if(this.mode==='files')return 'Saves are kept as files in your user folder (Steam Cloud keeps them in step between computers). Use Export to move one to the web version.';return this.mode==='cloud'?'Saves are kept in your claude.ai account, so they follow you to any device.':'Saves are kept in this browser. Use Export to move one to another device or to the web version.';}
 };
 
 // ---------- Campaign progress and the global stock ----------
@@ -4857,6 +4873,7 @@ function captureSector(){
   const m=MIS[G.mission];campTick();
   const old=CAMP.captured[m.id],rates=sectorRates(m,old&&old.rates);
   CAMP.captured[m.id]={rates,time:Math.round(G.time),when:Date.now()};
+  try{if(window.lcDesktop){lcDesktop.achieve('CAPTURE_'+m.id.toUpperCase());if(MISSIONS.every(x=>CAMP.captured[x.id]))lcDesktop.achieve('ALL_SECTORS');}}catch(e){}
   const sent=sendSpare(m);saveCamp();
   // the sim may still be mid-step when the last core falls, so clear the battlefield right after it
   queueMicrotask(()=>{if(G&&G.mission===m.id){makeHeld();saveSector();}});
@@ -4893,7 +4910,7 @@ function missionEndCard(win){
 }
 
 // ---------- Saving and loading ----------
-// A save is the whole game state as JSON, gzipped and base64'd. The same file loads in the web version and the Windows app.
+// A save is the whole game state as JSON, gzipped and base64'd. The same file loads in the web version and the desktop app.
 const SAVE_SKIP={selU:1,selUs:1,flow:1,flowNext:1,pflow:1,pflowNext:1,vis:1,webCov:1,webSig:1,recede:1,fx:1,sel:1,tool:1,dirty:1,paused:1,over:1,bgrid:1,core:1,ecores:1,blocks:1,enemies:1,units:1,bullets:1};
 const BLOCK_SKIP={prox:1,target:1,wlist:1,wr:1,wi:1,wacc:1,_t:1,_cv:1,_cvk:1,_st:1,_cm:1,_bd:1,_bt:1,_tg:1};
 const TA={Uint8Array,Int8Array,Int16Array,Int32Array,Float32Array,Float64Array,Uint32Array};
@@ -6100,11 +6117,17 @@ function introSeek(t){INTRO.t=t;INTRO.hold=true;introDraw(t);}
 
 // ---------- loop ----------
 let last=performance.now(),acc=0,frame=0;
+function dynFrame(dt,work,now){if(!DESK)return;if(dt>0&&dt<250){DYN.ema=DYN.ema?DYN.ema*.9+dt*.1:dt;DYN.work=DYN.work?DYN.work*.9+work*.1:work;
+    if(DYN.iv.length<120){DYN.iv.push(dt);if(DYN.iv.length===120){const a=DYN.iv.slice().sort((x,y)=>x-y);DYN.period=clamp(a[12],1000/60,1000/48);}}}
+  // the target frame time: 60 frames a second, or the screen's own rate if it is slower (a 50 Hz television), judged from the quickest frames
+  if(!DYN.on||!G||G.paused||now-DYN.tick<1000)return;DYN.tick=now;const P=DYN.period;
+  if(DYN.ema>P*1.25&&DYN.cur>DYN.min+.01){DYN.cur=Math.max(DYN.min,DYN.cur*.85);if(now-DYN.lastUp<3000)DYN.wait=Math.min(60000,DYN.wait*2);DYN.lastDown=now;resize();}
+  else if(DYN.ema<P*1.1&&DYN.work<P*.45&&DYN.cur<DYN.max-.01&&now-DYN.lastDown>DYN.wait&&now-DYN.lastUp>3000){DYN.cur=Math.min(DYN.max,DYN.cur*1.12);DYN.lastUp=now;resize();}}
 // F3: frame rate readout, and which renderer draws the Rootweb
 const FPS={n:0,t:0};window.addEventListener('keydown',e=>{if(e.key==='F3'){e.preventDefault();const b=$('fpsBox');b.hidden=!b.hidden;}});
-function loop(now){
+function loop(now){const w0=performance.now(),rawDt=now-last;
   const dt=Math.min(.1,(now-last)/1000);last=now;
-  FPS.n++;FPS.t+=now-(FPS.l||now);FPS.l=now;if(FPS.t>=500){const b=$('fpsBox');if(!b.hidden)b.textContent=Math.round(FPS.n*1000/FPS.t)+' fps · Rootweb on '+(webGPU?'GPU':'2D canvas');FPS.n=0;FPS.t=0;}
+  FPS.n++;FPS.t+=now-(FPS.l||now);FPS.l=now;if(FPS.t>=500){const b=$('fpsBox');if(!b.hidden)b.textContent=Math.round(FPS.n*1000/FPS.t)+' fps · Rootweb on '+(webGPU?'GPU':'2D canvas')+(DESK?' · resolution '+Math.round(DPR/(window.devicePixelRatio||1)*100)+'%':'');FPS.n=0;FPS.t=0;}
   sndTick(dt);
   if(G){
     cineTick(dt);
@@ -6117,20 +6140,22 @@ function loop(now){
     if(frame%3===0)renderMini();
     if(frame%8===0)updateHUD();
   }else render();
-  frame++;requestAnimationFrame(loop);
+  frame++;dynFrame(rawDt,performance.now()-w0,now);requestAnimationFrame(loop);
 }
 function startGame(mode){
   $('overlay').hidden=true;$('tech').hidden=true;$('planet').hidden=true;newGame(mode||'survival');
   msg(G.mode==='siege'?'The colony is to the east. Every growth is already evolved: tap ore, run vines, spread Rootweb and grow a Brood Chamber.':'Put a Root Tap on copper ore and run a vine to your Bloom. Every growth is already evolved. First wave in 2 minutes.','good');
 }
 function bindModes(){$('m-survival').onclick=()=>startGame('survival');$('m-siege').onclick=()=>startGame('siege');
-  const c=$('m-campaign');if(c)c.onclick=()=>openPlanet();const l=$('m-load');if(l)l.onclick=()=>openSaves();const st=$('m-settings');if(st)st.onclick=()=>openSettings();}
+  const c=$('m-campaign');if(c)c.onclick=()=>openPlanet();const l=$('m-load');if(l)l.onclick=()=>openSaves();const st=$('m-settings');if(st)st.onclick=()=>openSettings();
+  const qb=$('m-quit');if(qb&&window.lcDesktop){qb.hidden=false;qb.onclick=()=>lcDesktop.quit();}}
 const MENU_HTML=$('ovcard').innerHTML;
 artLoad();bindModes();Store.init().then(()=>loadCamp());
 const QDESC={low:'The classic look: flat ground, the plain Rootweb and simple shapes. Fastest, for older computers.',
   medium:'HD ground with lit cliffs, deep water and ore crystals, soft shadows and glow, and the painted artwork and living Rootweb.',
   high:'Medium, with the ground and living Rootweb drawn by your graphics card: sharper up close, smoother growth, less work for the processor.',
-  epic:'High, plus shimmering, rippling water, drifting dust and full resolution on high-density screens.'};
+  epic:'High, plus shimmering, rippling water, drifting dust and full resolution on high-density screens.',
+  ultra:'Epic, drawn at up to twice your screen\u2019s resolution for the sharpest edges and artwork, with denser drifting dust. Steady frame rate (below) brings the resolution down whenever your computer needs it.'};
 if(APP){QDESC.low='The classic look: flat ground and simple shapes, with the ground and living Rootweb drawn by your graphics card. Fastest.';
   QDESC.medium='HD ground with lit cliffs, deep water and ore crystals, soft shadows and glow, and the painted artwork, all drawn with your graphics card.';
   QDESC.high='Medium, at a sharper resolution on high-density screens.';}
@@ -6140,7 +6165,7 @@ function applyQuality(q){const Q=QUALITY[q];if(!Q)return;const hd0=SET.hd,dpr0=S
   try{localStorage.setItem('lc_quality',q);localStorage.setItem('lc_hd',Q.hd?'1':'0');localStorage.setItem('lc_hq',Q.hq?'1':'0');localStorage.setItem('lc_art',Q.art?'1':'0');
     if(localStorage.getItem('lc_gl')!=='2')localStorage.setItem('lc_gl',Q.gl?'1':'0');}catch(_){}
   if(SET.gl&&!GLR.ok)GLR.tried=false;
-  if(dpr0!==SET.dpr)resize();
+  if(DESK){DYN.cur=0;DYN.wait=8000;resize();}else if(dpr0!==SET.dpr)resize();
   if(G){if(SET.hd&&!hd0)buildHDTerrain();GLR.terrDirty=true;repaintAllWeb();try{buildMenu();}catch(_){}}
   qualityUI();}
 function qualityUI(){for(const b of document.querySelectorAll('.qbar button')){const on=b.dataset.q===SET.q;b.classList.toggle('on',on);b.setAttribute('aria-checked',on?'true':'false');}
@@ -6149,12 +6174,15 @@ function qualityUI(){for(const b of document.querySelectorAll('.qbar button')){c
   else if(glOn())n.textContent='Your graphics card is drawing the ground and Rootweb.';
   else if(!(APP?webArtLoaded():webArtOn()))n.textContent='The graphics card takes over once the painted artwork has loaded.';
   else n.textContent='Your graphics card can\u2019t be used here ('+(GLR.why||'WebGL 2 unavailable')+'), so the processor draws the ground and Rootweb instead.';}
-function openSettings(){$('optFog').checked=SET.fog;qualityUI();audioUI();$('settings').hidden=false;snd('ui','ui_open');}
+function openSettings(){$('optFog').checked=SET.fog;if(DESK){$('optSteady').checked=DYN.on;try{lcDesktop.isFullScreen().then(f=>{$('optFull').checked=!!f;});}catch(e){}}qualityUI();audioUI();$('settings').hidden=false;snd('ui','ui_open');}
 for(const b of document.querySelectorAll('.qbar button'))b.onclick=()=>{const q=b.dataset.q;if(q===SET.q)return;
   // building the HD ground takes a moment: say so first
   if(QUALITY[q].hd&&!SET.hd&&G){msg('Building HD textures...');setTimeout(()=>applyQuality(q),30);}else applyQuality(q);};
 $('setBtn').onclick=openSettings;$('sgalBtn').onclick=()=>sgalOpen();
 $('sgal').onclick=e=>{if(e.target.id==='sgal')$('sgal').hidden=true;};
+if(DESK){for(const e of document.querySelectorAll('.dsk'))e.hidden=false;
+  $('optSteady').onchange=e=>{DYN.on=e.target.checked;DYN.cur=0;resize();try{localStorage.setItem('lc_steady',DYN.on?'1':'0');}catch(_){}};
+  $('optFull').onchange=e=>{try{lcDesktop.setFullScreen(e.target.checked);}catch(_){}};}
 $('optFog').onchange=e=>{SET.fog=e.target.checked;try{localStorage.setItem('lc_fog',SET.fog?'1':'0');}catch(_){}};
 $('setClose').onclick=()=>{$('settings').hidden=true;snd('ui','ui_close');};
 $('settings').onclick=e=>{if(e.target.id==='settings'){$('settings').hidden=true;snd('ui','ui_close');}};

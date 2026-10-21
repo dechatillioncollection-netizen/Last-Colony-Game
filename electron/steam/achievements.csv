@@ -1,0 +1,7 @@
+API name,Display name,Description,Hidden
+CAPTURE_LANDFALL,Landfall,Capture Landfall,0
+CAPTURE_EMBER,Ember Fields,Capture Ember Fields,0
+CAPTURE_KILO,Outpost Kilo,Capture Outpost Kilo,0
+CAPTURE_FROST,Frost Canyon,Capture Frost Canyon,0
+CAPTURE_LAST,The Last Colony,Capture The Last Colony,0
+ALL_SECTORS,Every Sector,Capture every sector in the campaign,0

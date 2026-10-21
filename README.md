@@ -26,7 +26,7 @@ Press F3 in game to see the frame rate and which renderer is drawing the Rootweb
 | `art/ART-GUIDE.md` | how the painted art is layered, animated and scaled |
 | `audio/` | the game's sounds (`sounds.js`, loaded after the first click) and the scripts that generate them, see `audio/README.md` |
 | `docs/` | story bible, campaign dialogue, game guide, campaign maps (`v34-campaign-maps.md`), test range layout, screenshots |
-| `electron/` | the Windows desktop build (`electron/build.sh` makes `LastColony-Windows.zip`) |
+| `electron/` | the desktop app for Steam, itch.io and direct download: Windows, Linux and macOS (`electron/build.sh`; see `docs/v50-desktop-steam.md`) |
 | `tests/` | Playwright tests and profilers, see `tests/README.md` |
 
 ## Notes

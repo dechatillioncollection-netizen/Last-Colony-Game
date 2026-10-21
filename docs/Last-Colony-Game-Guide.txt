@@ -226,3 +226,13 @@ Both modes start with every growth already evolved and their own starting stock 
 
 - Survival: a random 96×96 map. Hold your Bloom against 25 waves of HDF war machines that enter from a red zone. Waves grow from Scout Tanks to Rammer Drones, Interceptors, Flame Tanks, Bombers and Siege Tanks, with a boss every 10th wave.
 - Base Siege: a large mirrored map with a full HDF colony on the far side. The colony mines, builds and pays for every unit it sends, so cutting its drills and conveyors weakens its attacks. You win by destroying its core.
+
+The desktop app (Steam, itch.io and download)
+
+- The desktop app is the same game in its own window, for Windows, Linux (including Steam Deck) and macOS. It opens full screen the first time. F11 or Alt+Enter switches between full screen and a window, and Settings has a Full screen switch too. The app remembers which you chose and the window's size.
+- The main menu has a Quit button.
+- Saves are kept as files in the app's own folder, so Steam Cloud can carry them between computers. The first time the app needs a save, it brings over any save an older version kept, on its own.
+- Settings, then Graphics quality, has a fifth preset in the app: Ultra. It is everything in Epic, drawn at up to twice your screen's resolution for sharper edges and artwork, with denser drifting dust.
+- Steady frame rate (in Settings, on at first) keeps the game smooth. If frames start to slow, it lowers the drawing resolution a step at a time, never below 75% of your screen's, and raises it again slowly once there is room. Nothing else about the picture or the game changes. Turn it off to keep the chosen resolution whatever happens.
+- Press F3 to show the frame rate and the drawing resolution in use.
+- On Steam, capturing each sector unlocks an achievement, and capturing every sector unlocks one more. The Steam overlay (Shift+Tab) works in the game.
