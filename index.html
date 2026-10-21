@@ -135,6 +135,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #introSkip{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(var(--lb) + 14px);opacity:.75;font-size:13px}#introSkip:hover,#introSkip:focus-visible{opacity:1}
 @media (max-width:700px){#introRadio{bottom:calc(var(--lb) + 58px)}}@media (pointer:coarse) and (not (pointer:fine)){#introSkip kbd{display:none}}
 body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,body.intro-on #fpsBox{opacity:0;pointer-events:none}#top,#bottom,#msgs{transition:opacity .9s}
+#introTitle,#introRadio,#introCap{width:max-content;max-width:calc(100% - 32px);box-sizing:border-box}
+#introTitle{padding:18px 48px;background:radial-gradient(closest-side,rgba(0,0,0,.72),rgba(0,0,0,.45) 65%,rgba(0,0,0,0))}
+#introTitle b{font-size:clamp(28px,4vw,60px);color:#f4f0fb;text-shadow:0 0 2px #000,0 2px 18px rgba(0,0,0,.9)}#introTitle span{font-size:clamp(14px,1.3vw,20px);color:#e2dcee;text-shadow:0 0 2px #000,0 1px 10px #000}
+#introRadio{max-width:min(880px,calc(100% - 32px));padding:9px 18px 10px;background:rgba(8,8,12,.66);border-radius:6px;font-size:clamp(15px,1.25vw,22px);color:#f3f4f6;text-shadow:0 1px 3px #000}
+#introRadio .lbl{font-size:clamp(11px,.75vw,14px);color:#ecc76c}
+#introCap{padding:12px 40px;font-size:clamp(24px,2.4vw,42px);color:#efe6ff;text-shadow:0 0 3px #000,0 2px 14px rgba(0,0,0,.95),0 0 22px rgba(130,90,210,.4);background:radial-gradient(closest-side,rgba(0,0,0,.66),rgba(0,0,0,.4) 65%,rgba(0,0,0,0))}
 #planet{position:fixed;inset:0;z-index:7;background:radial-gradient(ellipse at 40% 50%,#1a1328 0%,#07060a 70%);display:flex;flex-direction:column}
 #pbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:8px 12px;background:#17131bf0;border-bottom:2px solid var(--edge);font-size:14px}
 #pbar h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:16px;color:var(--amber)}
@@ -5782,18 +5788,18 @@ function sgalOpen(){sndUnlock();let h='<h2>SOUND TEST</h2><p id="sgalNote" class
   el.querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{sndUnlock();for(let k=0;k<40;k++)setTimeout(()=>{const n=SGAL_CROWD[k%SGAL_CROWD.length];
     delete SND.cool[n];sndPlay(n,{vol:.5+.5*((k*7)%5)/4,pri:n.startsWith('metal_heavy')||n==='cannon'?3:2});},k*50);sgalNote();});}
 
-// ---------- v48: the intro cinematic ----------
-// ---------- v48: the intro cinematic ----------
-// About a minute, drawn live on its own canvas over the game: Nereth from orbit, the Landfall meadow with a survey truck on the track,
-// down through the soil to the dormant cluster, a resonance passing through the rock, the cluster stirring and the first Rootweb reaching,
-// then up to the surface where the first Bloom opens, and into the real Landfall camera. Every frame is a pure function of the clock (t,
+// ---------- v48/v49: the intro cinematic ----------
+// One unbroken awakening, about a minute, drawn live on its own canvas over the game. Nereth from orbit, down through the cloud to the
+// Landfall meadow where a survey crew is at work; the camera sinks into the ground at the Bloom's site and stays below with the dormant
+// cluster (dormant, disturbed, stirring, awakening) until it follows a root up to the surface, where each pulse below opens more of the
+// Rootweb above and the first Bloom emerges; then into the real Landfall camera (v49 timeline). Every frame is a pure function of the clock (t,
 // in seconds), so it plays the same each time and can be shown at any moment.
 // The mission is created underneath when the intro starts (that is where the meadow comes from) but it does not run: the game is paused,
 // its story waits, and nothing steps until the hand-off, which starts the Root-Link opening exactly as a normal launch would.
 // First play: Launch on Landfall in a new campaign. Replay: the Intro button on the planet screen, which never touches a mission in
 // progress (it is only offered when none is) and goes back to the planet afterwards. Skip: the button, Esc or Enter, at any moment.
-const INTRO={on:false,mode:null,t:0,last:0,raf:0,ending:false,cues:new Set(),beds:{},hold:false,low:false,soil:null,cloud:null,stars:null,sph:null,sphT:-1,tend:null,sacs:null,strands:null};
-const INTRO_END=61,INTRO_HAND=58;
+const INTRO={root:null,crew:null,pit:null,on:false,mode:null,t:0,last:0,raf:0,ending:false,cues:new Set(),beds:{},hold:false,low:false,soil:null,cloud:null,stars:null,sph:null,sphT:-1,tend:null,sacs:null,strands:null};
+const INTRO_END=60.4,INTRO_HAND=58.6;
 // the Bloom's opening frame at the hand-off: exactly where a normal launch puts the camera
 function introGameCam(){return [G.coreX+1.5+6,G.coreY+1.5,1];}
 // a campaign that existed before v48 never has the intro forced on it (only a brand new one does), and a finished tutorial counts as seen
@@ -5802,28 +5808,41 @@ const ism=(a,b,t)=>{const x=clamp((t-a)/(b-a),0,1);return x*x*(3-2*x);};
 const ilerp=(a,b,k)=>a+(b-a)*k;
 // what is said, and when: [from, to, kind, who, text]. Radio is the frontier going about its day; the hive's instincts are single words.
 const INTRO_LINES=[
-  [1.4,7.4,'title','NERETH','Human Frontier Territory'],
-  [10.2,13.8,'radio','SURVEY TWO','Control, Survey Two. Marker forty-one is in. Moving east along the track.'],
-  [14.2,17.6,'radio','FRONTIER CONTROL','Copy, Survey Two. Drill crew hit hard rock past the ridge. Expect some noise out your way.'],
-  [17.9,20.2,'radio','SURVEY TWO','Copy. Quiet out here otherwise.'],
-  [22.2,24.8,'inst','','Dark.'],[25.4,28,'inst','','Still.'],[28.8,31.6,'inst','','Pressure.'],
-  [35.2,37.8,'inst','','Movement.'],[40.2,42.8,'inst','','Reach.'],[44.6,47.4,'inst','','Hunger.'],
-  [52.6,56.4,'radio','SURVEY TWO','Control, Survey Two. Heading back to camp before dark.'],
-  [58.3,60.7,'title','MISSION 1','LANDFALL'],
+  [1.2,6.6,'title','NERETH','Human Frontier Territory'],
+  [9.4,12.9,'radio','SURVEY TWO','Control, Survey Two. Marker forty-one is in. Moving west along the track.'],
+  [13.4,17.2,'radio','FRONTIER CONTROL','Copy, Survey Two. Drill crew hit hard rock past the ridge. Expect some noise out your way.'],
+  [22.6,25.4,'inst','','Dark.'],[26.2,29,'inst','','Still.'],
+  [31,33.8,'inst','','Pressure.'],[36.4,39.2,'inst','','Movement.'],
+  [42.6,45.2,'inst','','Reach.'],[45.8,48.2,'inst','','Hunger.'],
+  [51,54.4,'radio','SURVEY TWO','Control, Survey Two. Heading back to camp before dark.'],
+  [54.8,58.6,'title','MISSION 1','LANDFALL'],
 ];
+// the organism's pulses: [time, strength]. One barely-there flicker while dormant, the first real response after the disturbance, then
+// a slow rhythm that quickens and strengthens as it wakes; after 50.4 each pulse opens more of the Rootweb at the surface
+const INTRO_PULSES=[[26.6,.12],[32.6,1],[36,.3],[38.8,.4],[40.6,.45],[41.8,.5],[42.9,.55],[43.9,.6],[44.8,.65],[45.6,.7],[46.4,.75],[47.2,.8],
+  [48,.85],[48.8,.9],[49.6,.95],[50.4,1],[51.3,1],[52.3,.9],[53.4,.75],[54.6,.6],[55.9,.45],[57.3,.3]];
+const INTRO_REVEAL=[50.4,51.3,52.3,53.4,54.6,55.9];
+function introPulse(t){let v=0;for(const [p,a] of INTRO_PULSES){const d=t-p;if(d<-.3||d>3)continue;v+=a*(d<0?ism(-.3,0,d):Math.exp(-d*2.2));}return Math.min(1.3,v);}
+// how awake it is, 0 to 1: dormant, disturbed (one reaction), stirring (channels pulse), awakening (tendrils, membranes), emergence
+function introAwake(t){return .12*ism(32.4,33.4,t)+.33*ism(40,44,t)+.35*ism(44,48,t)+.2*ism(48,51,t);}
 // sounds: [time, name, options]. Beds (b) fade in and out; everything goes through the game's mixer, so the sliders and Mute apply.
 const INTRO_CUES=[
-  [0,'bed','intro_orbit',{to:.85,fade:2.5}],[1.2,'sfx','intro_static',{vol:.25}],
-  [8.2,'bed','amb_meadow',{to:.7,fade:2}],[8.6,'bedoff','intro_orbit',{fade:2.2}],[9.4,'bed','eng_scout',{to:.18,fade:1.5}],
-  [10.1,'sfx','comm_radio',{vol:.6}],[10.2,'sfx','intro_static',{vol:.3}],[14.1,'sfx','comm_radio',{vol:.6}],[14.2,'sfx','intro_static',{vol:.3}],[17.8,'sfx','comm_radio',{vol:.5}],
-  [19.4,'bedoff','eng_scout',{fade:1.2}],[20,'bedoff','amb_meadow',{fade:1.6}],[20.2,'bed','intro_under',{to:.9,fade:2}],[20.6,'sfx','intro_soil',{vol:.35}],
-  [24,'sfx','intro_pulse',{vol:.45}],[30.2,'sfx','intro_pulse',{vol:.5}],
-  [32.4,'sfx','intro_drill',{vol:.85}],[34.6,'sfx','intro_soil',{vol:.4}],[36.2,'sfx','intro_pulse',{vol:.6}],
-  [38.4,'sfx','intro_drill',{vol:.7}],[39.4,'sfx','intro_pulse',{vol:.65}],[41.6,'sfx','web_creep',{vol:.9}],[42,'sfx','intro_pulse',{vol:.7}],[43.8,'sfx','web_creep',{vol:.9}],
-  [44.4,'sfx','intro_pulse',{vol:.75}],[46.4,'sfx','intro_pulse',{vol:.8}],[47.2,'sfx','web_creep',{vol:1}],
-  [48.4,'sfx','intro_soil',{vol:.6}],[49.6,'bed','amb_meadow',{to:.6,fade:2.5}],[50.6,'bedoff','intro_under',{fade:2.5}],[51,'sfx','intro_bloom',{vol:.9}],
-  [52.5,'sfx','comm_radio',{vol:.35}],[52.6,'sfx','intro_static',{vol:.18}],[55.6,'sfx','intro_pulse',{vol:.45}],
-  [58.4,'bedoff','amb_meadow',{fade:2.4}],
+  [0,'bed','intro_orbit',{to:.85,fade:2.5}],[1,'sfx','intro_static',{vol:.22}],
+  [7.6,'bed','amb_meadow',{to:.7,fade:2}],[8.2,'bedoff','intro_orbit',{fade:2.2}],[8.8,'bed','eng_scout',{to:.2,fade:1.5}],
+  [9.3,'sfx','comm_radio',{vol:.6}],[9.4,'sfx','intro_static',{vol:.3}],[13.3,'sfx','comm_radio',{vol:.6}],[13.4,'sfx','intro_static',{vol:.3}],
+  [15.4,'sfx','intro_drill',{vol:.2}],
+  [17.2,'bedoff','eng_scout',{fade:1.2}],[18,'bedoff','amb_meadow',{fade:1.8}],[18.2,'bed','intro_under',{to:.55,fade:2.5}],[18.8,'sfx','intro_soil',{vol:.3}],
+  [26.5,'sfx','intro_pulse',{vol:.16}],
+  [30.4,'sfx','intro_drill',{vol:.85}],[31.4,'sfx','intro_soil',{vol:.4}],[32.5,'sfx','intro_wake',{vol:1}],
+  [35.9,'sfx','intro_pulse',{vol:.35}],[37,'sfx','intro_drill',{vol:.5}],[38.7,'sfx','intro_pulse',{vol:.45}],
+  [40,'bed','intro_under',{to:.8,fade:4}],[40.2,'bed','intro_life',{to:.45,fade:6}],
+  [40.5,'sfx','intro_pulse',{vol:.5}],[42.8,'sfx','intro_pulse',{vol:.55}],[43.4,'sfx','web_creep',{vol:.8}],[44.7,'sfx','intro_pulse',{vol:.62}],
+  [45.4,'sfx','web_creep',{vol:.9}],[46.3,'sfx','intro_pulse',{vol:.7}],[46.6,'sfx','intro_rise',{vol:.8}],[47.9,'sfx','intro_pulse',{vol:.75}],
+  [48.6,'sfx','web_creep',{vol:.9}],[48.8,'bed','intro_life',{to:.8,fade:3}],[49.3,'sfx','intro_soil',{vol:.6}],[49.5,'sfx','intro_pulse',{vol:.8}],
+  [50,'bed','amb_meadow',{to:.6,fade:2.5}],[50.6,'bedoff','intro_under',{fade:2.5}],[50.8,'sfx','intro_bloom',{vol:.9}],
+  [50.9,'sfx','comm_radio',{vol:.35}],[51,'sfx','intro_static',{vol:.18}],[52.2,'sfx','intro_pulse',{vol:.4}],
+  [53.4,'bedoff','intro_life',{fade:3}],[54.5,'sfx','intro_pulse',{vol:.3}],
+  [58.2,'bedoff','amb_meadow',{fade:2}],
 ];
 function introSnd(name,o){if(!SND.on||!SND.ctx||SND.ctx.state!=='running'||sndEff().s<=0)return;const c=SND.ctx,buf=sndBuf(name);if(!buf)return;
   const src=c.createBufferSource(),g=c.createGain();src.buffer=buf;g.gain.value=(o.vol==null?1:o.vol);src.connect(g);g.connect(SND.bus.s);src.start();}
@@ -5879,9 +5898,16 @@ function introPrep(){const lo=INTRO.low;
     // the first Rootweb: branching tendrils that reach mostly up and out, each growing in after the last
     const T=[];const grow=(x,y,a,len,depth,t0,k)=>{const n=8,pts=[[x,y]];let ang=a,px=x,py=y;for(let i=1;i<=n;i++){ang+=(hash(k,i,49)-.5)*.5;px+=Math.cos(ang)*len/n;py+=Math.sin(ang)*len/n;pts.push([px,py]);}
       T.push({pts,t0,w:Math.max(.8,3.2-depth*1.1),depth});if(depth<2)for(let j=0;j<2;j++){const p=pts[3+j*3];grow(p[0],p[1],ang+(j?.7:-.7)+(hash(k,j,50)-.5)*.3,len*.55,depth+1,t0+.9+j*.5,k*7+j+1);}};
-    for(let k=0;k<9;k++){const a=-Math.PI/2+(k-4)*.36+(hash(k,1,51)-.5)*.2;grow(Math.cos(a)*55,Math.sin(a)*45,a,170+hash(k,2,51)*120,0,38.6+k*.55,k+3);}
-    for(let k=0;k<4;k++){const a=(k<2?Math.PI:0)+(k%2?.35:-.25);grow(Math.cos(a)*60,Math.sin(a)*30,a,130+hash(k,3,51)*60,1,40.4+k*.7,k+40);}
-    INTRO.tend=T;}}
+    for(let k=0;k<9;k++){const a=-Math.PI/2+(k-4)*.36+(hash(k,1,51)-.5)*.2;grow(Math.cos(a)*55,Math.sin(a)*45,a,170+hash(k,2,51)*120,0,43.2+k*.45,k+3);}
+    for(let k=0;k<4;k++){const a=(k<2?Math.PI:0)+(k%2?.35:-.25);grow(Math.cos(a)*60,Math.sin(a)*30,a,130+hash(k,3,51)*60,1,44.6+k*.6,k+40);}
+    INTRO.tend=T;
+    // the main root: from the top of the cluster straight up through the soil to the surface, where the Bloom will break through
+    const R=[];for(let i=0;i<=24;i++){const f=i/24;R.push([Math.sin(f*7.2+.6)*16*(1-f*.6)+(hash(i,1,59)-.5)*6,-48-f*(600-48)]);}INTRO.root=R;}
+  // the survey crew: a surveyor at the tripod, one at a marker, one by the parked truck (each on open ground near its spot)
+  if(!INTRO.crew){const open=(x,y)=>{for(let r=0;r<4;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){const X=x+dx,Y=y+dy;if(inMap(X,Y)&&!blockedT(Y*MW+X))return [X,Y];}return [x,y];};
+    INTRO.crew=[[31.3,41.3,0],[52.4,28.6,1],[57.3,36.7,2]].map(([x,y,k])=>{const [X,Y]=open(Math.floor(x),Math.floor(y));return [X+(x%1),Y+(y%1),k];});
+    // a fresh survey pit and its spoil beside the second marker
+    const [px,py]=open(48,27);INTRO.pit=[px+.5,py+.5];}}
 // a cross-section of the ground: topsoil, darker clay, stone, pebbles, old dead roots and seams of damp, drawn once
 function introSoil(lo){const W=1400,H=1500,s=lo?.5:1,c=document.createElement('canvas');c.width=W*s;c.height=H*s;const g=c.getContext('2d');g.scale(s,s);c.lo=lo;
   const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#3a2a1c');gr.addColorStop(.12,'#2c2017');gr.addColorStop(.45,'#1c1611');gr.addColorStop(.8,'#141116');gr.addColorStop(1,'#0e0c10');g.fillStyle=gr;g.fillRect(0,0,W,H);
@@ -5906,19 +5932,21 @@ function introSoil(lo){const W=1400,H=1500,s=lo?.5:1,c=document.createElement('c
 function introDraw(t){const cv=$('introCv'),dpr=Math.min(INTRO.low?1:1.5,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
   const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';g.clearRect(0,0,W,H);
-  INTRO.opaque=t<51.6;
-  if(t<10.6)introOrbit(g,W,H,t);
-  if(t>=8.4&&t<22)introMeadow(g,W,H,t);
-  if(t>=19.6&&t<52.2)introUnder(g,W,H,t);
+  INTRO.opaque=t<50.4;
+  // each scene dissolves into the next where they overlap: orbit into cloud into meadow; the meadow into the soil under the Bloom's
+  // site; the rising root into the surface seen from above
+  if(t<9.6)introOrbit(g,W,H,t);
+  if(t>=7.8&&t<19.8)introMeadow(g,W,H,t);
   if(t>=50.4)introSurface(g,W,H,t);
-  if(t>=INTRO_HAND&&INTRO.mode==='replay'){g.fillStyle=`rgba(0,0,0,${ism(INTRO_HAND,INTRO_END-.4,t)})`;g.fillRect(0,0,W,H);}
+  if(t>=17.8&&t<51.8){g.globalAlpha=ism(17.8,19.6,t)*(1-ism(50.4,51.8,t));introUnder(g,W,H,t);g.globalAlpha=1;}
+  if(t>=INTRO_HAND&&INTRO.mode==='replay'){g.fillStyle=`rgba(0,0,0,${ism(INTRO_HAND,INTRO_END-.3,t)})`;g.fillRect(0,0,W,H);}
   introText(t);
   // letterbox: in from the start, out at the hand-off
-  const lb=Math.round(Math.min(H*.11,90)*(1-ism(INTRO_HAND,INTRO_HAND+1.6,t)));$('intro').style.setProperty('--lb',lb+'px');}
+  const lb=Math.round(Math.min(H*.11,90)*(1-ism(INTRO_HAND,INTRO_HAND+1.5,t)));$('intro').style.setProperty('--lb',lb+'px');}
 // scene 1: Nereth from orbit, slowly closing on the hemisphere where Landfall lies, then down into the cloud
-function introOrbit(g,W,H,t){const k=ism(0,9.6,t);g.fillStyle='#04030a';g.fillRect(0,0,W,H);
+function introOrbit(g,W,H,t){const k=ism(0,8.8,t);g.fillStyle='#04030a';g.fillRect(0,0,W,H);
   for(const [x,y,b,d] of INTRO.stars){const px=((x*W-t*(4+d*10))%W+W)%W,py=y*H;const tw=.75+.25*Math.sin(t*(.6+d)+x*40);g.fillStyle=`rgba(225,228,255,${(.12+b*.55)*tw*(1-ism(7,9,t))})`;const s=b>.92?2:1;g.fillRect(px,py,s,s);}
-  const R=Math.min(W,H)*(.3+.62*k*k),cx=W*.5,cy=H*(.64+.42*k*k);
+  const R=Math.min(W,H)*(.3+.62*k*k),cx=W*.5,cy=H*(.76+.36*k*k);
   // the planet, re-shaded every few frames (it turns slowly)
   const S=INTRO.low?180:300;if(!INTRO.sph){INTRO.sph=document.createElement('canvas');INTRO.sph.width=INTRO.sph.height=S;}
   if(Math.abs(t-INTRO.sphT)>.12||INTRO.sph.width!==S){INTRO.sphT=t;if(INTRO.sph.width!==S)INTRO.sph.width=INTRO.sph.height=S;introSphere(INTRO.sph,S,t);}
@@ -5930,8 +5958,8 @@ function introOrbit(g,W,H,t){const k=ism(0,9.6,t);g.fillStyle='#04030a';g.fillRe
   // the sunlit limb and haze
   const lim=g.createRadialGradient(cx-R*.3,cy-R*.4,R*.2,cx,cy,R*1.02);lim.addColorStop(.86,'rgba(200,190,255,0)');lim.addColorStop(1,'rgba(200,190,255,.22)');g.fillStyle=lim;g.beginPath();g.arc(cx,cy,R*1.02,0,7);g.fill();
   // into the atmosphere: a pale haze, then cloud
-  const hz=ism(5.8,8.6,t);if(hz>0){g.fillStyle=`rgba(196,200,214,${hz*.85})`;g.fillRect(0,0,W,H);}
-  const cl=ism(7.2,9,t)*(1-ism(9.6,10.6,t));if(cl>0){g.globalAlpha=cl;const s=Math.max(W,H)*(1.4+(t-7)*.35);g.drawImage(INTRO.cloud,W/2-s/2,H/2-s/2,s,s);g.globalAlpha=1;}}
+  const hz=ism(5.4,8,t);if(hz>0){g.fillStyle=`rgba(196,200,214,${hz*.85})`;g.fillRect(0,0,W,H);}
+  const cl=ism(6.6,8.2,t);if(cl>0){g.globalAlpha=cl;const s=Math.max(W,H)*(1.4+(t-6.4)*.35);g.drawImage(INTRO.cloud,W/2-s/2,H/2-s/2,s,s);g.globalAlpha=1;}}
 function introSphere(c,S,t){const g=c.getContext('2d'),id=g.createImageData(S,S),D=id.data,{TW,TH,img}=PL.tex;
   const yaw=.42-t*.012,tilt=.14,cy=Math.cos(yaw),sy=Math.sin(yaw),ct=Math.cos(tilt),st=Math.sin(tilt),L=[-.5,.45,.74];
   for(let py=0;py<S;py++)for(let px=0;px<S;px++){const nx=(px+.5)/S*2-1,ny=1-(py+.5)/S*2,r2=nx*nx+ny*ny;if(r2>1)continue;const nz=Math.sqrt(1-r2);
@@ -5941,19 +5969,32 @@ function introSphere(c,S,t){const g=c.getContext('2d'),id=g.createImageData(S,S)
   g.putImageData(id,0,0);}
 // the survey truck's place on the track at time t (tiles), and its heading
 function introTruck(t){const tr=(MIS.landfall.ops.find(o=>o[0]==='track')||[0,[[71,32],[29,38]]])[1].map(([x,y])=>[x+.5,y+.5]);
-  let d;if(t<22)d=ilerp(4,24,ism(8.4,21,t));else d=ilerp(24,6,ism(48,62,t));
-  let s=d;for(let k=0;k<tr.length-1;k++){const [ax,ay]=tr[k],[bx,by]=tr[k+1],L=Math.hypot(bx-ax,by-ay);if(s<=L||k===tr.length-2){const f=clamp(s/L,0,1);return [ax+(bx-ax)*f,ay+(by-ay)*f,Math.atan2(by-ay,bx-ax)+(t<22?0:Math.PI)];}s-=L;}
+  const d=ilerp(3,21,ism(7.8,18.6,t));
+  let s=d;for(let k=0;k<tr.length-1;k++){const [ax,ay]=tr[k],[bx,by]=tr[k+1],L=Math.hypot(bx-ax,by-ay);if(s<=L||k===tr.length-2){const f=clamp(s/L,0,1);return [ax+(bx-ax)*f,ay+(by-ay)*f,Math.atan2(by-ay,bx-ax)];}s-=L;}
   return [tr[0][0],tr[0][1],0];}
 // scene 2: the meadow from above (the real Landfall ground), the camera following the track west over the truck to the hollow by the rocks
 function introMeadow(g,W,H,t){const C=[G.coreX+1.5,G.coreY+1.5],tk=introTruck(t);
-  const f=ism(8.4,18.4,t),dn=ism(18.2,21.2,t);
-  let x=ilerp(tk[0]+2,C[0]+4,f*f),y=ilerp(tk[1]-1,C[1],f),z=ilerp(.8,1,f)*ilerp(1,2.4,dn);
+  const f=ism(7.8,16.8,t),dn=ism(16.4,19.8,t);
+  let x=ilerp(tk[0]+2,C[0]+4,f*f),y=ilerp(tk[1]-1,C[1],f),z=ilerp(1.35,1,f)*ilerp(1,2.6,dn);
   x=ilerp(x,C[0],dn);y=ilerp(y,C[1],dn);
   {const hw=W/(T*z)/2,hh=H/(T*z)/2;x=clamp(x,Math.min(hw,MW/2),Math.max(MW-hw,MW/2));y=clamp(y,Math.min(hh,MH/2),Math.max(MH-hh,MH/2));}   // keep the frame on the map
   introGround(g,W,H,x,y,z,1);
+  const P=(px,py)=>[(px-x)*T*z+W/2,(py-y)*T*z+H/2];
+  // a fresh survey pit and its spoil heap, with stakes and a sample crate
+  {const [sx,sy]=P(INTRO.pit[0],INTRO.pit[1]),s=T*z*1.5;g.fillStyle='rgba(120,92,60,.85)';g.beginPath();g.ellipse(sx+s*.9,sy+s*.15,s*.75,s*.5,.3,0,7);g.fill();
+    g.fillStyle='rgba(150,118,80,.7)';g.beginPath();g.ellipse(sx+s*.75,sy,s*.4,s*.26,.3,0,7);g.fill();
+    g.fillStyle='#2a1d12';g.fillRect(sx-s*.45,sy-s*.35,s*.8,s*.7);g.strokeStyle='rgba(90,66,40,.9)';g.lineWidth=Math.max(1,1.4*z);g.strokeRect(sx-s*.45,sy-s*.35,s*.8,s*.7);
+    g.fillStyle='#e8e2d0';for(const [dx,dy] of [[-.6,-.5],[.5,-.5],[-.6,.5],[.5,.5]])g.fillRect(sx+dx*s-1,sy+dy*s-1,Math.max(2,2.2*z),Math.max(2,2.2*z));
+    g.fillStyle='#7a6440';g.fillRect(sx-s*.3,sy+s*.6,s*.5,s*.32);}
   // cloud shadows drifting over the meadow
   g.save();g.globalCompositeOperation='multiply';for(let k=0;k<5;k++){const cx=((hash(k,1,55)*1.6-.3+t*.012)%1.6-.3)*W,cy=hash(k,2,55)*H,r=(160+hash(k,3,55)*200)*z;
     const m=g.createRadialGradient(cx,cy,r*.1,cx,cy,r);m.addColorStop(0,'rgba(120,130,140,.55)');m.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=m;g.fillRect(cx-r,cy-r,r*2,r*2);}g.restore();
+  // the survey crew: hi-vis jackets and white helmets, seen from above, going about their work
+  for(const [cx,cy,k] of INTRO.crew){const [sx,sy]=P(cx,cy),s=T*z,turn=Math.sin(t*.7+k*2)*.5+k;
+    g.fillStyle='rgba(0,0,0,.32)';g.beginPath();g.ellipse(sx+s*.1,sy+s*.12,s*.34,s*.2,0,0,7);g.fill();
+    g.save();g.translate(sx,sy);g.rotate(turn);g.fillStyle='#e07a26';g.beginPath();g.ellipse(0,0,s*.3,s*.19,0,0,7);g.fill();
+    g.fillStyle='#f6d860';g.fillRect(-s*.3,-s*.035,s*.6,s*.07);g.fillStyle='#f2f1ec';g.beginPath();g.arc(0,0,s*.13,0,7);g.fill();g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1;g.stroke();g.restore();
+    if(k===1){g.strokeStyle='#e4ddca';g.lineWidth=Math.max(1.4,1.6*z);g.beginPath();g.moveTo(sx+s*.25,sy-s*.05);g.lineTo(sx+s*.5,sy-s*.7);g.stroke();g.fillStyle='#e0533a';g.fillRect(sx+s*.43,sy-s*.72,Math.max(2,2.5*z),Math.max(3,4*z));}}   // a survey staff
   // the survey truck and its dust
   const sx=(tk[0]-x)*T*z+W/2,sy=(tk[1]-y)*T*z+H/2;
   for(let k=0;k<(INTRO.low?6:14);k++){const age=(k/14+t*.9)%1,bx=tk[0]-Math.cos(tk[2])*(.8+age*2.2)+(hash(k,4,55)-.5)*.6,by=tk[1]-Math.sin(tk[2])*(.8+age*2.2)+(hash(k,5,55)-.5)*.6;
@@ -5961,70 +6002,93 @@ function introMeadow(g,W,H,t){const C=[G.coreX+1.5,G.coreY+1.5],tk=introTruck(t)
   g.save();g.translate(sx,sy);g.rotate(tk[2]);g.scale(z,z);try{g.translate(-24,-12);PROP_DRAW.truck(g,48,24,0);}catch(e){}g.restore();
   // a slow light on the survey markers (no flashing)
   for(const o of MIS.landfall.ops)if(o[0]==='prop'&&o[1]==='marker'){const mx=(o[2]+.5-x)*T*z+W/2,my=(o[3]+.2-y)*T*z+H/2,b=.35+.3*Math.sin(t*1.6+o[2]);g.fillStyle=`rgba(255,120,80,${b})`;g.beginPath();g.arc(mx,my,2.2*z,0,7);g.fill();}
-  // out of the cloud at the start; into the dark of the soil at the end
-  const cl=1-ism(8.4,10.6,t);if(cl>0){g.globalAlpha=cl;const s=Math.max(W,H)*(2.2+(t-8)*.6);g.drawImage(INTRO.cloud,W/2-s/2,H/2-s/2,s,s);g.globalAlpha=1;}
-  if(dn>0){g.fillStyle=`rgba(20,14,10,${ism(19.4,21.6,t)})`;g.fillRect(0,0,W,H);}}
+  // the far-off drilling: a faint shiver of dust over the ground, and nothing more
+  const dr=ism(15.4,16.6,t)*(1-ism(17.4,19,t));if(dr>0&&!INTRO.low){for(let k=0;k<40;k++){const qx=hash(k,1,60)*W,qy=hash(k,2,60)*H+Math.sin(t*46+k)*1.2;g.fillStyle=`rgba(200,180,140,${.18*dr*hash(k,3,60)})`;g.fillRect(qx,qy,2,2);}}
+  // out of the cloud at the start
+  const cl=1-ism(7.8,9.8,t);if(cl>0){g.globalAlpha=cl;const s=Math.max(W,H)*(2.2+(t-7.6)*.6);g.drawImage(INTRO.cloud,W/2-s/2,H/2-s/2,s,s);g.globalAlpha=1;}
+  // a little darker as the camera sinks towards the ground
+  if(dn>0){g.fillStyle=`rgba(20,14,10,${.45*dn})`;g.fillRect(0,0,W,H);}}
 // the real ground under a camera at tile (x,y), zoom z (relative to the game's own scale)
 function introGround(g,W,H,x,y,z,a){const src=SET.hd?hdCanvas:terrCanvas,k=SET.hd?HDR/T:1;g.save();g.globalAlpha=a;g.fillStyle='#1d2416';g.fillRect(0,0,W,H);g.imageSmoothingEnabled=true;
   const vw=W/(T*z),vh=H/(T*z),x0=x-vw/2,y0=y-vh/2,cx0=Math.max(0,x0),cy0=Math.max(0,y0),cx1=Math.min(MW,x0+vw),cy1=Math.min(MH,y0+vh);
   if(cx1>cx0&&cy1>cy0)g.drawImage(src,cx0*T*k,cy0*T*k,(cx1-cx0)*T*k,(cy1-cy0)*T*k,(cx0-x0)*T*z,(cy0-y0)*T*z,(cx1-cx0)*T*z,(cy1-cy0)*T*z);g.restore();}
 // scenes 3 and 4: beneath the soil. u is the scene's own unit; the cluster sits at (0,0), the surface at y=-560
-function introUnder(g,W,H,t){const u=Math.min(W,H)/760,a=ism(33.5,46,t),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
-  let camY=ilerp(-470,30,ism(19.8,25.5,t));camY=ilerp(camY,-500,ism(48,51.6,t));const zz=ilerp(1.35,1.6,ism(22,46,t))*ilerp(1,.8,ism(48,51.6,t));
-  // the resonance: the ground trembles very slightly while it passes
-  let sh=0;if(!rm)for(const t0 of [32.4,38.4]){const e=ism(t0,t0+2.4,t)*(1-ism(t0+3.4,t0+6.2,t));sh+=Math.sin(t*2*Math.PI*7.3)*e*1.6;}
+function introUnder(g,W,H,t){const u=Math.min(W,H)/760,A=introAwake(t),pu=introPulse(t),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // down from the surface at the Bloom's site to the cluster; there it lingers; once awake it follows the main root back up
+  let camY=ilerp(-600,20,ism(18.2,23.8,t));const tipY=introRootTip(t);camY=ilerp(camY,Math.min(20,tipY+120),ism(45.6,48,t));camY=ilerp(camY,-600,ism(48,50.6,t));
+  const zz=ilerp(1.25,1.55,ism(22,40,t))*ilerp(1,.82,ism(45.6,50.6,t));
+  // the disturbance: the ground trembles very slightly while it passes
+  let sh=0;if(!rm)for(const [t0,a] of [[30.4,1],[37,.6]]){const e=ism(t0,t0+2.4,t)*(1-ism(t0+3.4,t0+6.2,t));sh+=Math.sin(t*2*Math.PI*7.3)*e*1.6*a;}
   g.save();g.translate(W/2+sh*u,H/2+sh*.4*u);g.scale(u*zz,u*zz);g.translate(0,-camY);
   const S=INTRO.soil,sw=1400,shh=1500;g.imageSmoothingEnabled=true;g.drawImage(S,-sw/2,-560-40,sw,shh);
   // the surface line above: the meadow's roots and grass, seen from below
-  g.fillStyle='#4a5a32';g.fillRect(-sw/2,-560-140,sw,100);for(let k=0;k<160;k++){const x=-sw/2+k*(sw/160);g.strokeStyle='rgba(70,96,46,.9)';g.lineWidth=2;g.beginPath();g.moveTo(x,-600);g.lineTo(x+(hash(k,1,56)-.5)*10,-600-8-hash(k,2,56)*14);g.stroke();}
-  g.fillStyle='rgba(10,8,6,.0)';
-  // grit trickling down while the ground trembles
-  const fall=ism(32.4,33.4,t)*(1-ism(37,38.4,t))+ism(38.4,39.4,t)*(1-ism(43,45,t))+ism(48,49,t);
+  {const sk=g.createLinearGradient(0,-1100,0,-600);sk.addColorStop(0,'#7c8a8e');sk.addColorStop(1,'#a3ab92');g.fillStyle=sk;g.fillRect(-sw/2,-1100,sw,500);
+   const tf=g.createLinearGradient(0,-612,0,-570);tf.addColorStop(0,'#3d4f26');tf.addColorStop(1,'rgba(50,40,26,0)');g.fillStyle=tf;g.fillRect(-sw/2,-612,sw,42);
+   for(let k=0;k<280;k++){const x=-sw/2+k*(sw/280)+hash(k,3,56)*4;g.strokeStyle=`rgba(${60+hash(k,4,56)*30|0},${86+hash(k,5,56)*30|0},42,.95)`;g.lineWidth=1.6;g.beginPath();g.moveTo(x,-604);g.quadraticCurveTo(x+(hash(k,1,56)-.5)*8,-612,x+(hash(k,1,56)-.5)*14,-616-hash(k,2,56)*16);g.stroke();}}
+  // grit trickling down while the ground trembles, and again as the soil above starts to give
+  const fall=ism(30.4,31.4,t)*(1-ism(35,36.4,t))+.6*ism(37,38,t)*(1-ism(41,43,t))+ism(47.6,48.6,t);
   if(fall>0)for(let k=0;k<(INTRO.low?40:110);k++){const x=(hash(k,1,57)-.5)*900,sp=40+hash(k,2,57)*70,y=-480+((t*sp+hash(k,3,57)*600)%600);g.fillStyle=`rgba(120,96,70,${.5*fall})`;g.fillRect(x,y,2,2);}
-  // dust motes in the dark
-  for(let k=0;k<(INTRO.low?14:34);k++){const x=(hash(k,4,57)-.5)*700+Math.sin(t*.2+k)*12,y=(hash(k,5,57)-.5)*500+Math.cos(t*.17+k)*10;g.fillStyle=`rgba(190,170,220,${.05+.06*hash(k,6,57)})`;g.fillRect(x,y,1.6,1.6);}
-  introCluster(g,t,a);
+  // dust motes in the dark: almost still while it sleeps
+  const dm=ilerp(.05,1,A);for(let k=0;k<(INTRO.low?14:34);k++){const x=(hash(k,4,57)-.5)*700+Math.sin(t*.2*dm+k)*12,y=(hash(k,5,57)-.5)*500+Math.cos(t*.17*dm+k)*10;g.fillStyle=`rgba(190,170,220,${.05+.06*hash(k,6,57)})`;g.fillRect(x,y,1.6,1.6);}
+  introCluster(g,t,A,pu);
   g.restore();
-  // a dim, close vignette; it lifts a little as the cluster wakes
-  const v=g.createRadialGradient(W/2,H/2,Math.min(W,H)*.15,W/2,H/2,Math.max(W,H)*.7);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,`rgba(0,0,0,${.78-.25*a})`);g.fillStyle=v;g.fillRect(0,0,W,H);
-  // in from the meadow's dark, out to the surface's light
-  const fin=1-ism(20,22.4,t);if(fin>0){g.fillStyle=`rgba(20,14,10,${fin})`;g.fillRect(0,0,W,H);}}
+  // a dim, close vignette; it lifts as the cluster wakes and its light reaches further
+  const v=g.createRadialGradient(W/2,H/2,Math.min(W,H)*.15,W/2,H/2,Math.max(W,H)*.7);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,`rgba(0,0,0,${.8-.3*A})`);g.fillStyle=v;g.fillRect(0,0,W,H);}
+// how far the main root has climbed (scene units; the surface is at -560)
+function introRootTip(t){return ilerp(-48,-600,ism(44.4,49,t));}
 // the dormant cluster: translucent sacs, faint vascular strands, rare slow pulses; waking, it swells, pulses faster and sends out tendrils
-function introCluster(g,t,a){const S=INTRO.sacs;
-  const per=ilerp(5.2,1.7,a),pul=Math.max(0,Math.sin(((t-20)/per)*Math.PI*2))**6*ilerp(.35,1,a);
-  // tendrils first, under the sacs
+function introCluster(g,t,A,pu){const S=INTRO.sacs,R=INTRO.root;
+  const lit=.1+.9*A,pul=pu*ilerp(.5,1,A);
   g.lineCap='round';g.lineJoin='round';
-  for(const d of INTRO.tend){const p=ism(d.t0,d.t0+3.2+d.depth,t);if(p<=0)continue;const P=d.pts,m=(P.length-1)*p,n=Math.floor(m);
+  // the main root, climbing towards the surface once it is awake, with nutrients moving up it on each pulse
+  const tp=ism(44.4,49,t);if(tp>0){const m=(R.length-1)*tp,n=Math.floor(m);
+    const path=()=>{g.beginPath();g.moveTo(R[0][0],R[0][1]);for(let i=1;i<=n;i++)g.lineTo(R[i][0],R[i][1]);if(n<R.length-1){const f=m-n;g.lineTo(R[n][0]+(R[n+1][0]-R[n][0])*f,R[n][1]+(R[n+1][1]-R[n][1])*f);}};
+    g.strokeStyle='rgba(150,90,220,.2)';g.lineWidth=13;path();g.stroke();g.strokeStyle=`rgba(195,150,255,${.6+.3*pul})`;g.lineWidth=4.2;path();g.stroke();
+    for(const [p,a] of INTRO_PULSES){if(p<45.6)continue;const s=(t-p)/1.7;if(s<0||s>1||s>tp)continue;const q=s*(R.length-1),i=Math.min(R.length-2,Math.floor(q)),f=q-i,px=R[i][0]+(R[i+1][0]-R[i][0])*f,py=R[i][1]+(R[i+1][1]-R[i][1])*f;
+      const gl=g.createRadialGradient(px,py,0,px,py,18);gl.addColorStop(0,`rgba(215,255,170,${.75*a})`);gl.addColorStop(1,'rgba(215,255,170,0)');g.fillStyle=gl;g.fillRect(px-18,py-18,36,36);}
+    // the Bloom's bud pushing up into the topsoil
+    const bud=ism(48.4,50.6,t);if(bud>0){const top=R[R.length-1],h=26*bud;const b=g.createRadialGradient(top[0],top[1]+8-h*.4,2,top[0],top[1]+8-h*.4,h+8);
+      b.addColorStop(0,`rgba(225,190,255,${.9*bud})`);b.addColorStop(.6,`rgba(150,90,210,${.75*bud})`);b.addColorStop(1,'rgba(90,50,140,0)');g.fillStyle=b;
+      g.beginPath();g.ellipse(top[0],top[1]+8-h*.4,h*.55,h*.8,0,0,7);g.fill();}}
+  // the first Rootweb tendrils: a twitch after the disturbance, then reaching out as it wakes
+  for(const d of INTRO.tend){let p=ism(d.t0,d.t0+3.2+d.depth,t);if(d.depth===0)p=Math.max(p,.1*ism(35.2,37,t)*(1+.25*Math.sin(t*1.3+d.t0*5)));if(p<=0)continue;
+    const P=d.pts,m=(P.length-1)*p,n=Math.floor(m);
     const path=()=>{g.beginPath();g.moveTo(P[0][0],P[0][1]);for(let i=1;i<=n;i++)g.lineTo(P[i][0],P[i][1]);if(n<P.length-1){const f=m-n;g.lineTo(P[n][0]+(P[n+1][0]-P[n][0])*f,P[n][1]+(P[n+1][1]-P[n][1])*f);}};
-    g.strokeStyle='rgba(150,90,220,.18)';g.lineWidth=d.w*3.2;path();g.stroke();g.strokeStyle=`rgba(190,140,255,${.55+.25*pul})`;g.lineWidth=d.w;path();g.stroke();
-    if(p<1){const f=m-n,q=n<P.length-1?[P[n][0]+(P[n+1][0]-P[n][0])*f,P[n][1]+(P[n+1][1]-P[n][1])*f]:P[n];g.fillStyle='rgba(200,255,150,.6)';g.beginPath();g.arc(q[0],q[1],d.w*1.1,0,7);g.fill();}}
-  // vascular strands, with fluid moving along them once awake
-  for(let k=0;k<INTRO.strands.length;k++){const [x0,y0,cx,cy,x1,y1]=INTRO.strands[k];g.strokeStyle=`rgba(150,100,200,${.14+.22*a})`;g.lineWidth=1.4;g.beginPath();g.moveTo(x0,y0);g.quadraticCurveTo(cx,cy,x1,y1);g.stroke();
-    if(a>.05)for(let j=0;j<3;j++){const s=((t*ilerp(.05,.4,a)+j/3+k*.13)%1),q=1-s,px=q*q*x0+2*q*s*cx+s*s*x1,py=q*q*y0+2*q*s*cy+s*s*y1;g.fillStyle=`rgba(200,255,160,${.5*a})`;g.beginPath();g.arc(px,py,1.6,0,7);g.fill();}}
-  // the sacs: membranes relax and swell as it wakes
-  for(const s of S){const br=1+.03*Math.sin(t*.5+s.ph)+.08*a+.04*pul,r=s.r*br;
-    const f=g.createRadialGradient(s.x-r*.25,s.y-r*.3,r*.1,s.x,s.y,r);f.addColorStop(0,`rgba(140,90,190,${.32+.25*a+.2*pul})`);f.addColorStop(.7,`rgba(70,40,100,${.28+.15*a})`);f.addColorStop(1,'rgba(40,20,60,.12)');
-    g.fillStyle=f;g.beginPath();g.ellipse(s.x,s.y,r,r*(.82+.1*s.w),s.w*.6,0,7);g.fill();
-    g.strokeStyle=`rgba(190,150,240,${.3-.12*a})`;g.lineWidth=1.2;g.stroke();
-    // the faint living light inside
-    const c=g.createRadialGradient(s.x,s.y,0,s.x,s.y,r*.55);c.addColorStop(0,`rgba(180,250,120,${.05+.2*pul+.12*a})`);c.addColorStop(1,'rgba(180,250,120,0)');g.fillStyle=c;g.beginPath();g.arc(s.x,s.y,r*.55,0,7);g.fill();}}
+    g.strokeStyle='rgba(150,90,220,.18)';g.lineWidth=d.w*3.2;path();g.stroke();g.strokeStyle=`rgba(190,140,255,${.45+.35*pul})`;g.lineWidth=d.w;path();g.stroke();
+    if(p<1&&t>43){const f=m-n,q=n<P.length-1?[P[n][0]+(P[n+1][0]-P[n][0])*f,P[n][1]+(P[n+1][1]-P[n][1])*f]:P[n];g.fillStyle='rgba(200,255,150,.6)';g.beginPath();g.arc(q[0],q[1],d.w*1.1,0,7);g.fill();}}
+  // vascular strands: faint lines while dormant; fluid starts moving along them once it stirs
+  const fl=ism(40,42.4,t);
+  for(let k=0;k<INTRO.strands.length;k++){const [x0,y0,cx,cy,x1,y1]=INTRO.strands[k];g.strokeStyle=`rgba(150,100,200,${.1+.26*A+.25*pul*A})`;g.lineWidth=1.4;g.beginPath();g.moveTo(x0,y0);g.quadraticCurveTo(cx,cy,x1,y1);g.stroke();
+    if(fl>0)for(let j=0;j<3;j++){const s=((t*ilerp(.08,.45,A)+j/3+k*.13)%1),q=1-s,px=q*q*x0+2*q*s*cx+s*s*x1,py=q*q*y0+2*q*s*cy+s*s*y1;g.fillStyle=`rgba(200,255,160,${.55*fl*A+.1*fl})`;g.beginPath();g.arc(px,py,1.6,0,7);g.fill();}}
+  // the sacs: almost still while dormant; membranes relax, swell and ripple as it wakes
+  const rip=ism(43,46,t);
+  for(const s of S){const br=1+.012*Math.sin(t*.25+s.ph)+.08*A+.05*pul,r=s.r*br;
+    const f=g.createRadialGradient(s.x-r*.25,s.y-r*.3,r*.1,s.x,s.y,r);f.addColorStop(0,`rgba(140,90,190,${.22+.32*A+.22*pul})`);f.addColorStop(.7,`rgba(70,40,100,${.24+.18*A})`);f.addColorStop(1,'rgba(40,20,60,.12)');
+    g.fillStyle=f;g.beginPath();if(rip>0){for(let i=0;i<=28;i++){const a=i/28*6.283,w=1+.035*rip*Math.sin(a*5+t*2.4+s.ph),ex=Math.cos(a)*r*w,ey=Math.sin(a)*r*(.82+.1*s.w)*w,ro=s.w*.6;
+      const X=s.x+ex*Math.cos(ro)-ey*Math.sin(ro),Y=s.y+ex*Math.sin(ro)+ey*Math.cos(ro);if(i)g.lineTo(X,Y);else g.moveTo(X,Y);}g.closePath();}else g.ellipse(s.x,s.y,r,r*(.82+.1*s.w),s.w*.6,0,7);g.fill();
+    g.strokeStyle=`rgba(190,150,240,${.26-.1*A})`;g.lineWidth=1.2;g.stroke();
+    // the faint living light inside: barely there while it sleeps
+    const c=g.createRadialGradient(s.x,s.y,0,s.x,s.y,r*.55);c.addColorStop(0,`rgba(180,250,120,${.03+.24*pul+.12*A*lit})`);c.addColorStop(1,'rgba(180,250,120,0)');g.fillStyle=c;g.beginPath();g.arc(s.x,s.y,r*.55,0,7);g.fill();}
+  // the first real response: one wave of light passing out through the cluster
+  const w=ism(32.6,34.6,t)*(1-ism(33.6,35.4,t));if(w>0){const R0=40+(t-32.6)*110,m=g.createRadialGradient(0,0,R0*.7,0,0,R0);m.addColorStop(0,'rgba(180,250,140,0)');m.addColorStop(.85,`rgba(180,250,140,${.22*w})`);m.addColorStop(1,'rgba(180,250,140,0)');g.fillStyle=m;g.beginPath();g.arc(0,0,R0,0,7);g.fill();}}
 // scene 5: the surface. The live game is revealed through a widening opening around the Bloom while the ground shifts aside; the camera
 // settles exactly where a normal launch puts it
-function introSurface(g,W,H,t){const C=[G.coreX+1.5,G.coreY+1.5],[gx,gy,gz]=introGameCam(),k=ism(51,INTRO_HAND,t);
+function introSurface(g,W,H,t){const C=[G.coreX+1.5,G.coreY+1.5],[gx,gy,gz]=introGameCam(),k=ism(51.6,INTRO_HAND,t);
   if(INTRO.mode==='first'||INTRO.mode==='replay'){cam.z=ilerp(1.75,gz,k);const x=ilerp(C[0],gx,k),y=ilerp(C[1],gy,k);centerOn(x,y);}
-  const cx=(C[0]*T-cam.x)*cam.z,cy=(C[1]*T-cam.y)*cam.z,z=cam.z,vx=cam.x/T+W/cam.z/T/2,vy=cam.y/T+H/cam.z/T/2;
-  // the ground over everything, with the opening cut out of it (soft edged)
-  const cover=1-ism(55.4,INTRO_HAND+.4,t);
-  if(cover>0){g.save();introGround(g,W,H,vx,vy,z,cover);g.globalCompositeOperation='destination-out';const r=ilerp(.2,9.5,ism(51,56.2,t))*T*z;
+  const cx=(C[0]*T-cam.x)*cam.z,cy=(C[1]*T-cam.y)*cam.z,z=cam.z,vx=cam.x/T+W/cam.z/T/2,vy=cam.y/T+H/cam.z/T/2,pu=introPulse(t);
+  // the ground over everything, with the opening cut out of it: each pulse from below opens it a step further (soft edged)
+  const cover=1-ism(55.8,INTRO_HAND+.2,t);let step=0;for(const p of INTRO_REVEAL)step+=ism(p,p+.8,t)/INTRO_REVEAL.length;const r=ilerp(.4,9.5,step)*T*z;
+  if(cover>0){g.save();introGround(g,W,H,vx,vy,z,cover);g.globalCompositeOperation='destination-out';
     const m=g.createRadialGradient(cx,cy,r*.55,cx,cy,r);m.addColorStop(0,'rgba(0,0,0,1)');m.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=m;g.fillRect(0,0,W,H);g.restore();
     // soil pushed aside at the edge of the opening
-    const rr=r*.8;for(let q=0;q<(INTRO.low?40:110);q++){const a=hash(q,1,58)*6.283,d=rr*(.85+hash(q,2,58)*.35)*(1+ism(51,56,t)*.08),s=(1+hash(q,3,58)*2.5)*z;
-      g.fillStyle=`rgba(${70+hash(q,4,58)*40|0},${50+hash(q,5,58)*30|0},34,${.55*cover})`;g.fillRect(cx+Math.cos(a)*d,cy+Math.sin(a)*d,s,s);}}
+    const rr=r*.8;for(let q=0;q<(INTRO.low?40:110);q++){const a=hash(q,1,58)*6.283,d=rr*(.85+hash(q,2,58)*.35)*(1+step*.08),s=(1+hash(q,3,58)*2.5)*z;
+      g.fillStyle=`rgba(${70+hash(q,4,58)*40|0},${50+hash(q,5,58)*30|0},34,${.55*cover})`;g.fillRect(cx+Math.cos(a)*d,cy+Math.sin(a)*d,s,s);}
+    // the newly fed Rootweb at the edge brightens with each pulse
+    if(pu>.02){g.save();g.globalCompositeOperation='lighter';const e=g.createRadialGradient(cx,cy,r*.6,cx,cy,r*1.02);e.addColorStop(0,'rgba(170,110,240,0)');e.addColorStop(.8,`rgba(170,110,240,${.22*pu*cover})`);e.addColorStop(1,'rgba(170,110,240,0)');
+      g.fillStyle=e;g.fillRect(cx-r*1.05,cy-r*1.05,r*2.1,r*2.1);g.restore();}}
   // a soft living light as the Bloom opens
-  const gl=ism(51,53.5,t)*(1-ism(55.5,INTRO_HAND+1,t));if(gl>0){g.save();g.globalCompositeOperation='lighter';const R=5*T*z,m=g.createRadialGradient(cx,cy,0,cx,cy,R);
-    m.addColorStop(0,`rgba(150,110,220,${.28*gl*(.8+.2*Math.sin(t*1.4))})`);m.addColorStop(1,'rgba(150,110,220,0)');g.fillStyle=m;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();}
-  // from below ground to above: the last of the soil scene fades off
-  const up=1-ism(50.4,52.2,t);if(up>0){g.fillStyle=`rgba(20,14,10,${up})`;g.fillRect(0,0,W,H);}}
+  const gl=ism(50.6,53,t)*(1-ism(55.6,INTRO_HAND+1,t));if(gl>0){g.save();g.globalCompositeOperation='lighter';const R=5*T*z,m=g.createRadialGradient(cx,cy,0,cx,cy,R);
+    m.addColorStop(0,`rgba(150,110,220,${.24*gl*(.75+.35*pu)})`);m.addColorStop(1,'rgba(150,110,220,0)');g.fillStyle=m;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();}}
 // captions: the title cards, radio lines with who is speaking, and the hive's instincts (single words, never a voice of its own)
 function introText(t){let cap='',rad=null,tit=null;for(const L of INTRO_LINES){if(t<L[0]||t>L[1])continue;if(L[2]==='inst')cap=L[4];else if(L[2]==='radio')rad=L;else tit=L;}
   const set=(id,on,fill)=>{const el=$(id);if(on&&el.dataset.k!==on){el.dataset.k=on;fill(el);}el.classList.toggle('on',!!on);};

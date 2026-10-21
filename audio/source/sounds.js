@@ -515,4 +515,23 @@ def('intro_bloom', 1, (r) => { const sec = 4.5, n = N(sec);
   const air = mul(lp(hp(white(n, r), 900), 3500), env(n, [[0, 0], [2.4, 0], [3, .25], [sec, 0]]));
   return mix(n, [unfold, 1], [fib, .6], [air, .4], [mul(lp(brown(n, r), 90), env(n, [[0, 0], [1.5, .6], [sec, 0]])), .7]); });
 
+// ---------------- v49 intro, second pass ----------------
+// the first real response after the long sleep: one deep, slow organic pulse; a soft low push through dense tissue with a damp after-swell
+def('intro_wake', 1, (r) => { const sec = 3.6, n = N(sec);
+  const push = mul(lp(brown(n, r), t => 70 + 50 * Math.exp(-t * 2)), env(n, [[0, 0], [.32, 1], [.8, .45], [1.15, .62], [2.2, .12], [sec, 0]]));
+  const low = mul(osc(n, t => 38 - 6 * Math.min(1, t / 1.5)), env(n, [[0, 0], [.35, .55], [1.4, .25], [sec, 0]]));
+  const wet = mul(filt(pink(n, r), 'bp', t => 220 + 120 * Math.exp(-t * 2.5), 1.2), env(n, [[0, 0], [.4, .35], [1.2, .12], [sec, 0]]));
+  return lp(mix(n, [push, 1.4], [lp(low, 120), .8], [wet, .3]), 700); });
+// nutrients moving upward along a root: a slow rising breath of fluid through a long channel, no pitch, no whoosh
+def('intro_rise', 1, (r) => { const sec = 3.8, n = N(sec);
+  const flow = mul(filt(pink(n, r), 'bp', t => 180 + 420 * Math.min(1, t / 3), 1.3), env(n, [[0, 0], [1.2, .5], [2.8, .8], [3.4, .3], [sec, 0]]));
+  const gl = grains(n, 50, sec * .9, (d, at, r) => click(d, at, .04 + r() * .1, 400 + r() * 500, 4, r, .006 + r() * .01), r, .3);
+  return mix(n, [flow, 1], [lp(gl, 1800), .5], [mul(lp(brown(n, r), 90), env(n, [[0, 0], [1.6, .5], [sec, 0]])), .6]); });
+// the organism awake: a low, living room tone that slowly breathes under the soil (builds in as it wakes)
+def('intro_life', 1, (r) => { const L = 16, sec = L + 2, n = N(sec), g = driftL(r, L, [1, 2]), h = driftL(r, L, [2, 4]);
+  const breath = mul(lp(brown(n, r), 140), new Float32Array(n).map((_, i) => { const t = i / SR; return .45 + .35 * Math.max(0, Math.sin(t * 2 * Math.PI / 4)) ** 2 + .2 * g(t); }));
+  const tone = lp(mix(n, [osc(n, t => 41 * (1 + .006 * h(t))), .3], [osc(n, t => 61.7 * (1 + .005 * g(t))), .12]), 160);
+  const wet = mul(filt(pink(n, r), 'bp', 320, 1.5), new Float32Array(n).map((_, i) => .08 + .06 * h(i / SR)));
+  return loopify(mix(n, [breath, 1], [tone, .8], [wet, .5]), L, 2); }, { loop: 16 });
+
 module.exports = S;
