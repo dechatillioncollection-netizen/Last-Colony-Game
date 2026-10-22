@@ -1,0 +1,72 @@
+{
+ "v55 menu": {
+  "timeToMenuMs": 1748,
+  "firstClipMs": null,
+  "cpuPercentAllProcesses": 38.7,
+  "cpuPercentByProcess": {
+   "browser": 0,
+   "renderer": 14.9,
+   "GPU": 23.8,
+   "network.mojom.NetworkService": 0
+  },
+  "pageTaskPercent": 11.2,
+  "jsHeapMB": 2,
+  "domNodes": 2074,
+  "videos": 0,
+  "droppedFrames": null,
+  "totalFrames": null,
+  "errors": 0
+ },
+ "v56 menu, moving background": {
+  "timeToMenuMs": 1584,
+  "firstClipMs": 1573,
+  "cpuPercentAllProcesses": 47.2,
+  "cpuPercentByProcess": {
+   "browser": 0.1,
+   "renderer": 30.8,
+   "GPU": 16.3,
+   "network.mojom.NetworkService": 0
+  },
+  "pageTaskPercent": 1,
+  "jsHeapMB": 2,
+  "domNodes": 1930,
+  "videos": 1,
+  "errors": 0
+ },
+ "v56 menu, still background": {
+  "timeToMenuMs": 1736,
+  "firstClipMs": null,
+  "cpuPercentAllProcesses": 3.4,
+  "cpuPercentByProcess": {
+   "browser": 0,
+   "renderer": 2.2,
+   "GPU": 1.2,
+   "network.mojom.NetworkService": 0
+  },
+  "pageTaskPercent": 0.9,
+  "jsHeapMB": 2,
+  "domNodes": 2109,
+  "videos": 0,
+  "droppedFrames": null,
+  "totalFrames": null,
+  "errors": 0
+ },
+ "Survival battle, 60 machines and 20 guns": {
+  "timeToMenuMs": 1620,
+  "firstClipMs": 1590,
+  "cpuPercentAllProcesses": 114.2,
+  "cpuPercentByProcess": {
+   "browser": 0.2,
+   "renderer": 103.4,
+   "GPU": 10.6,
+   "network.mojom.NetworkService": 0
+  },
+  "pageTaskPercent": 99.9,
+  "jsHeapMB": 4.7,
+  "domNodes": 1916,
+  "videos": 0,
+  "droppedFrames": null,
+  "totalFrames": null,
+  "errors": 0
+ }
+}

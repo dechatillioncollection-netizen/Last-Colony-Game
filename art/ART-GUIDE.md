@@ -684,3 +684,19 @@ The title screen is one painted picture with light added on top while it runs.
 - **Painter:** `art/source/paint_title.js` runs inside the game page, so it can draw the Bloom, the Seed Pods and the Scout Tank with the game's own painted art. Start a web server on the repo root, then run `node art/source/runtitle.js`.
 - **Layers, bottom to top:** wet ground; pools with reflected stars; lily pads; a patch of Rootweb texture; root conduits (shadow, three tones, a wet sheen and the light channel); Seed Pods; the Bloom with its reflection; the survey track, stakes and tank. The night grade comes last: a cool multiply and a vignette, with some of the glow layer baked back in.
 - **Drawn live:** the glow layer's breathing and the light wave (the glow layer masked by a moving ring), the Bloom's heart, the survey and tank lamps, two drifting fog layers and the spores. Low quality and reduced motion trim these (see `docs/v55-title-screen.md`).
+
+## Main menu scenes (v56)
+
+The main menu's moving background is four 30-second clips recorded from the game itself, not painted art.
+
+- **Files:** in `art/menu/`. Each scene (`factory`, `frontier`, `skirmish`, `human`) has three files:
+  - `.webm`: VP9, 1920×1080, 30 frames a second, no sound track.
+  - `.mp4`: H.264, 960×540, the fallback for browsers without VP9.
+  - `.jpg`: a still from four seconds in, shown when video cannot play, when the moving background is off, and for reduced motion.
+- **Scenes:** `art/source/menu_scenes.js` builds each one in the game page from a fixed seed and a hand-laid layout, with no waves, no fog of war and no story.
+- **Recorder:** `art/source/rec_menu.js` steps the scene on its own clock, draws each frame with the game's renderer at Epic quality, and encodes the clips with ffmpeg. The last 1.5 seconds are blended into the first, so the clips loop without a cut. Start a web server on the repo root, then run `node art/source/rec_menu.js [scene]`; `--stills` saves four frames per scene to check the framing.
+- **When to record again:** any change to the painted art, the renderer or the growths and machines shown makes the clips out of date.
+- **Framing:** keep each scene's point of interest right of centre. The menu rail covers the left third, and the video is anchored at 62% across.
+- **Size:** keep a clip under about 3 MB (VP9 `-crf 48`).
+- **Content:** no spoilers. Nothing from later in the campaign, and no HUD, messages or range rings in frame.
+

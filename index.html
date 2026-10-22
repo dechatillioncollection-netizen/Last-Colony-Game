@@ -104,6 +104,46 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .mode:hover{border-color:var(--amber)}
 .mode b{display:block;font-family:var(--f-display);font-weight:400;font-size:16px;color:var(--amber);margin-bottom:4px}
 .mode span{color:var(--muted);font-size:14px;line-height:1.4}
+#mmBg,#mmFoot{display:none}
+#overlay.mm{--mm-t:#eef0f4;--mm-m:#9ba2ae;--mm-v:#a58ae0;--mm-y:#e8c84a;display:block;padding:0;background:#06080c;overflow:hidden}
+#overlay.mm #mmBg{display:block;position:absolute;inset:0;overflow:hidden;pointer-events:none;background:#06080c}
+#mmBg video,#mmBg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 50%;opacity:0;transition:opacity 1.4s ease}
+#mmBg .on{opacity:1}
+#mmBg .mmvig{position:absolute;inset:0;background:radial-gradient(ellipse 72% 85% at 64% 50%,rgba(3,4,8,0) 52%,rgba(3,4,8,.62) 100%),
+  linear-gradient(180deg,rgba(3,4,8,.42) 0%,rgba(3,4,8,0) 20%,rgba(3,4,8,0) 72%,rgba(3,4,8,.55) 100%),linear-gradient(90deg,rgba(3,4,8,.55) 0%,rgba(3,4,8,0) 46%)}
+#overlay.mm #ovcard{position:absolute;left:0;top:0;bottom:0;width:clamp(340px,31vw,760px);max-width:none;box-sizing:border-box;margin:0;overflow-y:auto;display:flex;flex-direction:column;
+  padding:clamp(28px,7vh,84px) clamp(22px,2.6vw,48px) 22px;background:linear-gradient(90deg,rgba(7,9,15,.94),rgba(9,11,19,.84));border-right:1px solid rgba(165,138,224,.22);
+  box-shadow:28px 0 70px rgba(0,0,0,.35)}
+#overlay.mm #ovcard::before{content:'';flex:none;width:36px;height:3px;background:var(--mm-y);margin-bottom:20px}
+#overlay.mm h1{color:var(--mm-t);font-size:clamp(30px,2.75vw,50px);letter-spacing:.08em;text-shadow:0 0 22px rgba(165,138,224,.38),0 2px 0 rgba(0,0,0,.6)}
+#overlay.mm h2{font-weight:500;font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--mm-v);margin:12px 0 clamp(18px,4vh,36px)}
+#overlay.mm .modes{display:flex;flex-direction:column;gap:3px;margin:0 0 18px}
+#overlay.mm .mode{position:relative;background:transparent;border:0;border-left:2px solid rgba(165,138,224,.2);padding:11px 14px 11px 18px;color:var(--mm-t);cursor:pointer;
+  transition:background .18s ease,border-color .18s ease,padding-left .18s ease}
+#overlay.mm .mode b{color:var(--mm-t);font-size:17px;letter-spacing:.06em;margin-bottom:3px}
+#overlay.mm .mode span{display:block;color:var(--mm-m);font-size:13px;line-height:1.42}
+#overlay.mm .mode::after{content:'';position:absolute;left:-2px;top:22%;bottom:22%;width:2px;background:var(--mm-y);transform:scaleY(0);transition:transform .18s ease}
+#overlay.mm .mode:hover,#overlay.mm .mode:focus-visible{background:linear-gradient(90deg,rgba(165,138,224,.17),rgba(165,138,224,0) 92%);border-left-color:var(--mm-v);padding-left:22px}
+#overlay.mm .mode:hover::after,#overlay.mm .mode:focus-visible::after{transform:none}
+#overlay.mm .mode:hover b,#overlay.mm .mode:focus-visible b{color:#fff}
+#overlay.mm .mode:hover span,#overlay.mm .mode:focus-visible span{color:#c4c9d2}
+#overlay.mm .mode:focus-visible{outline:2px solid var(--mm-y);outline-offset:1px}
+#overlay.mm .mode:active{background:rgba(165,138,224,.26)}
+#overlay.mm .mmhow{margin-top:auto;padding-top:14px;border-top:1px solid rgba(165,138,224,.16)}
+#overlay.mm .mmhow summary{cursor:pointer;color:#c3c7cf;font-size:12px;letter-spacing:.2em;text-transform:uppercase;padding:6px 0;list-style-position:inside}
+#overlay.mm .mmhow summary:focus-visible{outline:2px solid var(--mm-y);outline-offset:2px}
+#overlay.mm .mmhow li,#overlay.mm .mmhow p{font-size:13px;color:var(--mm-m)}#overlay.mm .mmhow b{color:#d7dae0}
+#overlay.mm #mmFoot{display:flex;position:absolute;right:clamp(14px,2vw,32px);bottom:clamp(12px,2vh,24px);gap:14px;align-items:center;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(232,234,240,.66);text-shadow:0 1px 3px #000;pointer-events:none}
+#mmFoot>*{pointer-events:auto}#mmFoot [hidden]{display:none}
+#mmNext{font:inherit;letter-spacing:.14em;background:rgba(7,9,15,.6);border:1px solid rgba(165,138,224,.38);color:#e6e8ec;padding:5px 11px;cursor:pointer}
+#mmNext:hover{border-color:var(--mm-v);background:rgba(20,16,32,.8)}#mmNext:focus-visible{outline:2px solid var(--mm-y);outline-offset:2px}
+#mmVer::before{content:'';display:inline-block;width:5px;height:5px;background:var(--mm-y);margin-right:8px;vertical-align:1px}
+@media (max-width:760px),(max-height:520px) and (max-width:900px){
+  #overlay.mm #ovcard{width:100%;background:rgba(7,9,15,.9);border-right:0;box-shadow:none;padding:26px 18px 74px}
+  #overlay.mm .mode{min-height:58px;padding:14px 16px 14px 18px}#overlay.mm .mode b{font-size:18px}
+  #overlay.mm #mmFoot{left:14px;right:14px;justify-content:space-between}#mmScene{display:none}#mmNext{padding:9px 14px}}
+@media (prefers-reduced-motion:reduce){#mmBg video,#mmBg img{transition:opacity .2s linear}#overlay.mm .mode,#overlay.mm .mode::after{transition:none}}
 #overlay .go{font-family:var(--f-display);font-size:18px;padding:9px 24px;background:var(--amber);color:#142008;border-color:var(--amber)}
 #pmenu{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:#0c0a0ecc;padding:16px}
 #pmenu .scard{max-width:340px}.pmacts{display:grid;gap:8px}.pmacts button{padding:10px 12px;font-size:16px;text-align:left}
@@ -265,6 +305,7 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
   <label class="opt dsk" hidden><input type="checkbox" id="optSteady"><span><b>Steady frame rate</b><br>If frames start to slow, the drawing resolution drops (never below 75% of your screen’s) and comes back when there is room again. Nothing else changes.</span></label>
   <label class="opt dsk" hidden><input type="checkbox" id="optFull"><span><b>Full screen</b><br>F11 or Alt+Enter also switch it.</span></label>
   <label class="opt"><input type="checkbox" id="optFog"><span><b>Fog of war</b><br>Ground you have never seen stays black, and enemies are only visible near your growths, Rootweb and ants.</span></label>
+  <label class="opt"><input type="checkbox" id="optMenuBg"><span><b>Moving menu background</b><br>Scenes recorded from the game play behind the main menu. Off shows a still picture of each instead.</span></label>
   <div class="qlbl">Audio</div>
   <div class="vrow"><label for="vol_m">Master volume</label><input type="range" id="vol_m" min="0" max="100" step="1"><output id="volv_m" for="vol_m">80%</output></div>
   <div class="vrow"><label for="vol_s">Sound effects</label><input type="range" id="vol_s" min="0" max="100" step="1"><output id="volv_s" for="vol_s">80%</output></div>
@@ -291,15 +332,11 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
 </div></div>
 <div id="splash" hidden role="button" aria-label="Last Colony. Press any key to continue."><canvas id="splashCv"></canvas><div class="sv"></div><div class="st"><h1>LAST COLONY</h1><div class="sr"></div></div><div class="sp">Press any key to continue</div><div class="sx" id="splashVer"></div></div>
 <div id="intro" hidden><canvas id="introCv"></canvas><div class="ibar top"></div><div class="ibar bot"></div><div id="introTitle"><b></b><span></span></div><div id="introRadio"><span class="lbl"></span><span class="txt"></span></div><div id="introCap"></div><button id="introSkip" aria-label="Skip the intro">Skip <kbd>Esc</kbd></button></div>
-<div id="overlay">
+<div id="overlay" class="mm">
+  <div id="mmBg" aria-hidden="true"><div class="mmvig"></div></div>
   <div class="card" id="ovcard">
     <h1>LAST COLONY</h1>
     <h2>Root, spread, evolve, swarm.</h2>
-    <ul>
-      <li>You are the <b>Nymbri Hive</b>, an alien species of plants that move, gather and fight like an ant colony. You can only grow on <b>Rootweb</b>, the living ground that spreads out from your <b>Bloom</b>.</li>
-      <li>Your Bloom keeps spreading Rootweb on its own until it covers <b>30% of the map</b>. Plant <b>Rootweb Nodes</b> at the edge to push it further. Evolve <b>Rapid Rooting</b> and <b>Spore Winds</b>, and grow <b>Spore Bellows</b>, to make it spread faster.</li>
-      <li>Put <b>Root Taps</b> on ore and run <b>Vines</b> to your Bloom and your <b>Thorn Spitters</b>. Open <b>Evolution</b> to unlock glands, vats, vigor and the <b>Brood Chamber</b>, which hatches warrior ants you can send to <b>Defend</b> or <b>Attack</b>.</li>
-    </ul>
     <div class="modes">
       <button class="mode" id="m-campaign"><b>CAMPAIGN</b><span>Five hand-made sectors on the planet Nereth. Each one you capture feeds your global stock, which pays for evolution.</span></button>
       <button class="mode" id="m-survival"><b>SURVIVAL</b><span>Hold your Bloom against 25 waves of colony war machines dropped into the red zone. Every growth starts evolved.</span></button>
@@ -308,8 +345,16 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
       <button class="mode" id="m-settings"><b>SETTINGS</b><span>Graphics, fog of war and sound.</span></button>
       <button class="mode" id="m-quit" hidden><b>QUIT</b><span>Close Last Colony.</span></button>
     </div>
+    <details class="mmhow"><summary>How to play</summary>
+    <ul>
+      <li>You are the <b>Nymbri Hive</b>, an alien species of plants that move, gather and fight like an ant colony. You can only grow on <b>Rootweb</b>, the living ground that spreads out from your <b>Bloom</b>.</li>
+      <li>Your Bloom keeps spreading Rootweb on its own until it covers <b>30% of the map</b>. Plant <b>Rootweb Nodes</b> at the edge to push it further. Evolve <b>Rapid Rooting</b> and <b>Spore Winds</b>, and grow <b>Spore Bellows</b>, to make it spread faster.</li>
+      <li>Put <b>Root Taps</b> on ore and run <b>Vines</b> to your Bloom and your <b>Thorn Spitters</b>. Open <b>Evolution</b> to unlock glands, vats, vigor and the <b>Brood Chamber</b>, which hatches warrior ants you can send to <b>Defend</b> or <b>Attack</b>.</li>
+    </ul>
     <p><kbd>Left-click</kbd> grow or select &middot; drag to lay a vine (it routes round obstacles; <kbd>Ctrl</kbd>+drag steps it diagonally; <kbd>Esc</kbd> cancels the drag), or with nothing chosen to box-select ants &middot; hold <kbd>Alt</kbd> to see buildable ground &middot; <kbd>F4</kbd> enemy route view &middot; <kbd>R</kbd> or the wheel rotates a Vine before you place it (during a drag: a straight line turns whole; a line with corners keeps them and turns its end, or reverses) &middot; <kbd>Right-click</kbd> or drag to reabsorb &middot; <kbd>Q</kbd> copy &middot; <kbd>T</kbd> evolution &middot; <kbd>C</kbd> swarm orders &middot; <kbd>WASD</kbd> pan &middot; wheel zooms (with no Vine chosen) &middot; <kbd>Space</kbd> pause.</p>
+    </details>
   </div>
+  <div id="mmFoot"><span id="mmScene"></span><button id="mmNext" type="button" title="Show the next background scene">Next scene &rsaquo;</button><span id="mmVer" hidden></span></div>
 </div>
 
 <script>
@@ -2121,7 +2166,7 @@ function step(dt){
 function endGame(win){
   if(G.over)return;G.over=true;
   if(G.mission){if(win&&storyOutro(()=>missionEndCard(true)))return;missionEndCard(win);return;}
-  const card=document.getElementById('ovcard'),siege=G.mode==='siege';
+  const card=document.getElementById('ovcard'),siege=G.mode==='siege';$('overlay').classList.remove('mm');
   card.innerHTML=(win
     ?(siege?`<h1>COLONY OVERRUN</h1><h2>The last colony fell after ${fmtTime(G.time)} and ${G.wave} of its waves.</h2>`:`<h1>THE HIVE ENDURES</h1><h2>All ${G.winWave} waves beaten in ${fmtTime(G.time)}.</h2>`)+`<p>${G.kills} machines destroyed.</p>`
     :`<h1>HEART LOST</h1><h2>Your Bloom died on wave ${G.wave} after ${fmtTime(G.time)}.</h2><p>${G.kills} machines destroyed. Spread Rootweb sooner, feed more Thorn Spitters, grow bark across the approach, and evolve resin and chitin earlier.</p>`)
@@ -2292,6 +2337,7 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!$('settings').hidden){$('settings').hidden=true;snd('ui','ui_close');return;}
   if(e.key==='Escape'&&!$('saves').hidden){closeSaves();return;}
   if(!$('pmenu').hidden){if(e.key==='Escape'){e.preventDefault();pmClose();}return;}
+  if(e.key==='Escape'&&!G&&!$('planet').hidden&&$('tech').hidden&&!INTRO.on){e.preventDefault();$('pBack').click();return;}
   if(!G||G.over)return;const k=e.key.toLowerCase();
   if(k==='t'){toggleTech();return;}
   if(!document.getElementById('tech').hidden){if(k==='escape')toggleTech(false);return;}
@@ -5153,7 +5199,7 @@ function missionEndCard(win){
   else h=`<h1>SECTOR LOST</h1><h2>Your Bloom in ${m.name} died ${m.kind==='attack'?'':`on wave ${G.wave} of ${m.waves} `}after ${fmtTime(G.time)}.</h2><p>${m.tip}</p>`;
   h+=`<div class="modes"><button class="mode" id="toPlanet"><b>PLANET</b><span>Back to Nereth to evolve and pick a sector.</span></button>`+
     (win?`<button class="mode" id="stay"><b>KEEP BUILDING</b><span>Stay in ${m.name} and grow your base.</span></button>`:`<button class="mode" id="retry"><b>RETRY</b><span>Start ${m.name} again.</span></button>`)+`</div>`;
-  card.innerHTML=h;$('overlay').hidden=false;
+  card.innerHTML=h;$('overlay').classList.remove('mm');$('overlay').hidden=false;
   $('toPlanet').onclick=()=>{G=null;PL.sel=m.id;openPlanet();};
   if(win)$('stay').onclick=()=>{if(!G)return;G.over=false;G.paused=false;$('overlay').hidden=true;setSpeed(1);renderPanel(true);msg('No waves come here now. Press Leave sector when you are done.','good');};
   else $('retry').onclick=()=>startMission(m.id);
@@ -5374,7 +5420,7 @@ function pmOpen(){if(!G||G.over||!$('pmenu').hidden)return;pmWas=G.paused;G.paus
 function pmClose(){if($('pmenu').hidden)return;$('pmenu').hidden=true;snd('ui','ui_close');if(G&&!G.over){G.paused=pmWas;setSpeed(G.paused?0:G.speed);}}
 // leave the match: the game is saved first (a captured sector keeps its own save), as Exit in the save screen does
 async function pmLeave(then){if(G&&!G.over){if(G.held)await saveSector();else await saveTo('auto');}$('pmenu').hidden=true;$('settings').hidden=true;G=null;then();}
-function showMenu(){$('tut').hidden=true;$('ovcard').innerHTML=MENU_HTML;$('overlay').hidden=false;bindModes();}
+function showMenu(){$('tut').hidden=true;$('ovcard').innerHTML=MENU_HTML;$('overlay').classList.add('mm');$('overlay').hidden=false;bindModes();}
 // autosave every few minutes of play
 let autoT=0;function autosaveTick(dt){if(!G||G.over||G.paused)return;autoT+=dt;if(autoT>=180){autoT=0;if(G.held)saveSector();else saveTo('auto');}}
 
@@ -6398,7 +6444,8 @@ function loop(now){const w0=performance.now(),rawDt=now-last;
     if(!(INTRO.on&&INTRO.opaque))render();
     if(frame%3===0)renderMini();
     if(frame%8===0)updateHUD();
-  }else render();
+  }else if(!loop.idle){render();loop.idle=1;}
+  if(G)loop.idle=0;
   frame++;dynFrame(rawDt,performance.now()-w0,now);requestAnimationFrame(loop);
 }
 function startGame(mode){
@@ -6455,17 +6502,18 @@ const SPL_PIC={W:2560,H:1440,bloom:[1280,835],lamps:[[1899,-50],[2071,70],[2244,
 function splashStart(){const el=$('splash');if(!el)return;
   // automated test browsers go straight to the menu, as before, unless a test asks for the title screen (lc_splash=1); the desktop app always shows it
   let ask=false;try{ask=localStorage.getItem('lc_splash')==='1';}catch(_){}if(navigator.webdriver&&!DESK&&!ask){SPL.why='automated';return;}
-  SPL.on=true;SPL.t=0;SPL.last=0;SPL.ending=false;
+  SPL.on=true;SPL.t=0;SPL.last=0;SPL.ending=false;SPL.got=0;SPL.minT=0;
   SPL.lite=SET.q==='low';SPL.rm=ART_RM;el.hidden=false;el.classList.remove('out','on','ready');
   try{$('splashVer').textContent=DESK&&lcDesktop.version?'v'+lcDesktop.version:'';}catch(_){}
-  for(const [k,f] of [['bg','bg.jpg'],['glow','glow.png']]){const im=new Image();im.onload=()=>{SPL[k]=im;};im.onerror=()=>console.warn('Title art missing: '+f+' (the title screen shows without it)');im.src='art/title/'+f;}
+  for(const [k,f] of [['bg','bg.jpg'],['glow','glow.png']]){const im=new Image();im.onload=()=>{SPL[k]=im;SPL.got++;splashReady();};im.onerror=()=>{console.warn('Title art missing: '+f+' (the title screen shows without it)');SPL.got++;splashReady();};im.src='art/title/'+f;}
   SPL.fog=splashFog();SPL.motes=[];const n=SPL.lite?24:SPL.rm?30:70;for(let i=0;i<n;i++)SPL.motes.push(splashMote(true));
   // controller buttons already held at launch do not count
   SPL.pads=splashPadState();
-  requestAnimationFrame(()=>el.classList.add('on'));setTimeout(()=>{if(SPL.on)el.classList.add('ready');},2300);
+  requestAnimationFrame(()=>el.classList.add('on'));setTimeout(()=>{SPL.minT=1;splashReady();},2300);setTimeout(()=>{SPL.got=2;splashReady();},9000);
   // the desktop app may start sound at once; a browser waits for the first key or click, which here is the one that continues
   if(DESK)sndUnlock();
   SPL.raf=requestAnimationFrame(splashLoop);}
+function splashReady(){if(SPL.on&&SPL.minT&&SPL.got>=2)$('splash').classList.add('ready');}
 function splashPadState(){try{return [...(navigator.getGamepads?navigator.getGamepads():[])].map(p=>p?p.buttons.map(b=>b.pressed):null);}catch(_){return [];}}
 function splashPadPressed(){let any=false;try{const P=navigator.getGamepads?navigator.getGamepads():[];for(let i=0;i<P.length;i++){const p=P[i];if(!p)continue;const was=SPL.pads[i]||[];
   p.buttons.forEach((b,j)=>{if(b.pressed&&!was[j])any=true;});}}catch(_){}SPL.pads=splashPadState();return any;}
@@ -6533,7 +6581,68 @@ function splashSound(what,fade){if(!SND.ctx||!SND.bus)return;const c=SND.ctx;
   if(what==='pulse'){if(!sndReady('a'))return;const buf=sndBuf('intro_pulse');if(!buf)return;const s=c.createBufferSource(),g=c.createGain();s.buffer=buf;g.gain.value=.32;s.connect(g);g.connect(SND.bus.a);s.start();}}
 function splashSoundTick(dt){if(SPL.ending||SPL.amb||!sndReady('a')||!SND.buf.intro_under)return;const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();
   s.buffer=SND.buf.intro_under;s.loop=true;g.gain.value=0;s.connect(g);g.connect(SND.bus.a);s.start();g.gain.setTargetAtTime(.42,c.currentTime,1.2);SPL.amb={src:s,g};}
-splashStart();
+// ===== v56: the main menu's background. Clips recorded from the game (art/source/rec_menu.js) play muted behind the menu, one at a
+// time, changing every 30 seconds with a crossfade and moving on one scene at each visit. Three calm scenes to one battle, and the
+// battle never next to itself. Nothing of a game runs behind the menu. Still pictures stand in when video cannot play, when the
+// player turns the moving background off, and for reduced motion; a dark backdrop when even those are missing.
+const MMS=[{id:'factory',name:'Living Factory'},{id:'frontier',name:'Quiet Frontier'},{id:'skirmish',name:'Fortress Skirmish',battle:1},{id:'human',name:'Human Frontier'}];
+const MMB={i:-1,el:null,next:null,on:false,hold:false,t:0,pre:0,secs:30,moving:true,noVideo:false,fails:0,why:'',shown:[]};
+try{MMB.moving=localStorage.getItem('lc_menubg')!=='0';}catch(_){}
+function mmMoving(){return MMB.moving&&!ART_RM&&!MMB.noVideo;}
+function mmState(){const o=$('overlay');if(!o||o.hidden||!o.classList.contains('mm'))return 'off';if(document.hidden)return 'hidden';if(SPL.on&&!SPL.ending)return 'hold';return 'play';}
+function mmSrc(sc,ext){return 'art/menu/'+sc.id+'.'+ext;}
+function mmVideo(sc){const v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.playsInline=true;v.loop=true;v.preload='auto';v.disablePictureInPicture=true;
+  v.setAttribute('muted','');v.setAttribute('playsinline','');v.setAttribute('aria-hidden','true');v.tabIndex=-1;v.poster=mmSrc(sc,'jpg');v.dataset.id=sc.id;
+  for(const [ext,type] of [['webm','video/webm; codecs="vp9"'],['mp4','video/mp4; codecs="avc1.640028"']]){const so=document.createElement('source');so.src=mmSrc(sc,ext);so.type=type;v.appendChild(so);}
+  // the last source failing means neither format would load
+  v.lastChild.addEventListener('error',()=>mmFail(v,'no playable file'));v.addEventListener('error',()=>mmFail(v,'video error'));return v;}
+function mmStill(sc){const im=new Image();im.alt='';im.decoding='async';im.dataset.id=sc.id;im.onerror=()=>{console.warn('Menu background missing: '+mmSrc(sc,'jpg'));im.remove();};im.src=mmSrc(sc,'jpg');return im;}
+function mmFree(el){if(!el)return;if(el.tagName==='VIDEO'){try{el.pause();}catch(_){}while(el.firstChild)el.removeChild(el.firstChild);el.removeAttribute('src');try{el.load();}catch(_){}}el.remove();}
+// a clip that cannot play is replaced by its still; after two, the menu keeps to stills for this visit to the game
+function mmFail(v,why){if(v.dataset.dead)return;v.dataset.dead=1;MMB.fails++;MMB.why=why;console.warn('Menu background clip '+v.dataset.id+' did not play ('+why+'); showing a still picture');
+  if(MMB.fails>=2)MMB.noVideo=true;if(v===MMB.next){MMB.next=null;mmFree(v);return;}if(v===MMB.el){const sc=MMS.find(s=>s.id===v.dataset.id);mmPut(mmStill(sc),true);}}
+// puts a new layer on top and fades it in over the old one, which is then freed
+function mmPut(el,now){const bg=$('mmBg'),old=MMB.el;bg.insertBefore(el,bg.querySelector('.mmvig'));MMB.el=el;
+  const show=()=>{if(MMB.el!==el)return;el.classList.add('on');if(old&&old!==el){old.classList.remove('on');setTimeout(()=>mmFree(old),1500);}};
+  if(el.tagName==='VIDEO'){let done=false;const go=()=>{if(done)return;done=true;show();};if(!old)el.classList.add('on');el.addEventListener('playing',go,{once:true});
+    if(mmState()==='play')mmPlay(el);}
+  else if(now||el.complete)show();else el.addEventListener('load',show,{once:true});}
+// plays a clip; one that has not started six seconds after being asked counts as failed (autoplay refused, or the file too slow)
+function mmPlay(v){if(v.dataset.dead)return;v.play().catch(e=>mmFail(v,'autoplay refused: '+(e&&e.name)));clearTimeout(v.mmT);
+  v.mmT=setTimeout(()=>{if(MMB.el===v&&mmState()==='play'&&v.readyState<3&&!v.currentTime)mmFail(v,'did not start');},6000);}
+function mmShow(i){i=((i%MMS.length)+MMS.length)%MMS.length;const sc=MMS[i];MMB.i=i;MMB.t=0;MMB.shown.push(sc.id);if(MMB.shown.length>40)MMB.shown.shift();
+  try{localStorage.setItem('lc_menuScene',String(i));}catch(_){}
+  $('mmScene').textContent='Background scene: '+sc.name;$('mmNext').hidden=false;
+  if(MMB.next&&MMB.next.dataset.id!==sc.id){mmFree(MMB.next);MMB.next=null;}
+  const el=mmMoving()?(MMB.next||mmVideo(sc)):mmStill(sc);MMB.next=null;mmPut(el,false);}
+// the next scene's clip starts loading a few seconds before it is needed, and only that one
+function mmPreload(){if(MMB.next||!mmMoving())return;const sc=MMS[(MMB.i+1)%MMS.length];MMB.next=mmVideo(sc);MMB.next.load();}
+let mmLast=0;
+function mmTick(now){if(!MMB.on)return;const dt=Math.min(.25,(now-(mmLast||now))/1000);mmLast=now;
+  if(mmMoving()&&mmState()==='play'&&$('settings').hidden&&$('saves').hidden){MMB.t+=dt;if(MMB.t>MMB.secs-4)mmPreload();if(MMB.t>=MMB.secs)mmShow(MMB.i+1);}
+  requestAnimationFrame(mmTick);}
+// follows the menu: starts when it shows, waits under the title screen, pauses in a hidden tab, and lets go of everything in a game
+function mmSync(){const st=mmState(),el=MMB.el,card=$('ovcard');
+  if($('overlay').classList.contains('mm')){card.setAttribute('role','region');card.setAttribute('aria-label','Main menu');}else{card.removeAttribute('role');card.removeAttribute('aria-label');}
+  if(st==='off'){if(MMB.on){MMB.on=false;mmFree(MMB.el);mmFree(MMB.next);MMB.el=MMB.next=null;}return;}
+  if(!MMB.on){MMB.on=true;let i=-1;try{const v=localStorage.getItem('lc_menuScene');if(v!==null)i=+v;}catch(_){}mmShow(isNaN(i)?0:i+1);mmLast=0;requestAnimationFrame(mmTick);return;}
+  if(el&&el.tagName==='VIDEO'){if(st==='play'){if(el.paused)mmPlay(el);}else{el.pause();clearTimeout(el.mmT);}}}
+function mmSetMoving(on){MMB.moving=!!on;MMB.noVideo=false;MMB.fails=0;try{localStorage.setItem('lc_menubg',on?'1':'0');}catch(_){}if(MMB.on&&MMB.i>=0){mmFree(MMB.next);MMB.next=null;mmShow(MMB.i);}}
+(function(){const o=$('overlay'),mo=new MutationObserver(()=>{mmSync();o.hasAttribute('aria-label');});
+  mo.observe(o,{attributes:true,attributeFilter:['hidden','class']});new MutationObserver(mmSync).observe($('splash'),{attributes:true,attributeFilter:['hidden','class']});
+  document.addEventListener('visibilitychange',mmSync);
+  $('mmNext').onclick=()=>{if(MMB.on){mmFree(MMB.next);MMB.next=null;mmShow(MMB.i+1);}snd('ui','ui_select');};
+  try{const v=DESK&&lcDesktop.version;if(v){$('mmVer').textContent='v'+v;$('mmVer').hidden=false;}}catch(_){}
+  const mb=$('optMenuBg');mb.checked=MMB.moving;mb.onchange=e=>mmSetMoving(e.target.checked);
+  // up and down move between the menu's buttons
+  window.addEventListener('keydown',e=>{if(G||INTRO.on||SPL.on||$('overlay').hidden||!$('overlay').classList.contains('mm')||!$('settings').hidden||!$('saves').hidden||!$('planet').hidden)return;
+    if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;const L=[...document.querySelectorAll('#ovcard .mode')].filter(b=>!b.hidden&&b.offsetParent);if(!L.length)return;
+    const k=L.indexOf(document.activeElement);e.preventDefault();L[k<0?0:(k+(e.key==='ArrowDown'?1:L.length-1))%L.length].focus();});
+  // closing Settings or Saves puts the keyboard back on the button that opened them
+  for(const id of ['settings','saves']){let back=null;new MutationObserver(()=>{const el=$(id);if(!el.hidden){back=document.activeElement;}
+    else if(back&&document.contains(back)&&back.offsetParent&&!$('overlay').hidden){back.focus({preventScroll:true});back=null;}}).observe($(id),{attributes:true,attributeFilter:['hidden']});}
+})();
+splashStart();mmSync();
 requestAnimationFrame(loop);
 window.__game=()=>G;
 </script>

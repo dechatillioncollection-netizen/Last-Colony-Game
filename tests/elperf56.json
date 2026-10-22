@@ -1,0 +1,33 @@
+{
+ "tReadyMs": 5612,
+ "menuMoving": {
+  "cpuPercent": 43.9,
+  "memoryMB": 1236,
+  "byProcess": {
+   "Browser": 0.2,
+   "GPU": 36,
+   "Utility": 0.2,
+   "Tab": 7.4
+  }
+ },
+ "menuStill": {
+  "cpuPercent": 2.7,
+  "memoryMB": 1145,
+  "byProcess": {
+   "Browser": 0.4,
+   "GPU": 0.8,
+   "Utility": 0.3,
+   "Tab": 1.2
+  }
+ },
+ "battle": {
+  "cpuPercent": 65.4,
+  "memoryMB": 1259,
+  "byProcess": {
+   "Browser": 0.2,
+   "GPU": 58.2,
+   "Utility": 0.2,
+   "Tab": 6.7
+  }
+ }
+}
