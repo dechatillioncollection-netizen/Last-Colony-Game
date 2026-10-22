@@ -111,3 +111,12 @@ When a player runs it:
 - **Not tested:**
   - `Updater.exe` on Windows, because this machine cannot run it. It is the same code, built for Windows. Its Windows-only step (checking the game is closed) was not exercised;
   - against the real GitHub, because the repository is private and has no releases yet.
+
+**Full regression (56 runs).** Every test has the same result as v49's run except those that hatch ants from a Brood Chamber on a timer, which now differ by design:
+
+- **The `ident42.js` comparisons against v44 to v48.** These fight a wave with a Brood Chamber hatching, so the old and new runs differ. v51 with art off and on is still identical.
+- **Three `xtest42.js` checks.** They count ants hatched in a fixed 40–50 s window, so fewer hatch in that time.
+
+Everything without hatching is unchanged. That includes the tutorial (`lcstory`), saves, the intro (`xtest49`) and the older suites' known failures.
+
+The local web server stopped part-way through the run. Every test from `ident37` on was run again with a fresh server, and these are the results shown.
