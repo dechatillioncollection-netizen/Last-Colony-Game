@@ -2772,7 +2772,58 @@ function drawBlockHD(c,t,x,y,rot,b,time,team){
   default:return false;}
   return true;
 }
+// ---- v54: painted HDF turrets. All motion comes from what the game already does: the aim angle b.ang (head), the real shot time b.shot
+// and the Duo's barrel alternation b.rr (recoil, flashes), the Lancer's charge b.charge and its beam in G.fx (glow, discharge, cooling),
+// and health (damage marks). Per-turret drawing state lives in a WeakMap, so saves and the simulation never see it.
+const TURV=new WeakMap(),TUR_LOD_MAX=80,TUR_SHADOW_MAX=30,TUR_FX={t:-1,m:new Map()};let turLite=false,turBusy=false;
+function turReady(a){const raw={},M={},V=TUR[a.tur];a.layers.forEach((L,i)=>raw[L.f.slice(0,-4)]=a.img[i]);
+  // the head baked with its barrels at rest: crowds and far zoom
+  const o=document.createElement('canvas');o.width=o.height=raw.head.width;const c=o.getContext('2d');for(const y of V.bar)c.drawImage(raw.barrel,0,y*128);c.drawImage(raw.head,0,0);raw.tflat=o;
+  for(const k in raw){const [im,r]=k==='puff'?[raw[k],[0,0,1,1]]:vehCrop(raw[k]),h=vehHalf(im);M[k]=[im,h,vehHalf(h)];M[k].r=r;}a.M=M;}
+function turOn(t){if(!SET.hd||!SET.art||!TUR[t])return null;const a=ART.hdft[t];return a&&a.state==='ready'?a:null;}
+// one layer, cropped, into a box of k tiles centred on the current origin
+function turImg(c,L,lv,k,im){const B=k*T,r=L.r;c.drawImage(im||L[lv],-B/2+r[0]*B,-B/2+r[1]*B,r[2]*B,r[3]*B);}
+function turFrame(z,inView){let n=0;if(SET.art&&SET.hd)for(const b of G.blocks.values())if(b.team===1&&TUR[b.t]&&inView(b.x,b.y,2))n++;turLite=z<ART_LOD_ZOOM||n>TUR_LOD_MAX;turBusy=n>TUR_SHADOW_MAX;
+  if(TUR_FX.t!==G.time){TUR_FX.t=G.time;TUR_FX.m.clear();for(const f of G.fx)if(f.k==='laser'&&f.team)TUR_FX.m.set(f.x1*8192+f.y1,f);}}
+// firing bookkeeping from the game's own record of its shots (drawing state only)
+function turS(b,t){let s=TURV.get(b);if(!s){s={shot:b.shot,ft:TUR[t].bar.map(()=>-9),n:0,fx:null,lt:-9};TURV.set(b,s);}
+  if(b.shot!==s.shot&&b.shot!=null){s.shot=b.shot;const i=t==='duo'?(b.rr?1:0):t==='scatter'?[0,3,1,2][s.n++%4]:0;s.ft[i]=b.shot;}
+  if(t==='lancer'){const [cx,cy]=bCenter(b),f=TUR_FX.m.get(cx*8192+cy);if(f&&f!==s.fx){s.fx=f;s.ft[0]=s.lt=G.time-(f.max-f.life);}}
+  return s;}
+function turDraw(c,t,x,y,b,tt){const a=turOn(t);if(!a)return false;const V=TUR[t],M=a.M,K=B[t].size,P=K*T,lvB=vehLv(K),lvH=vehLv(V.hb),now=G?G.time:0;
+  const ang=b?b.ang:-Math.PI/2,hp=b?b.hp/b.max:1,s=b?turS(b,t):null,lite=turLite;
+  c.save();c.translate(x+P/2,y+P/2);
+  turImg(c,M.base,lvB,K);if(hp<2/3)turImg(c,hp<1/3?M.dmg2:M.dmg1,lvB,K);
+  if(!lite&&!turBusy){c.save();c.translate(T*.07*K,T*.1*K);c.rotate(ang);c.globalAlpha*=.8;turImg(c,M.shadow,lvH,V.hb);c.restore();}
+  c.rotate(ang);
+  if(lite||!s)turImg(c,M.tflat,lvH,V.hb);
+  else{for(let i=0;i<V.bar.length;i++){const k=vehRec(now-s.ft[i],V.recT);c.save();c.translate(-k*V.rec*T,V.bar[i]*T);turImg(c,M.barrel,lvH,V.hb);c.restore();}
+    turImg(c,M.head,lvH,V.hb);}
+  if(hp<2/3)turImg(c,hp<1/3?M.hdmg2:M.hdmg1,lvH,V.hb);
+  if(V.radar&&!lite){const [rx,ry,rk]=V.radar;c.save();c.translate(rx*T,ry*T);c.rotate(b&&!ART_RM?tt*2.4:0);turImg(c,M.radar,vehLv(rk),rk);c.restore();}
+  if(V.glow&&b){// the Lancer: a faint pulse while powered, the charge building in the coil windows and lens, a flare on discharge, then hot fins
+    const pw=G.epow>0,fu=now-s.lt,fp=fu<0?0:fu<.06?1:Math.exp(-(fu-.06)/.12),g=Math.min(1,(pw?.12+.05*Math.sin(tt*2.2+b.id):0)+.8*(b.charge||0)+fp);
+    const a0=c.globalAlpha;c.save();c.globalCompositeOperation='lighter';if(g>.02){c.globalAlpha=a0*g;turImg(c,M.glow,lvH,V.hb);}
+    const ht=fu<0?0:Math.exp(-fu/1.4)*.85;if(ht>.02){c.globalAlpha=a0*ht;turImg(c,M.heat,lvH,V.hb);}c.restore();}
+  if(s){// muzzle flashes at the barrel that fired, and the Hail's gun smoke
+    for(let i=0;i<V.bar.length;i++){const d=now-s.ft[i];if(d<0||d>.07)continue;const F=V.flash*T,al=1-d/.07;
+      c.save();c.globalAlpha*=al;c.globalCompositeOperation='lighter';c.drawImage(M.flash[0],(V.tip-.12*V.flash)*T,V.bar[i]*T-F/2,F,F);c.restore();}
+    if(V.puff&&!lite&&!ART_RM){const d=now-s.ft[0],a0=c.globalAlpha;if(d>=0&&d<1.1)for(let j=0;j<3;j++){const u=d/1.1,r=(.3+.25*j+u*.5)*T;c.globalAlpha=a0*(1-u)*.55;
+      c.drawImage(M.puff[1],(V.tip+.08+j*.12+u*.25)*T-r/2,(j-1)*.1*T*u-r/2,r,r);}c.globalAlpha=a0;}}
+  c.restore();
+  c.strokeStyle='rgba(238,90,68,.55)';c.lineWidth=1;c.strokeRect(x+.5,y+.5,P-1,P-1);
+  return true;}
+// the hit flash for a painted turret: its own silhouette instead of a white square
+function turHit(c,b){const a=turOn(b.t);if(!a)return false;const V=TUR[b.t],M=a.M,K=b.size,lvB=vehLv(K),lvH=vehLv(V.hb);
+  c.save();c.globalAlpha=.42;c.translate((b.x+K/2)*T,(b.y+K/2)*T);turImg(c,M.base,lvB,K,vehWhite(M.base[lvB]));c.rotate(b.ang);turImg(c,M.tflat,lvH,V.hb,vehWhite(M.tflat[lvH]));c.restore();return true;}
+// shots leave from the muzzle: a painted turret's bullets stay hidden until they clear its barrels (they really start at its centre)
+function turHideShot(p){if(!p.team)return false;const sp=Math.hypot(p.vx||0,p.vy||0)||1;
+  if(p.ox!=null)return !!turOn('duo')&&((p.x-p.ox)*p.vx+(p.y-p.oy)*p.vy)/sp<TUR.duo.tip-.08;
+  if(p.flak)return !!turOn('scatter')&&B.scatter.tur.range+1.5-p.life*sp<TUR.scatter.tip-.1;
+  if(p.art&&p.sx!=null)return !!turOn('hail')&&Math.hypot(p.x-p.sx,p.y-p.sy)<TUR.hail.tip*.8;
+  return false;}
 function drawColonyHD(c,t,x,y,rot,b,tt,d,S,cx,cy,v){
+  if(TUR[t]&&turDraw(c,t,x,y,b,tt))return true;
   if(d.belt){drawBelt(c,t,x,y,rot,b,tt,false,true);return true;}
   if(GATE[t]){drawColGate(c,t,x,y,b,tt,true);c.strokeStyle='rgba(238,90,68,.55)';c.lineWidth=1;c.strokeRect(x+.5,y+.5,S-1,S-1);return true;}
   if(t==='wall'||t==='twall'||t==='wallL')c.drawImage(plateSprite(t,S,v),x,y,S,S);
@@ -3012,6 +3063,16 @@ function vehArtTable(){const o={};for(const t in VEH){const V=VEH[t],L=['hull','
   if(V.trk)L.push('track_0','track_1','track_2','track_3');if(V.wheels)L.push('wheel_0','wheel_1','wheel_2','wheel_3');
   if(V.tur)L.push('turret','barrel','tdmg1','tdmg2','tboss');if(V.flash)L.push('flash');if(V.flare)L.push('flare');if(V.beacon)L.push('beacon');if(V.legs)L.push('leg');
   o[t]={name:V.name,dir:V.dir,veh:t,layers:L.map(f=>({f:f+'.png'}))};}return o;}
+// v54: painted HDF turrets, as painted by art/source/paint_turrets.js (sizes in tiles; change both together). hb: the head's square box;
+// bar: each barrel's side offset (the Duo's are where the game fires its two shots from); tip: muzzle distance from the pivot;
+// rec/recT: barrel recoil and its recovery time; flash: muzzle flash size; radar: the Flak radar's mast [x, y, box].
+const TUR={
+  duo:{name:'Duo Turret',dir:'hdf/duo-turret/',hb:1.3,bar:[-.18,.18],tip:.63,rec:.075,recT:.13,flash:.34},
+  hail:{name:'Hail Cannon',dir:'hdf/hail-cannon/',hb:1.6,bar:[0],tip:.86,rec:.15,recT:.75,flash:.62,puff:1},
+  scatter:{name:'Flak Turret',dir:'hdf/flak-turret/',hb:2.3,bar:[-.30,-.18,.18,.30],tip:1.12,rec:.09,recT:.16,flash:.38,radar:[-.42,0,.62]},
+  lancer:{name:'Lancer',dir:'hdf/lancer/',hb:2.4,bar:[0],tip:.98,rec:.04,recT:.45,flash:.75,glow:1}};
+function turArtTable(){const o={};for(const t in TUR){const V=TUR[t],L=['base','dmg1','dmg2','head','barrel','hdmg1','hdmg2','shadow','flash'];
+  if(V.puff)L.push('puff');if(V.radar)L.push('radar');if(V.glow)L.push('glow','heat');o[t]={name:V.name,dir:V.dir,tur:t,layers:L.map(f=>({f:f+'.png'}))};}return o;}
 const ART={plant:{
   nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.018,period:4.2},
     layers:[{f:'base.png'},{f:'liquid.png',g:'dome'},{f:'seed.png',anim:'float',n:5,size:.2,g:'dome',lite:false},
@@ -3073,7 +3134,8 @@ const ART={plant:{
       {f:'tip_chitin.png',anim:'twin',part:'tip',ammo:SI,at:[.191,.039,.0293],lite:false},
       {f:'spurt.png',anim:'shot',size:.06,blend:'lighter',lite:true}]}},
   hdf:{},
-  hdfv:vehArtTable()};
+  hdfv:vehArtTable(),
+  hdft:turArtTable()};
 const ART_LOD_MAX=60;          // more art buildings than this on screen: draw one pre-composited image each (except priority ones)
 const ART_LOD_ZOOM=.75;        // zoomed out further than this: same cheap mode
 const ART_MID_MAX=12;          // painted turrets only: above this many on screen they drop their low-priority motion first
@@ -3088,6 +3150,7 @@ function artCrop(im,r){const N=im.width,cv=document.createElement('canvas');cv.w
   cv.getContext('2d').drawImage(im,Math.round(r[0]*N),Math.round(r[1]*N),cv.width,cv.height,0,0,cv.width,cv.height);cv.boxN=N;return cv;}
 function artReady(a){if(a.state==='failed')return;
   if(a.veh){vehReady(a);a.state='ready';return;}
+  if(a.tur){turReady(a);a.state='ready';return;}
   if(a.web){a.state='ready';webArtReady(a);return;}
   if(a.vine){a.state='ready';vineArtReady(a);return;}
   if(a.custom){organReady(a);a.under=!!a.customUnder;a.state='ready';if(typeof G!=='undefined'&&G&&typeof buildMenu==='function'&&$('mgrid'))try{buildMenu();}catch(e){}return;}   // drawn by their own painters (organs below)   // the vessel textures are drawn by the vine pass   // the Rootweb textures feed its painter, not a building box
@@ -4286,14 +4349,14 @@ function render(){
    for(const b of und){if(b.built<1){ctx.save();ctx.globalAlpha=bAlpha(b);}drawArtUnder(ctx,b,time);if(b.built<1)ctx.restore();}}
   // painted vessels: all bodies, then all their items, before any other building
   const vineP=vineArtOn()?(drawVinesPass(ctx,inView,time,z),1):0;
-  for(const b of G.blocks.values()){if(!inView(b.x,b.y,3))continue;if(b.team===1&&!fogSeen(b.x,b.y))continue;
+  turFrame(z,inView);for(const b of G.blocks.values()){if(!inView(b.x,b.y,3))continue;if(b.team===1&&!fogSeen(b.x,b.y))continue;
     const S=b.size*T;
     if(b.built<1){ctx.save();ctx.globalAlpha=bAlpha(b);}
     if(!(vineP&&!b.team&&VINE[b.t])){if(SET.hd)ctx.imageSmoothingEnabled=true;drawBlock(ctx,b.t,b.x*T,b.y*T,b.rot,b,time,b.team);if(SET.hd)ctx.imageSmoothingEnabled=false;}
     if(b.built<1)ctx.restore();
     if(b.bt&&b.built<1)drawSite(ctx,b);
     if(b.egg&&b.team===0&&b.built>=1)drawHatchBar(ctx,b);
-    if(b.hit>0){ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(b.x*T,b.y*T,S,S);}
+    if(b.hit>0&&!(b.team===1&&TUR[b.t]&&turHit(ctx,b))){ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(b.x*T,b.y*T,S,S);}
     if(G.sel===b.id){ctx.strokeStyle=TEAM_COL[b.team];ctx.lineWidth=2;ctx.strokeRect(b.x*T-1,b.y*T-1,S+2,S+2);
       const tu=B[b.t].tur;if(tu){ctx.strokeStyle='rgba(166,224,90,.35)';ctx.beginPath();ctx.arc((b.x+b.size/2)*T,(b.y+b.size/2)*T,tu.range*T,0,7);ctx.stroke();}
       if(b.t==='mender'){ctx.strokeStyle='rgba(127,208,106,.35)';ctx.beginPath();ctx.arc((b.x+.5)*T,(b.y+.5)*T,6*T,0,7);ctx.stroke();}}
@@ -4315,6 +4378,7 @@ function render(){
     if(thornArt&&p.ox!=null&&!p.team){drawThornShot(ctx,p);continue;}
     if(sporeArt&&p.flak&&!p.team){drawSporeShot(ctx,p,time);continue;}
     if(seedArt&&p.art&&!p.team){drawSeedShell(ctx,p);continue;}
+    if(p.team&&turHideShot(p))continue;
     if(p.art){const k=Math.min(1,p.t/p.fl),hgt=Math.sin(k*Math.PI)*p.fl*18;ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(p.x*T-2,p.y*T-2,4,4);
       ctx.fillStyle=p.team?'#ff8a5c':(p.col||'#fff');ctx.beginPath();ctx.arc(p.x*T,p.y*T-hgt,3.5,0,7);ctx.fill();continue;}
     ctx.strokeStyle=p.team?'#ff7a55':(p.col||'#ffe7a8');ctx.lineWidth=p.team?2:2.5;ctx.beginPath();ctx.moveTo(p.x*T,p.y*T);ctx.lineTo((p.x-p.vx*.03)*T,(p.y-p.vy*.03)*T);ctx.stroke();}
@@ -4325,14 +4389,15 @@ function render(){
       if(b.t==='core'&&b.team===0)hdGlow(ctx,cx*T,cy*T,T*3.2,'rgba(150,230,90,A)',.18+pu*.12);
       else if(b.t==='node'&&b.team===0)hdGlow(ctx,cx*T,cy*T,T*1.4,'rgba(200,120,255,A)',.18+pu*.1);
       else if(b.t==='combustion'&&b.burn>0)hdGlow(ctx,cx*T,cy*T,T*1.2,'rgba(255,150,60,A)',.25);
-      else if(b.t==='lancer'&&b.charge>.2&&(b.team||!lanceArt))hdGlow(ctx,cx*T,cy*T,T*1.6,b.team?'rgba(140,200,255,A)':'rgba(255,240,170,A)',b.charge*.3);}
-    for(const p of G.bullets)if(!p.art)hdGlow(ctx,p.x*T,p.y*T,7,p.team?'rgba(255,120,80,A)':'rgba(190,255,140,A)',.35);
+      else if(b.t==='lancer'&&b.charge>.2&&(b.team?!turOn('lancer'):!lanceArt))hdGlow(ctx,cx*T,cy*T,T*1.6,b.team?'rgba(140,200,255,A)':'rgba(255,240,170,A)',b.charge*.3);}
+    for(const p of G.bullets)if(!p.art&&!turHideShot(p))hdGlow(ctx,p.x*T,p.y*T,7,p.team?'rgba(255,120,80,A)':'rgba(190,255,140,A)',.35);
     for(const f of G.fx)if(f.k==='boom'){const k=sporeArt&&XFXK.get(f);hdGlow(ctx,f.x*T,f.y*T,f.r*T*2,k==='s'?'rgba(200,250,140,A)':'rgba(255,170,90,A)',f.life/f.max*(k==='s'?.3:.5));}
     ctx.restore();}
   for(const f of G.fx){const a=f.life/f.max;
     if(f.k==='boom'){const k=XFXK.get(f);if((k==='s'&&sporeArt)||(k==='m'&&seedArt)){drawXBoom(ctx,f,k);continue;}ctx.fillStyle=`rgba(255,${170+a*60|0},90,${a*.6})`;ctx.beginPath();ctx.arc(f.x*T,f.y*T,f.r*T*(1.2-a*.5),0,7);ctx.fill();}
     else if(f.k==='laser'&&!f.team&&lanceArt)drawLanceBeam(ctx,f,time);
-    else if(f.k==='laser'){ctx.strokeStyle=f.team?`rgba(255,140,120,${a})`:`rgba(150,210,255,${a})`;ctx.lineWidth=6*a+1;ctx.beginPath();ctx.moveTo(f.x1*T,f.y1*T);ctx.lineTo(f.x2*T,f.y2*T);ctx.stroke();
+    else if(f.k==='laser'){let x1=f.x1,y1=f.y1;if(f.team&&turOn('lancer')){const L=Math.hypot(f.x2-x1,f.y2-y1)||1;x1+=(f.x2-x1)/L*TUR.lancer.tip;y1+=(f.y2-y1)/L*TUR.lancer.tip;}
+      ctx.strokeStyle=f.team?`rgba(255,140,120,${a})`:`rgba(150,210,255,${a})`;ctx.lineWidth=6*a+1;ctx.beginPath();ctx.moveTo(x1*T,y1*T);ctx.lineTo(f.x2*T,f.y2*T);ctx.stroke();
       ctx.strokeStyle=`rgba(255,255,255,${a})`;ctx.lineWidth=2*a;ctx.stroke();}
     else if(f.k==='flame'){if(FXV.has(f)){vehFlame(ctx,f);continue;}ctx.strokeStyle=`rgba(255,140,50,${a*.8})`;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(f.x1*T,f.y1*T);ctx.lineTo(f.x2*T,f.y2*T);ctx.stroke();}
     else if(f.k==='heal'){ctx.strokeStyle=`rgba(127,208,106,${a*.6})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(f.x*T,f.y*T,f.r*T*(1-a)+4,0,7);ctx.stroke();}}

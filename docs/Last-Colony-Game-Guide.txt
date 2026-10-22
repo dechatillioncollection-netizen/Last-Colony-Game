@@ -117,10 +117,10 @@ HDF structures
 The HDF builds 18 kinds of structure. It plays by the same rules as you: its drills and conveyors feed its turrets, factories and generators, and cutting that supply starves its defences.
 
 - Colony Core (Command, 3×3): The colony's headquarters. Stores resources, pays for every unit it sends and fires at anything close. Destroy every core to win a base attack.
-- Duo Turret (Turrets, 1×1): Twin-barrel gun that fires at your ants and growths. The colony's basic defence.
-- Hail Cannon (Turrets, 1×1): Long-range artillery against ground targets.
-- Flak Turret (Turrets, 2×2): Anti-air flak. The swarm has no flyers, so it never fires and works as a tough obstacle.
-- Lancer (Turrets, 2×2): A charged energy beam against ground targets. Needs generator power.
+- Duo Turret (Turrets, 1×1): Twin-barrel gun that fires at your ants and growths. The colony's basic defence. Looks: a compact boxy head on a turret ring with two separate slim barrels that fire in turn.
+- Hail Cannon (Turrets, 1×1): Long-range artillery against ground targets. Looks: a heavy head with a breech block and one long, thick barrel that kicks back hard when it fires.
+- Flak Turret (Turrets, 2×2): Anti-air flak. The swarm has no flyers, so it never fires and works as a tough obstacle. Looks: a raised mount on a 2×2 pad with four short barrels and a spinning radar bar.
+- Lancer (Turrets, 2×2): A charged energy beam against ground targets. Needs generator power. Looks: a long head with capacitors and cooling fins and one emitter barrel; a faint cyan glow builds as it charges and the fins glow hot after it fires.
 - Mining Drill (Mining, 2×2): Mines copper, lead, coal or sand onto conveyors.
 - Pneumatic Drill (Mining, 2×2): A faster drill that also mines titanium.
 - Conveyor (Logistics, 1×1): Moves resources along a belt.

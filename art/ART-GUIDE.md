@@ -599,7 +599,7 @@ The painted root layers (`roots.png`) of all 19 growths that have them, the Bloo
 
 ### HDF ground vehicles (v52)
 
-The Scout Tank, Rammer Drone, Flame Tank and Siege Tank are painted vehicles. They are the first HDF art; HDF buildings and aircraft still use the built-in look.
+The Scout Tank, Rammer Drone, Flame Tank and Siege Tank are painted vehicles. They were the first HDF art. The defensive turrets followed in v54 (below); other HDF buildings and aircraft still use the built-in look.
 
 - **Look:** frontier military kit, practical and mass-produced. Weathered khaki, olive and steel paint, panel seams, rivets, worn edges, dust and scratches. Each has a narrow red HDF identification band. Warning colours are kept to working parts: the Rammer's plough, the Siege Tank's muzzle band and outriggers.
 - **Telling them apart at normal zoom:**
@@ -644,3 +644,31 @@ The Scout Tank, Rammer Drone, Flame Tank and Siege Tank are painted vehicles. Th
   - Low quality and painted art off give the built-in look.
   - If any layer of a vehicle fails to load, that vehicle keeps its built-in look and the console names the file.
 - **Painter script:** `art/source/paint_vehicles.js`. Run it with `node art/source/runpaint.js art/source/paint_vehicles.js art/hdf`. The drawing code is `vehDraw`, `vehWrecks` and `vehFlame`.
+
+### HDF defensive turrets (v54)
+
+The Duo Turret, Hail Cannon, Flak Turret (`scatter` in the code) and Lancer are painted. They share the v52 vehicles' kit: weathered slate and steel, muted olive panels, a narrow red HDF band, yellow and black hazard stripes on the foundations, bolts and access panels. HDF walls, production buildings and aircraft keep the built-in look.
+
+- **Telling them apart at normal zoom:**
+  - **Duo Turret (1×1):** a compact boxy head with an ammunition box on its side and two separate slim barrels.
+  - **Hail Cannon (1×1):** a heavier head with a breech block, recoil cylinders and one long thick barrel with a muzzle brake. It reads as artillery, not a bigger Duo.
+  - **Flak Turret (2×2):** a raised octagonal mount with four short barrels in two pairs, ammunition drums on the sides and a spinning radar bar behind.
+  - **Lancer (2×2):** a long powered head with capacitor banks, cooling fins, power conduits across the foundation and one emitter barrel ending in a lens. Its pale cyan light is kept faint.
+- **Folders:** `art/hdf/duo-turret/`, `hail-cannon/`, `flak-turret/` and `lancer/`, at 128 px per tile, light from the top left, every turret facing +x (right).
+  - **Footprint squares** (1×1 or 2×2, centred on the block): `base` (foundation, turret ring and markings), `dmg1`, `dmg2`.
+  - **Head squares** (`hb` tiles, centred on the turret pivot): `head`, `barrel` (one barrel, drawn once per barrel position), `hdmg1`, `hdmg2`, `shadow`, and for the Lancer `glow` and `heat`.
+  - **Effects and parts:** `flash` (muzzle flash, pointing +x from its left middle), `puff` (the Hail's gun smoke), `radar` (the Flak's radar bar).
+- **Sizes:** in the `TUR` table in the game file: head box `hb`, barrel offsets `bar`, muzzle distance `tip`, recoil distance `rec` and recovery time `recT`, flash size, and the Flak's radar position. The painter script has the same numbers; change both together.
+- **Everything moves with the game:**
+  - **Head:** it follows the game's aim angle `b.ang`; the foundation never turns.
+  - **Duo:** the game alternates its shots between two sides (`b.rr`). The recoil and flash go to the barrel on the side the bullet really left from.
+  - **Hail:** a long, slow recoil (0.75 s back to rest), a big flash and a drifting smoke puff on each real shot.
+  - **Flak:** its four barrels recoil in turn on real shots and the radar spins. In the current game the HDF Flak is air-only and the hive has no flyers, so it never fires; the art is ready if that ever changes.
+  - **Lancer:** a faint pulse while the colony has power, a glow that builds with the game's own charge, a flare at the emitter when the beam fires and hot fins that cool over about 1.5 s. The beam is drawn from the emitter tip instead of the turret centre.
+  - **Shots:** bullets and shells are hidden until they clear the barrels, so they appear at the muzzles.
+  - **Damage:** wear marks on the foundation and head below two-thirds health, heavier ones below one-third. The hit flash uses each turret's own silhouette; the health bar is unchanged.
+  - **Placement and destruction:** a turret being placed fades in as before; a destroyed turret uses the game's existing blast and scorch marks.
+- **No gameplay effect:** firing state is read from what the game already records (`b.shot`, `b.rr`, `b.charge`, the Lancer's beam effect) and kept in a `WeakMap`. Drawing never calls `rnd()`. Seeded runs and saves are byte-identical to v53 (`tests/xtest54.js`).
+- **Performance:** each layer has half and quarter copies. With more than 30 turrets on screen the head shadows are skipped. With more than 80 turrets on screen, or zoomed out past 0.75×, each turret draws its foundation and one baked head (`tflat`, made at load) and skips the shadow, separate barrels, radar spin and smoke. Aim, flashes and damage marks stay.
+- **Settings and fallback:** Low quality and painted art off give the built-in look. If any layer of a turret fails to load, that turret keeps its built-in look and the console names the file.
+- **Painter script:** `art/source/paint_turrets.js`. Run it with `node art/source/runpaint.js art/source/paint_turrets.js art/hdf`. The drawing code is `turDraw`, `turS`, `turFrame` and `turHideShot`.
