@@ -6299,11 +6299,12 @@ function dynFrame(dt,work,now){if(!DESK)return;if(dt>0&&dt<250){DYN.ema=DYN.ema?
     if(DYN.iv.length<120){DYN.iv.push(dt);if(DYN.iv.length===120){const a=DYN.iv.slice().sort((x,y)=>x-y);DYN.period=clamp(a[12],1000/60,1000/48);}}}
   // the target frame time: 60 frames a second, or the screen's own rate if it is slower (a 50 Hz television), judged from the quickest frames
   if(!DYN.on||!G||G.paused||now-DYN.tick<1000)return;DYN.tick=now;const P=DYN.period;
-  if(DYN.ema>P*1.25&&DYN.cur>DYN.min+.01){DYN.cur=Math.max(DYN.min,DYN.cur*.85);if(now-DYN.lastUp<3000)DYN.wait=Math.min(60000,DYN.wait*2);DYN.lastDown=now;resize();}
-  else if(DYN.ema<P*1.1&&DYN.work<P*.45&&DYN.cur<DYN.max-.01&&now-DYN.lastDown>DYN.wait&&now-DYN.lastUp>3000){DYN.cur=Math.min(DYN.max,DYN.cur*1.12);DYN.lastUp=now;resize();}}
+  if(DYN.ema>P*1.25&&DYN.cur>DYN.min+.01){DYN.cur=Math.max(DYN.min,DYN.cur*.85);if(now-DYN.lastUp<3000)DYN.wait=Math.min(60000,DYN.wait*2);DYN.lastDown=now;DYN.re=1;}
+  else if(DYN.ema<P*1.1&&DYN.work<P*.45&&DYN.cur<DYN.max-.01&&now-DYN.lastDown>DYN.wait&&now-DYN.lastUp>3000){DYN.cur=Math.min(DYN.max,DYN.cur*1.12);DYN.lastUp=now;DYN.re=1;}}
 // F3: frame rate readout, and which renderer draws the Rootweb
 const FPS={n:0,t:0};window.addEventListener('keydown',e=>{if(e.key==='F3'){e.preventDefault();const b=$('fpsBox');b.hidden=!b.hidden;}});
 function loop(now){const w0=performance.now(),rawDt=now-last;
+  if(DYN.re){DYN.re=0;resize();}   // a new resolution clears the canvas, so it is only set just before a frame is drawn
   const dt=Math.min(.1,(now-last)/1000);last=now;
   FPS.n++;FPS.t+=now-(FPS.l||now);FPS.l=now;if(FPS.t>=500){const b=$('fpsBox');if(!b.hidden)b.textContent=Math.round(FPS.n*1000/FPS.t)+' fps · Rootweb on '+(webGPU?'GPU':'2D canvas')+(DESK?' · resolution '+Math.round(DPR/(window.devicePixelRatio||1)*100)+'%':'');FPS.n=0;FPS.t=0;}
   sndTick(dt);
