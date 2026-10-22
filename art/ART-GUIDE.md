@@ -596,3 +596,51 @@ The Petal Gate is now too narrow for a Bulwark Ant, as its description always sa
 ### Root colour (v42 follow-up)
 
 The painted root layers (`roots.png`) of all 19 growths that have them, the Bloom included, are recoloured a turquoise with a slight purple lean, near the Bloom's centre (shadows a dusky violet blue, lit roots turquoise, highlights pale aqua). `art/source/recolor_roots.py` takes each pixel's colour from that ramp at the same brightness and keeps its alpha, light and shade; the brighter roots of each layer are lifted into the ramp's middle and the shadows stay dark. Run it on freshly painted roots (`python3 art/source/recolor_roots.py art/plant art/plant` after repainting), not on roots it has already recoloured. Only the colour changed: sizes, anchors and every other layer are as before, and Low quality keeps the previous look.
+
+### HDF ground vehicles (v52)
+
+The Scout Tank, Rammer Drone, Flame Tank and Siege Tank are painted vehicles. They are the first HDF art; HDF buildings and aircraft still use the built-in look.
+
+- **Look:** frontier military kit, practical and mass-produced. Weathered khaki, olive and steel paint, panel seams, rivets, worn edges, dust and scratches. Each has a narrow red HDF identification band. Warning colours are kept to working parts: the Rammer's plough, the Siege Tank's muzzle band and outriggers.
+- **Telling them apart at normal zoom:**
+  - **Scout Tank:** narrow khaki hull on thin open tracks, a small round turret with a slim gun, and a whip antenna.
+  - **Rammer Drone:** smallest. Wheeled, with no turret, a yellow and black V plough, two red charge drums and a blinking beacon.
+  - **Flame Tank:** wide and squat. Bolted skirts, two red-banded fuel cylinders with hoses on the back, a stepped, soot-blackened glacis and a short twin projector.
+  - **Siege Tank:** biggest. Very broad tracks between skirt plates, stepped armour, a large octagonal turret, a long gun with a muzzle brake, and outriggers folded at the back.
+- **Folders:** `art/hdf/scout-tank/`, `rammer-drone/`, `flame-tank/` and `siege-tank/`, at 128 px per tile, light from the top left, every vehicle facing +x (right).
+  - **Hull-sized squares** (`box` tiles, centred on the vehicle's pivot): `hull`, `shadow`, `dmg1`, `dmg2`, `boss`, `wreck`.
+  - **Turret-sized squares** (`tbox` tiles, centred on the turret pivot): `turret`, `barrel`, `tdmg1`, `tdmg2`, `tboss`.
+  - **Tracks:** `track_0..3`, one track strip in four frames a quarter of a link apart. Each track is drawn on its own side, so the two can run at different speeds.
+  - **Wheels:** `wheel_0..3`, one wheel in four frames.
+  - **Effects:** `flash` (muzzle flash, pointing +x from its left middle), `flare` (the Flame Tank's projector flame), `beacon` (the Rammer's light), `leg` (a Siege outrigger, hinged at its left middle) and `puff` (smoke).
+- **Sizes:** in tiles, in the `VEH` table in the game file:
+  - `box`, turret pivot and `tbox`;
+  - track length, width, side offset and link pitch;
+  - wheel positions and size;
+  - muzzle distance, recoil distance and recovery time;
+  - exhaust outlets;
+  - hull and turret turn rates.
+
+  The painter script has the same numbers; change both together.
+- **Everything moves with the game:**
+  - **Tracks and wheels:** they run only by the distance the vehicle really moved. In a turn the outer track runs further, and the Rammer's front wheels steer.
+  - **Hull:** it turns toward the direction of travel at its own rate, so it never snaps.
+  - **Turret:** it follows the game's aim angle `e.ang`.
+  - **Firing:** recoil, muzzle flash and gun smoke start on a real shot (`enemyFireAt`). The Siege Tank's hull also rocks.
+  - **Flame Tank:** its projector flares while it really sprays. The flame is drawn from its nozzles to the game's own target point for the game's own 0.2 s.
+  - **Damage:**
+    - At two-thirds health: scuffs, impacts and scorches, plus thin smoke.
+    - At one-third health: holes, torn plates, heavy smoke and an ember.
+    - The hit flash and the health bar come from the game as before.
+  - **Death:** a kill or a Rammer's blast leaves a wreck. The Rammer leaves scattered debris. A wreck burns for about 5 s and fades over 10 s. A scripted vehicle that leaves (Patrol 7) leaves no wreck.
+  - **Idle:** exhaust puffs and a faint engine shake. The Siege Tank lowers its outriggers after standing still for about a second.
+  - **Bosses:** drawn 1.35× as before, with extra armour plates and red command markings (`boss`, `tboss`).
+- **No gameplay effect:** nothing is added to an enemy. The drawing state lives in a `WeakMap`, and drawing never calls `rnd()`. Seeded runs and saves are byte-identical to v51 (`tests/xtest52.js`).
+- **Performance:**
+  - Each layer has pre-shrunk half and quarter copies, and the right one is picked for the size on screen.
+  - With more than 45 vehicles on screen, or zoomed out past 0.75×, smoke, exhaust and the antenna are skipped. Tracks, turret, recoil, flashes and damage marks stay.
+  - Reduced-motion system settings also skip smoke and the idle shake.
+- **Settings and fallback:**
+  - Low quality and painted art off give the built-in look.
+  - If any layer of a vehicle fails to load, that vehicle keeps its built-in look and the console names the file.
+- **Painter script:** `art/source/paint_vehicles.js`. Run it with `node art/source/runpaint.js art/source/paint_vehicles.js art/hdf`. The drawing code is `vehDraw`, `vehWrecks` and `vehFlame`.

@@ -1,7 +1,7 @@
 {
   "name": "last-colony",
   "productName": "Last Colony",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Last Colony",
   "main": "main.js",
   "private": true,
