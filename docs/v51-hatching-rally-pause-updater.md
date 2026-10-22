@@ -62,7 +62,7 @@ The hatch times are three numbers in `U` (`time:`), so they are easy to tune.
 `electron/updater/` is a small Go program, built by `electron/build.sh` into each Windows and Linux folder as `Updater.exe` (`updater` on Linux), with `updater.json` next to it:
 
 ```
-{ "repo": "dechatillioncollection-netizen/last-colony", "asset": "LastColony-Windows.zip" }
+{ "repo": "dechatillioncollection-netizen/Last-Colony-Game", "asset": "LastColony-Windows.zip" }
 ```
 
 When a player runs it:
@@ -85,7 +85,7 @@ When a player runs it:
 2. Run `electron/build.sh`.
 3. On GitHub, create a release whose tag is that version (for example `v0.6.0`) and attach the zips with their names unchanged.
 
-**The repository must be readable without signing in.** `last-colony` is private, so a player's updater gets "no releases found". Either make a public repository just for releases and set `UPDATE_REPO=owner/name` when building, or make this one public. `GITHUB_TOKEN` works for testing against a private repository. Never put a token in a download.
+**Where it looks.** The game is published in the public repository `dechatillioncollection-netizen/Last-Colony-Game`. That is where the updater looks and where releases go. The development repository stays private, because it held private story notes in its history. To use another repository, set `UPDATE_REPO=owner/name` when building, or edit `updater.json`. `GITHUB_TOKEN` works for testing against a private repository. Never put a token in a download.
 
 ## Results
 

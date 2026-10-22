@@ -93,7 +93,7 @@ func run() int {
 		dir = filepath.Dir(exe)
 	}
 	cleanOld(dir)
-	cfg := config{Repo: "dechatillioncollection-netizen/last-colony", Asset: defaultAsset()}
+	cfg := config{Repo: "dechatillioncollection-netizen/Last-Colony-Game", Asset: defaultAsset()}
 	if b, err := os.ReadFile(filepath.Join(dir, "updater.json")); err == nil {
 		if err := json.Unmarshal(b, &cfg); err != nil {
 			fmt.Println("updater.json could not be read:", err)

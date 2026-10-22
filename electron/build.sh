@@ -7,7 +7,7 @@
 # steamworks.js (Steam overlay and achievements) is bundled; the game runs the same without Steam.
 # The Windows and Linux folders also get the updater (Updater.exe / updater, built from updater/ with Go 1.22+) and updater.json,
 # which say where it looks for new releases. Steam leaves these out (steam/app_build.vdf) because Steam updates the game itself.
-UPDATE_REPO="${UPDATE_REPO:-dechatillioncollection-netizen/last-colony}"
+UPDATE_REPO="${UPDATE_REPO:-dechatillioncollection-netizen/Last-Colony-Game}"
 set -euo pipefail
 cd "$(dirname "$0")"
 ELECTRON=33.2.1
