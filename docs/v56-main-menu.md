@@ -79,7 +79,7 @@ To record again, start a web server on the repo root (`python3 -m http.server 81
 
 ## Sound
 
-The clips are silent. They have no sound track and are muted, including the battle, so the menu never plays weapons. The menu's sound is the same gentle ambience bed as before, wind over the ground and the deep air, through the master and ambience volumes and Mute all sound. The title screen's extra bed still fades out on continuing, so the two never stack. In a game the menu bed gives way to the game's own ambience as before. Turning the ambience down or off is done with the Ambience slider in Settings; there is no second mute button.
+(Since v58 the clips have sound: see `docs/v58-title-and-menu-sound.md`. As first made in v56:) The clips are silent. They have no sound track and are muted, including the battle, so the menu never plays weapons. The menu's sound is the same gentle ambience bed as before, wind over the ground and the deep air, through the master and ambience volumes and Mute all sound. The title screen's extra bed still fades out on continuing, so the two never stack. In a game the menu bed gives way to the game's own ambience as before. Turning the ambience down or off is done with the Ambience slider in Settings; there is no second mute button.
 
 ## Keyboard and accessibility
 

@@ -177,8 +177,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
   letter-spacing:.32em;text-transform:uppercase;color:#d9e6ea;text-shadow:0 0 12px rgba(120,210,220,.45),0 2px 4px rgba(0,0,0,.8);opacity:0;transition:opacity 1.6s ease}
 #splash.ready .sp{opacity:1;animation:spPulse 2.8s ease-in-out 1.6s infinite}
 @keyframes spPulse{0%,100%{opacity:1}50%{opacity:.42}}
+#splash.vines .sp{opacity:0!important;animation:none!important;transition:opacity .35s}#splashVn{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#splash.vopen{background:transparent;cursor:default}#splash.vopen>:not(#splashVn){visibility:hidden}
+#splash h1{transform:scale(calc(1 + var(--hb,0)*.016))}
 #splash .sx{position:absolute;right:16px;bottom:12px;font-family:var(--f-ui);font-size:12px;letter-spacing:.08em;color:rgba(200,200,215,.4);pointer-events:none}
-@media (prefers-reduced-motion:reduce){#splash.ready .sp{animation:none}#splash .st{transition:opacity 1.2s ease}}
+@media (prefers-reduced-motion:reduce){#splash h1{transform:none}#splash.ready .sp{animation:none}#splash .st{transition:opacity 1.2s ease}}
 #intro{position:fixed;inset:0;z-index:40;--lb:0px;transition:opacity .45s}#intro[hidden]{display:none}#intro.out{opacity:0}
 #introCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #intro .ibar{position:absolute;left:0;right:0;height:var(--lb);background:#000}#intro .ibar.top{top:0}#intro .ibar.bot{bottom:0}
@@ -5865,7 +5868,7 @@ function sndUnlock(){if(SND.ctx){if(SND.ctx.state==='suspended'&&!document.hidde
 for(const ev of ['pointerdown','keydown','touchend'])window.addEventListener(ev,sndUnlock,{capture:true,passive:true});
 // the sounds come as one script of base64 MP3s, so they load the same way from a web page and from the Windows app's files
 function sndLoad(){if(SND.loading||SND.ready)return;SND.loading=true;
-  const go=()=>{const L=window.LC_SOUNDS;if(!L){SND.loading=false;return;}const names=Object.keys(L).sort((a,b)=>(b.startsWith('intro_')|0)-(a.startsWith('intro_')|0));let i=0;
+  const go=()=>{const L=window.LC_SOUNDS;if(!L){SND.loading=false;return;}const pr=n=>n.startsWith('title_')?2:n.startsWith('intro_')?1:0,names=Object.keys(L).sort((a,b)=>pr(b)-pr(a));let i=0;
     const next=()=>{if(i>=names.length){SND.ready=true;SND.loading=false;return;}const n=names[i++];
       const bin=atob(L[n]),u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);
       SND.ctx.decodeAudioData(u.buffer).then(a=>{SND.buf[n]=a;const m=/^(.*)_(\d+)$/.exec(n);if(m)SND.nvar[m[1]]=Math.max(SND.nvar[m[1]]||0,+m[2]+1);}).catch(()=>{}).then(next);};
@@ -5982,9 +5985,9 @@ function sndAmbSet(name,target){if(!sndReady('a'))return;let a=SND.amb[name];con
   a.g.gain.setTargetAtTime(target,t,1.2);a.idle=target<.003?a.idle+1:0;
   if(a.idle>60){delete SND.amb[name];try{for(const s of a.src)s.stop(t+.2);}catch(_){}}}
 function sndAmbient(dt){if(!sndReady('a')){if(Object.keys(SND.amb).length)sndAmbStop();return;}
-  const bio=G&&G.mapv>=2&&G.biome||'base',wind=AMBW[bio]||'amb_meadow',inGame=!!(G&&!G.over);
-  for(const w of new Set(Object.values(AMBW)))sndAmbSet(w,w===wind?(inGame?.5:.32):0);
-  sndAmbSet('amb_low',inGame?.34:.25);sndAmbSet('amb_soil',inGame&&(bio==='meadow'||bio==='base')?.22:0);
+  const bio=G&&G.mapv>=2&&G.biome||'base',wind=AMBW[bio]||'amb_meadow',inGame=!!(G&&!G.over),mq=inGame||!mmHeard()?1:.25;
+  for(const w of new Set(Object.values(AMBW)))sndAmbSet(w,w===wind?(inGame?.5:.32*mq):0);
+  sndAmbSet('amb_low',inGame?.34:.25*mq);sndAmbSet('amb_soil',inGame&&(bio==='meadow'||bio==='base')?.22:0);
   let hive=0,threat=0,combat=0;
   if(inGame){let own=0;for(const b of G.blocks.values())if(b.team===0)own++;
     SND.grow*=Math.exp(-dt/4);hive=clamp(.12+.45*Math.min(1,(G.webCount||0)/1400)+.3*Math.min(1,own/90)+.15*Math.min(1,SND.grow/6),0,.85);
@@ -6536,14 +6539,17 @@ function splashStart(){const el=$('splash');if(!el)return;
   // the desktop app may start sound at once; a browser waits for the first key or click, which here is the one that continues
   if(DESK)sndUnlock();
   SPL.raf=requestAnimationFrame(splashLoop);}
+// the heartbeat's shape over time: a strong beat, then a lighter one 0.3 s later, each a quick rise and a slower fall
+function splashBeat(b){if(b==null)return 0;const one=x=>x<0?0:x<.07?x/.07:Math.exp(-(x-.07)/.14);return Math.min(1,one(b)+.68*one(b-.3));}
 function splashReady(){if(SPL.on&&SPL.minT&&SPL.got>=2)$('splash').classList.add('ready');}
 function splashPadState(){try{return [...(navigator.getGamepads?navigator.getGamepads():[])].map(p=>p?p.buttons.map(b=>b.pressed):null);}catch(_){return [];}}
 function splashPadPressed(){let any=false;try{const P=navigator.getGamepads?navigator.getGamepads():[];for(let i=0;i<P.length;i++){const p=P[i];if(!p)continue;const was=SPL.pads[i]||[];
   p.buttons.forEach((b,j)=>{if(b.pressed&&!was[j])any=true;});}}catch(_){}SPL.pads=splashPadState();return any;}
 // leave: a fade to the menu that is already underneath; instant when a game starts some other way
 function splashEnd(instant){if(!SPL||!SPL.on)return;const el=$('splash');SPL.why=instant?'game started: '+(new Error().stack.split('\n')[2]||'').trim():'continued';
-  if(instant){SPL.on=false;cancelAnimationFrame(SPL.raf);el.hidden=true;el.classList.remove('out','on','ready');splashSound(false,.3);return;}
-  if(SPL.ending)return;SPL.ending=true;el.classList.add('out');splashSound(false,1.4);snd('ui','ui_open');
+  if(instant){SPL.on=false;cancelAnimationFrame(SPL.raf);vineClear();el.hidden=true;el.classList.remove('out','on','ready');splashSound(false,.3);return;}
+  if(SPL.vine){vineSkip();return;}if(SPL.ending)return;
+  if(!SPL.rm){vineStart();return;}SPL.ending=true;el.classList.add('out');splashSound(false,1.4);snd('ui','ui_open');
   setTimeout(()=>{if(!SPL.on)return;SPL.on=false;cancelAnimationFrame(SPL.raf);el.hidden=true;el.classList.remove('out','on','ready');
     const b=document.querySelector('#ovcard .mode');if(b&&!$('overlay').hidden&&b.focus)b.focus({preventScroll:true});},900);}
 function splashKey(e){if(!SPL.on)return;if(['Shift','Control','Alt','Meta','CapsLock','Tab','F11','F12'].includes(e.key))return;
@@ -6561,18 +6567,19 @@ function splashFog(){const c=document.createElement('canvas');c.width=256;c.heig
 function splashMote(any){return {x:Math.random(),y:any?Math.random():1.05,v:.006+Math.random()*.016,w:Math.random()*6.3,r:.6+Math.random()*1.8,h:Math.random()<.6?'150,225,230':'200,160,240',a:.25+Math.random()*.55};}
 function splashLoop(now){if(!SPL.on)return;const dt=SPL.last?Math.min(.1,(now-SPL.last)/1000):0;SPL.last=now;if(!document.hidden)SPL.t+=dt;
   if(splashPadPressed())splashEnd(false);
-  splashDraw(SPL.t,dt);splashSoundTick(dt);SPL.raf=requestAnimationFrame(splashLoop);}
+  if(!SPL.vine||SPL.vine.t<VN.OPEN)splashDraw(SPL.t,dt);if(SPL.vine)vineTick();if(!SPL.on)return;splashSoundTick(dt);SPL.raf=requestAnimationFrame(splashLoop);}
 function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
   const PW=Math.round(W*dpr),PH=Math.round(H*dpr);if(cv.width!==PW||cv.height!==PH){cv.width=PW;cv.height=PH;}
   const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#050407';g.fillRect(0,0,W,H);
   // the picture covers the screen, drifting in very slowly; the Bloom is kept below the title on tall and narrow screens
-  const P=SPL_PIC,z=SPL.rm?1.02:1.02+.03*(.5-.5*Math.cos(Math.min(1,t/70)*Math.PI)),k=Math.max(W/P.W,H/P.H)*z;
+  if(SPL.beat!=null){SPL.beat+=dt;if(SPL.beat>1.6)SPL.beat=null;}const hb=splashBeat(SPL.beat);$('splash').style.setProperty('--hb',SPL.rm?0:hb.toFixed(3));
+  const P=SPL_PIC,z=(SPL.rm?1.02:1.02+.03*(.5-.5*Math.cos(Math.min(1,t/70)*Math.PI)))*(SPL.rm?1:1+.011*hb),k=Math.max(W/P.W,H/P.H)*z;
   const bx=P.bloom[0],by=P.bloom[1],ox=W/2-P.W/2*k+(SPL.rm?0:Math.sin(t*.05)*W*.004),oy=Math.min(H*.56-by*k,Math.max(H-P.H*k,0))+(SPL.rm?0:Math.cos(t*.043)*H*.004);
   const X=x=>ox+x*k,Y=y=>oy+y*k;
   if(SPL.bg){g.globalAlpha=Math.min(1,t/1.6);g.drawImage(SPL.bg,ox,oy,P.W*k,P.H*k);g.globalAlpha=1;}
   // light from the Bloom: a slow breath everywhere, and a wave that runs out along the conduits every few seconds
   if(SPL.glow&&SPL.bg){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,t/2)*(.16+.06*Math.sin(t*.9));g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();
-    SPL.nextPulse-=dt;if(SPL.nextPulse<=0){SPL.nextPulse=6.5+Math.random()*2.5;SPL.pulses.push({t:0});splashSound('pulse');}
+    SPL.nextPulse-=dt;if(SPL.nextPulse<=0){SPL.nextPulse=5+Math.random()*3;SPL.pulses.push({t:0});SPL.beat=0;splashSound('pulse');}
     for(const p of SPL.pulses){p.t+=dt;const r=p.t*360*k*1.6,fade=Math.max(0,1-p.t/4.2);if(fade<=0)continue;
       if(SPL.lite){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.25*fade*Math.min(1,p.t*3);g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();continue;}
       const m=splashMask(PW,PH);m.g.setTransform(1,0,0,1,0,0);m.g.globalCompositeOperation='source-over';m.g.clearRect(0,0,PW,PH);m.g.setTransform(dpr,0,0,dpr,0,0);
@@ -6582,7 +6589,10 @@ function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,win
     SPL.pulses=SPL.pulses.filter(p=>p.t<4.3);}
   // the Bloom's heart, breathing
   {const cx=X(bx),cy=Y(by),R=150*k,a=Math.min(1,t/2.5)*(.12+.08*Math.sin(t*1.1));const gr=g.createRadialGradient(cx,cy,0,cx,cy,R);gr.addColorStop(0,`rgba(170,255,200,${a})`);gr.addColorStop(1,'rgba(170,255,200,0)');
-    g.save();g.globalCompositeOperation='lighter';g.fillStyle=gr;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();}
+    g.save();g.globalCompositeOperation='lighter';g.fillStyle=gr;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();
+    // the beat: a flush of light from the Bloom and a faint warm swell over the whole picture
+    if(hb>.01){const R2=430*k,g2=g.createRadialGradient(cx,cy,0,cx,cy,R2);g2.addColorStop(0,`rgba(200,255,220,${.26*hb})`);g2.addColorStop(.45,`rgba(150,110,220,${.12*hb})`);g2.addColorStop(1,'rgba(150,110,220,0)');
+      g.save();g.globalCompositeOperation='lighter';g.fillStyle=g2;g.fillRect(cx-R2,cy-R2,R2*2,R2*2);g.fillStyle=`rgba(90,30,60,${.06*hb})`;g.fillRect(0,0,W,H);g.restore();}}
   // people: survey lamps blinking down the line, and the tank's lamps
   if(SPL.bg){g.save();g.globalCompositeOperation='lighter';
     P.lamps.forEach(([x,y],i)=>{const ph=(t*.8-i*.22)%2.4,on=ph>0&&ph<.18?1:.18;const r=(on>.5?9:5)*k*1.6,cx=X(x),cy=Y(y);const gr=g.createRadialGradient(cx,cy,0,cx,cy,r*3);
@@ -6596,15 +6606,73 @@ function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,win
   // motes
   g.save();g.globalCompositeOperation='lighter';for(const m of SPL.motes){if(!SPL.rm){m.y-=m.v*dt;m.x+=Math.sin(t*.4+m.w)*.0009*dt*60/60;}if(m.y<-.05)Object.assign(m,splashMote(false));
     const tw=.55+.45*Math.sin(t*1.7+m.w*3),a=m.a*tw*Math.min(1,t/2.5);g.fillStyle=`rgba(${m.h},${a})`;g.beginPath();g.arc(m.x*W,m.y*H,m.r*(W/1600+.4),0,7);g.fill();}g.restore();}
+// ===== v58: vines over the title screen. They grow in from every edge (5 s), dark undergrowth closes the gaps behind them until nothing
+// of the title shows, hold a moment, then part from the middle onto the main menu (7 s in all). Drawn on their own canvas above the title;
+// each frame adds only the new length of each vine to a kept layer. Reduced motion skips them and fades as before.
+const VN={OPEN:5.6,END:7,COLS:['#1c2a1d','#223321','#28243a','#1d2c2f','#2b3a24'],MAX:240};
+function vineStart(){const el=$('splash'),c=document.createElement('canvas');c.id='splashVn';c.setAttribute('aria-hidden','true');el.appendChild(c);el.classList.add('vines');
+  const dpr=Math.min(SPL.lite?1:1.25,window.devicePixelRatio||1),W=c.clientWidth||innerWidth,H=c.clientHeight||innerHeight,L=document.createElement('canvas');
+  c.width=L.width=Math.round(W*dpr);c.height=L.height=Math.round(H*dpr);const lg=L.getContext('2d');lg.setTransform(dpr,0,0,dpr,0,0);lg.lineCap='butt';lg.lineJoin='round';
+  const V=SPL.vine={t:0,last:performance.now(),c,g:c.getContext('2d'),L,lg,dpr,W,H,D:Math.hypot(W,H),tips:[],acc:0,snd:null,skip:false};
+  for(let i=0;i<10;i++)vineEdge(V);vineSound(V);SPL.why='continued';}
+// a new vine from a random point on an edge, heading into the screen
+function vineEdge(V){const W=V.W,H=V.H,side=Math.random()*(2*W+2*H);let x,y;
+  if(side<W){x=side;y=H+8;}else if(side<2*W){x=side-W;y=-8;}else if(side<2*W+H){x=-8;y=side-2*W;}else{x=W+8;y=side-2*W-H;}
+  const tx=W*(.15+.7*Math.random()),ty=H*(.15+.7*Math.random());vineTip(V,x,y,Math.atan2(ty-y,tx-x)+(Math.random()-.5)*.6,V.D*.012*(.7+.6*Math.random())*(1+.4*V.t),0,tx,ty);}
+function vineTip(V,x,y,a,w,gen,tx,ty){if(V.tips.length>=VN.MAX)return;V.tips.push({x,y,a,w,gen,len:0,max:V.D*(.35+.6*Math.random())/(1+gen*.4),curl:(Math.random()-.5)*1.4,ph:Math.random()*6.3,
+  sp:V.D*(.15+.1*Math.random()),col:VN.COLS[(Math.random()*VN.COLS.length)|0],tx:tx==null?V.W*Math.random():tx,ty:ty==null?V.H*Math.random():ty});}
+// on the clock on the wall (at most half a second a frame), so a slow computer still reaches the menu on time
+function vineTick(){const V=SPL.vine;if(!V)return;const now=performance.now(),dt=Math.min(.5,(now-V.last)/1000);V.last=now;V.t+=dt;const t=V.t,g=V.g,W=V.W,H=V.H,dpr=V.dpr;vineSound(V);
+  if(t<VN.OPEN){if(t<4.4){V.acc+=dt*(5+6*t);while(V.acc>=1){V.acc--;vineEdge(V);}}
+    // grow: each vine steers toward its point, curls and wanders, branches now and then, and thins as it goes
+    const segs=[],deco=[];
+    for(const p of V.tips){const dist=p.sp*(1+.35*t)*dt,n=Math.max(1,Math.ceil(dist/5)),st=dist/n,pts=[[p.x-Math.cos(p.a)*1.5,p.y-Math.sin(p.a)*1.5]];
+      for(let k=0;k<n;k++){let da=Math.atan2(p.ty-p.y,p.tx-p.x)-p.a;da=Math.atan2(Math.sin(da),Math.cos(da));p.a+=(da*1.1+p.curl+Math.sin(p.len*.018+p.ph)*1.2)*st/p.sp;
+        p.x+=Math.cos(p.a)*st;p.y+=Math.sin(p.a)*st;p.len+=st;p.w*=Math.pow(.9993,st);pts.push([p.x,p.y]);
+        const r=Math.random();if(r<st*.004)deco.push(['thorn',p.x,p.y,p.a,p.w]);else if(r<st*.0065)deco.push(['leaf',p.x,p.y,p.a,p.w]);else if(r<st*.0078)deco.push(['bud',p.x,p.y,p.a,p.w]);}
+      segs.push([pts,p.w,p.col,p.a]);
+      if(p.gen<3&&Math.random()<dt*1.1){const s=Math.random()<.5?-1:1;vineTip(V,p.x,p.y,p.a+s*(.45+Math.random()*.55),p.w*(.62+Math.random()*.16),p.gen+1);}}
+    const live=p=>p.w>1&&p.len<p.max&&p.x>-V.D*.15&&p.x<W+V.D*.15&&p.y>-V.D*.15&&p.y<H+V.D*.15,ends=V.tips.filter(p=>!live(p));V.tips=V.tips.filter(live);
+    // each vine's new length this frame is one path, started a little back over the last, so no seams show
+    const lg=V.lg,line=(s,w,col,ox,oy)=>{lg.strokeStyle=col;lg.lineWidth=w;lg.beginPath();s[0].forEach(([x,y],i)=>i?lg.lineTo(x+ox,y+oy):lg.moveTo(x+ox,y+oy));lg.stroke();};
+    // butt ends, so each new piece of a vine meets the last without covering it; a dark rim sets it off from what it crosses
+    for(const s of segs)line(s,s[1]+4,'rgba(2,3,2,.55)',0,0);
+    for(const s of segs)line(s,s[1],s[2],0,0);
+    for(const s of segs){const o=s[1]*.24;line(s,Math.max(1,s[1]*.22),'rgba(175,215,165,.2)',Math.sin(s[3])*o,-Math.cos(s[3])*o);}
+    // a vine that stops ends in a rounded tip
+    for(const p of ends){lg.fillStyle=p.col;lg.beginPath();lg.ellipse(p.x,p.y,p.w*.75,p.w*.5,p.a,-Math.PI/2,Math.PI/2);lg.fill();}
+    for(const [k,x,y,a,w] of deco){lg.save();lg.translate(x,y);lg.rotate(a+(Math.random()<.5?1:-1)*Math.PI/2);
+      if(k==='thorn'){lg.fillStyle='#14100f';lg.beginPath();lg.moveTo(-w*.18,w*.3);lg.lineTo(0,w*.95);lg.lineTo(w*.18,w*.3);lg.fill();}
+      else if(k==='leaf'){lg.fillStyle='#1a3a32';lg.beginPath();lg.ellipse(0,w*1.1,w*.42,w*.95,0,0,7);lg.fill();lg.strokeStyle='rgba(150,230,200,.18)';lg.lineWidth=1;lg.beginPath();lg.moveTo(0,w*.3);lg.lineTo(0,w*1.9);lg.stroke();}
+      else{const r=Math.min(14,w*(.4+Math.random()*.4)),gr=lg.createRadialGradient(0,0,0,0,0,r*2.4),c=Math.random()<.6?'130,240,210':'195,145,245';gr.addColorStop(0,`rgba(${c},.9)`);gr.addColorStop(.3,`rgba(${c},.35)`);gr.addColorStop(1,`rgba(${c},0)`);lg.fillStyle=gr;lg.fillRect(-r*2.4,-r*2.4,r*4.8,r*4.8);}
+      lg.restore();}}
+  else if(!SPL.ending){SPL.ending=true;$('splash').classList.add('vopen');splashSound(false,.8);}
+  // draw: the undergrowth closing in from the edges, the vines over it, and when they part a hole opening from the middle
+  g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,V.c.width,V.c.height);g.setTransform(dpr,0,0,dpr,0,0);
+  const cov=Math.min(1,Math.max(0,(t-.6)/4.2)),cv=cov*cov*(3-2*cov),Rin=V.D*.62*(1-cv);
+  const u=t<VN.OPEN?0:Math.min(1,(t-VN.OPEN)/(VN.END-VN.OPEN)),e=u*u*(3-2*u),sc=1+.12*e;
+  g.save();g.translate(W/2,H/2);g.scale(sc,sc);g.translate(-W/2,-H/2);
+  if(Rin<=0)g.fillStyle='rgba(5,8,6,.97)';else{const m=g.createRadialGradient(W/2,H/2,Rin,W/2,H/2,Rin+V.D*.28);m.addColorStop(0,'rgba(5,8,6,0)');m.addColorStop(1,'rgba(5,8,6,.97)');g.fillStyle=m;}
+  g.fillRect(-W,-H,W*3,H*3);g.drawImage(V.L,0,0,W,H);g.restore();
+  if(e>0){const R=V.D*.78*e,h=g.createRadialGradient(W/2,H/2,0,W/2,H/2,R);h.addColorStop(0,'rgba(0,0,0,1)');h.addColorStop(.72,'rgba(0,0,0,1)');h.addColorStop(1,'rgba(0,0,0,0)');
+    g.save();g.globalCompositeOperation='destination-out';g.fillStyle=h;g.fillRect(0,0,W,H);g.restore();}
+  if(u>=1)vineDone();}
+// the vine sound starts as soon as it has loaded (the first key also starts the sound in a browser), from where the vines have got to
+function vineSound(V){if(V.snd||V.skip||V.t>1.5||!SND.on||!SND.ctx||SND.ctx.state!=='running'||sndEff().s<=0||!SND.buf.title_vines)return;
+  const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();s.buffer=SND.buf.title_vines;g.gain.value=.9;s.connect(g);g.connect(SND.bus.s);s.start(0,V.t);V.snd={s,g};}
+function vineSkip(){const V=SPL.vine;if(!V)return;if(V.t<VN.OPEN){V.t=VN.OPEN;V.skip=true;if(V.snd)try{const t=SND.ctx.currentTime;V.snd.g.gain.setTargetAtTime(0,t,.12);V.snd.s.stop(t+.6);}catch(_){}snd('ui','ui_open');}else vineDone();}
+function vineClear(){const V=SPL.vine;SPL.vine=null;if(!V)return;V.c.remove();$('splash').classList.remove('vines','vopen');if(V.snd&&V.t<VN.OPEN)try{V.snd.s.stop();}catch(_){}}
+function vineDone(){const el=$('splash');SPL.on=false;cancelAnimationFrame(SPL.raf);vineClear();el.hidden=true;el.classList.remove('out','on','ready');el.style.removeProperty('--hb');
+  const b=document.querySelector('#ovcard .mode');if(b&&!$('overlay').hidden&&b.focus)b.focus({preventScroll:true});}
 const SPLM={c:null,g:null};function splashMask(w,h){if(!SPLM.c){SPLM.c=document.createElement('canvas');SPLM.g=SPLM.c.getContext('2d');}if(SPLM.c.width!==w||SPLM.c.height!==h){SPLM.c.width=w;SPLM.c.height=h;}return SPLM;}
 // sound: the menu's own ambience (wind, the deep air) plays as usual; the title adds the deep bed under the ground and a soft pulse with
 // each wave of light. Both go through the ambience volume.
 function splashSound(what,fade){if(!SND.ctx||!SND.bus)return;const c=SND.ctx;
   if(what===false){const a=SPL.amb;SPL.amb=null;if(a)try{const t=c.currentTime;a.g.gain.cancelScheduledValues(t);a.g.gain.setTargetAtTime(0,t,fade/3);a.src.stop(t+fade*1.8+.1);}catch(_){}return;}
-  if(what==='pulse'){if(!sndReady('a'))return;const buf=sndBuf('intro_pulse');if(!buf)return;const s=c.createBufferSource(),g=c.createGain();s.buffer=buf;g.gain.value=.32;s.connect(g);g.connect(SND.bus.a);s.start();}}
+  if(what==='pulse'){if(!SND.on||c.state!=='running'||sndEff().a<=0)return;const hb=sndBuf('title_heart'),buf=hb||sndBuf('intro_pulse');if(!buf)return;const s=c.createBufferSource(),g=c.createGain();s.buffer=buf;g.gain.value=hb?.62:.32;s.connect(g);g.connect(SND.bus.a);s.start();}}
 function splashSoundTick(dt){if(SPL.ending||SPL.amb||!sndReady('a')||!SND.buf.intro_under)return;const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();
   s.buffer=SND.buf.intro_under;s.loop=true;g.gain.value=0;s.connect(g);g.connect(SND.bus.a);s.start();g.gain.setTargetAtTime(.42,c.currentTime,1.2);SPL.amb={src:s,g};}
-// ===== v56: the main menu's background. Clips recorded from the game (art/source/rec_menu.js) play muted behind the menu, one at a
+// ===== v56: the main menu's background. Clips recorded from the game (art/source/rec_menu.js) play behind the menu (with their sound since v58), one at a
 // time, changing every 30 seconds with a crossfade and moving on one scene at each visit. Three calm scenes to one battle, and the
 // battle never next to itself. Nothing of a game runs behind the menu. Still pictures stand in when video cannot play, when the
 // player turns the moving background off, and for reduced motion; a dark backdrop when even those are missing.
@@ -6631,7 +6699,11 @@ function mmPut(el,now){const bg=$('mmBg'),old=MMB.el;bg.insertBefore(el,bg.query
     if(mmState()==='play')mmPlay(el);}
   else if(now||el.complete)show();else el.addEventListener('load',show,{once:true});}
 // plays a clip; one that has not started six seconds after being asked counts as failed (autoplay refused, or the file too slow)
-function mmPlay(v){if(v.dataset.dead)return;v.play().catch(e=>mmFail(v,'autoplay refused: '+(e&&e.name)));clearTimeout(v.mmT);
+// sound can play once the player has pressed or clicked something (the title screen's key), or at once in the desktop app
+function mmAudioOK(){return SND.on&&!!SND.ctx&&(DESK||!navigator.userActivation||navigator.userActivation.hasBeenActive);}
+function mmHeard(){const v=MMB.el;return !!(MMB.on&&v&&v.tagName==='VIDEO'&&!v.muted&&!v.paused&&v.volume>.02);}
+function mmPlay(v){if(v.dataset.dead)return;if(v.muted&&mmAudioOK()){v.muted=false;v.volume=0;v.mmA=0;}
+  v.play().catch(e=>{if(!v.muted&&e&&e.name==='NotAllowedError'){v.muted=true;v.play().catch(e2=>mmFail(v,'autoplay refused: '+(e2&&e2.name)));}else mmFail(v,'autoplay refused: '+(e&&e.name));});clearTimeout(v.mmT);
   v.mmT=setTimeout(()=>{if(MMB.el===v&&mmState()==='play'&&v.readyState<3&&!v.currentTime)mmFail(v,'did not start');},6000);}
 function mmShow(i){i=((i%MMS.length)+MMS.length)%MMS.length;const sc=MMS[i];MMB.i=i;MMB.t=0;MMB.shown.push(sc.id);if(MMB.shown.length>40)MMB.shown.shift();
   try{localStorage.setItem('lc_menuScene',String(i));}catch(_){}
@@ -6642,7 +6714,10 @@ function mmShow(i){i=((i%MMS.length)+MMS.length)%MMS.length;const sc=MMS[i];MMB.
 function mmPreload(){if(MMB.next||!mmMoving())return;const sc=MMS[(MMB.i+1)%MMS.length];MMB.next=mmVideo(sc);MMB.next.load();}
 let mmLast=0;
 function mmTick(now){if(!MMB.on)return;const dt=Math.min(.25,(now-(mmLast||now))/1000);mmLast=now;
-  if(mmMoving()&&mmState()==='play'&&$('settings').hidden&&$('saves').hidden){MMB.t+=dt;if(MMB.t>MMB.secs-4)mmPreload();if(MMB.t>=MMB.secs)mmShow(MMB.i+1);}
+  const st=mmState(),lv=Math.min(1,.8*sndEff().a/.48);
+  for(const v of $('mmBg').querySelectorAll('video')){if(v.muted&&st==='play'&&v===MMB.el&&!v.paused&&mmAudioOK()){v.volume=0;v.mmA=0;v.muted=false;}
+    const to=v===MMB.el&&st==='play'?1:0;v.mmA=(v.mmA||0)+(to-(v.mmA||0))*Math.min(1,dt*2.2);v.volume=Math.max(0,Math.min(1,v.mmA*lv));}
+  if(mmMoving()&&st==='play'&&$('settings').hidden&&$('saves').hidden){MMB.t+=dt;if(MMB.t>MMB.secs-4)mmPreload();if(MMB.t>=MMB.secs)mmShow(MMB.i+1);}
   requestAnimationFrame(mmTick);}
 // follows the menu: starts when it shows, waits under the title screen, pauses in a hidden tab, and lets go of everything in a game
 function mmSync(){const st=mmState(),el=MMB.el,card=$('ovcard');

@@ -534,4 +534,29 @@ def('intro_life', 1, (r) => { const L = 16, sec = L + 2, n = N(sec), g = driftL(
   const wet = mul(filt(pink(n, r), 'bp', 320, 1.5), new Float32Array(n).map((_, i) => .08 + .06 * h(i / SR)));
   return loopify(mix(n, [breath, 1], [tone, .8], [wet, .5]), L, 2); }, { loop: 16 });
 
+// ---------------- v58 title screen ----------------
+// a heartbeat for the title screen's pulse: a deep "lub" and a lighter "dub" a third of a second later, felt more than heard, damp and fleshy
+def('title_heart', 2, (r, v) => { const sec = 1.3, n = N(sec);
+  const beat = (at, f0, f1, tau, g) => { const m = N(sec), b = mul(osc(m, t => t < at ? 0 : f1 + (f0 - f1) * Math.exp(-(t - at) / (tau * .45))), ad(m, .006, tau, at));
+    const bd = mul(lp(brown(m, r), 130), ad(m, .004, tau * .8, at)); return mix(m, [b, g], [bd, g * .9]); };
+  const wet = mul(filt(pink(n, r), 'bp', 240 + v * 30, 1.6), mix(n, [ad(n, .01, .08), .5], [ad(n, .01, .06, .3), .35]));
+  return lp(mix(n, [beat(0, 62, 40, .16, 1), 1], [beat(.3, 74, 48, .11, .72), 1], [wet, .25]), 420); });
+// the vines that cover the title screen: soil splitting, then a rising mass of wet fibrous creaks, rustles and squelches as the growth
+// closes over the screen (about 5 s), a deep settle when it meets, and at 5.6 s the tear and breath of the vines parting onto the menu
+def('title_vines', 1, (r) => { const sec = 7.4, n = N(sec);
+  const rise = env(n, [[0, .15], [1.2, .45], [3.4, .8], [4.9, 1], [5.4, .5], [sec, 0]]);
+  const soil = grains(n, 70, 1.4, (d, at, r) => click(d, at, .2 + r() * .6, 400 + r() * 1200, 2, r, .004 + r() * .012), r);
+  const rustle = mul(filt(pink(n, r), 'bp', t => 500 + 900 * Math.min(1, t / 4.6), 1.1), mul(rise, new Float32Array(n).map((_, i) => .35 + .3 * Math.abs(Math.sin(i / SR * 6.1)) * Math.abs(Math.sin(i / SR * 2.3 + 1)))));
+  const creaks = new Float32Array(n);
+  for (let k = 0; k < 16; k++) { const at = .3 + r() * 4.4, len = .35 + r() * .7, f = 180 + r() * 380;
+    const c = mul(creak(len, .006 + r() * .01, .002 + r() * .004, [[f, 4, 1], [f * 2.4, 5, .45], [f * 5.1, 6, .15]], r, .4), env(N(len), [[0, 0], [len * .3, 1], [len, 0]]));
+    addTo(creaks, c, at, .5 + r() * .5); }
+  const sq = new Float32Array(n); for (let k = 0; k < 9; k++) addTo(sq, squelch(r, .5, 300 + r() * 200, 700 + r() * 400, 250, 5, 3), .5 + r() * 4.2, .25 + r() * .25);
+  const groan = mul(lp(brown(n, r), t => 60 + 90 * Math.min(1, t / 4.8)), env(n, [[0, 0], [2, .4], [4.8, 1], [5.3, .6], [6, 0], [sec, 0]]));
+  const meet = mul(osc(n, t => t < 4.85 ? 0 : 34 + 20 * Math.exp(-(t - 4.85) * 6)), ad(n, .01, .45, 4.85));
+  const tear = mul(filt(white(n, r), 'bp', t => 900 + 1400 * Math.min(1, Math.max(0, t - 5.6) / .7), 1.3), env(n, [[0, 0], [5.55, 0], [5.75, .7], [6.4, .25], [7.1, 0], [sec, 0]]));
+  const fib = grains(n, 80, .9, (d, at, r) => click(d, at, .1 + r() * .35, 700 + r() * 1300, 3, r, .003 + r() * .008), r, 5.55);
+  const air = mul(lp(hp(white(n, r), 700), 3200), env(n, [[0, 0], [5.6, 0], [6.2, .35], [sec, 0]]));
+  return verb(mix(n, [soil, .7], [rustle, .55], [creaks, .8], [sq, .8], [groan, 1.2], [lp(meet, 120), 1.1], [tear, 4], [fib, 3], [air, 3]), .5, .4, .18, .8); });
+
 module.exports = S;

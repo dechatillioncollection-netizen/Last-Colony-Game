@@ -10,7 +10,7 @@ const APP=process.env.LC_APP||path.join(__dirname,'../electron/out/Last Colony-l
  const a=await w.evaluate(async()=>{for(let i=0;i<80&&!$('splash').classList.contains('ready');i++)await new Promise(r=>setTimeout(r,100));
    const v=MMB.el;return {ready:$('splash').classList.contains('ready'),proto:location.protocol,top:v&&v.tagName,src:v&&v.currentSrc,paused:v&&v.paused};});
  const tReady=Date.now()-t0;
- await w.keyboard.press('Enter');await w.waitForTimeout(2500);
+ await w.keyboard.press('Enter');await w.waitForFunction(()=>!SPL.on,null,{timeout:12000}).catch(()=>{});await w.waitForTimeout(1500);   // v58: the vines take about 7 s
  const b=await w.evaluate(()=>{const v=MMB.el;return {splash:!$('splash').hidden,top:v&&v.tagName,playing:!!v&&!v.paused&&v.readyState>=2,src:v&&v.currentSrc,ver:$('mmVer').textContent,quit:!$('m-quit').hidden,mm:$('overlay').classList.contains('mm')};});
  await w.screenshot({path:process.env.SHOT||'elmenu56.png'});
  const metrics=async(secs)=>{await app.evaluate(({app})=>app.getAppMetrics());await w.waitForTimeout(secs*1000);const M=await app.evaluate(({app})=>app.getAppMetrics());

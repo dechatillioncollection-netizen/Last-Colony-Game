@@ -26,10 +26,10 @@ const bg=p=>p.evaluate(()=>{const L=[...document.querySelectorAll('#mmBg video,#
  {const p=await open(br,{splash:true,wait:1500,scene:3});let b=await bg(p);
   ok('under the title screen the first scene is loaded but not playing, and its picture is ready for the fade',b.mm&&b.menu&&b.top==='VIDEO'&&!b.playing&&b.on&&b.id==='factory',JSON.stringify(b));
   ok('no errors (launch)',!p.errs.length,p.errs[0]);
-  await p.keyboard.press('Enter');await p.waitForTimeout(1600);b=await bg(p);
+  await p.keyboard.press('Enter');await p.waitForFunction(()=>$('splash').hidden,null,{timeout:10000}).catch(()=>{});await p.waitForTimeout(1000);b=await bg(p);   // v58: the vines take about 7 s
   const st=await p.evaluate(()=>({splash:!$('splash').hidden,game:!!window.__game(),planet:!$('planet').hidden,set:!$('settings').hidden,saves:!$('saves').hidden,focus:document.activeElement&&document.activeElement.id}));
   ok('one key: the title fades to the menu, nothing in the menu is pressed, the first button has the keyboard',!st.splash&&!st.game&&!st.planet&&!st.set&&!st.saves&&st.focus==='m-campaign',JSON.stringify(st));
-  ok('the clip plays once the title has gone, muted, with no sound track',b.playing&&b.id==='factory'&&await p.evaluate(()=>{const v=MMB.el;return v.muted&&v.volume>=0&&(v.audioTracks?v.audioTracks.length===0:!v.mozHasAudio&&!v.webkitAudioDecodedByteCount);}),JSON.stringify(b));
+  ok('the clip plays once the title has gone, with its sound since v58 (the key allowed it)',b.playing&&b.id==='factory'&&await p.evaluate(()=>!MMB.el.muted&&MMB.el.volume>0),JSON.stringify(b));
   await p.screenshot({path:`${SHOTS}/menu_1920x1080.png`});
   ok('no errors (launch)',!p.errs.length,p.errs[0]);await p.context().close();}
  // ---- 1b. the title prompt does not show while the title picture is still loading (here held back five seconds)
@@ -82,8 +82,8 @@ const bg=p=>p.evaluate(()=>{const L=[...document.querySelectorAll('#mmBg video,#
   ok('a hidden tab pauses the clip, and it carries on when the tab comes back',hid[0]&&hid[1],JSON.stringify(hid));
   // the menu's sound is the ambience bed; the clips add none
   const snd=await p.evaluate(async()=>{sndUnlock();for(let i=0;i<60&&!SND.ready;i++)await new Promise(r=>setTimeout(r,100));await new Promise(r=>setTimeout(r,800));
-    return {amb:Object.keys(SND.amb).filter(k=>SND.amb[k]&&SND.amb[k].g&&SND.amb[k].g.gain.value>0.01),muted:[...document.querySelectorAll('video')].every(v=>v.muted)};});
-  ok('the menu plays only the ambience bed (wind and deep air), through the ambience volume; every clip is muted',snd.amb.length>=1&&snd.muted,JSON.stringify(snd));
+    return {amb:Object.keys(SND.amb).filter(k=>SND.amb[k]&&SND.amb[k].g&&SND.amb[k].g.gain.value>0.01)};});
+  ok('the menu plays the ambience bed (wind and deep air) through the ambience volume (v58: the clips\' own sound is tested in xtest58)',snd.amb.length>=1,JSON.stringify(snd));
   ok('no errors (rotation)',!p.errs.length,p.errs[0]);await p.context().close();}
  // ---- 4. fallbacks
  {const p=await open(br,{block:['**/art/menu/*.webm','**/art/menu/*.mp4'],wait:9000,scene:3});const b=await bg(p);await p.screenshot({path:`${SHOTS}/menu_still_fallback.png`});
