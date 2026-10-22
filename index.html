@@ -154,6 +154,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .qbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));border:1px solid var(--edge);margin-bottom:8px}
 .qbar button{border:0;border-right:1px solid var(--edge);border-radius:0;padding:8px 4px;background:var(--slate-2);color:var(--muted);font-size:14px}
 .qbar button:last-child{border-right:0}
+#fpsBar{grid-template-columns:1.25fr repeat(5,1fr) 1.6fr}#fpsBar button{padding-left:2px;padding-right:2px}
 .qbar button.on{background:var(--amber-dim);color:var(--text);font-weight:600}
 .qdesc{color:var(--muted);font-size:13px;line-height:1.4;margin:0 0 10px;min-height:2.8em}
 .qnote{min-height:0;font-style:italic}
@@ -305,6 +306,9 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
   <label class="opt dsk" hidden><input type="checkbox" id="optSteady"><span><b>Steady frame rate</b><br>If frames start to slow, the drawing resolution drops (never below 75% of your screen’s) and comes back when there is room again. Nothing else changes.</span></label>
   <label class="opt dsk" hidden><input type="checkbox" id="optFull"><span><b>Full screen</b><br>F11 or Alt+Enter also switch it.</span></label>
   <label class="opt"><input type="checkbox" id="optFog"><span><b>Fog of war</b><br>Ground you have never seen stays black, and enemies are only visible near your growths, Rootweb and ants.</span></label>
+  <div class="qlbl">Frame rate limit</div>
+  <div class="qbar" id="fpsBar" role="radiogroup" aria-label="Frame rate limit"><button data-fps="0" role="radio" title="One frame for each refresh of your screen">Screen</button><button data-fps="30" role="radio">30</button><button data-fps="60" role="radio">60</button><button data-fps="80" role="radio">80</button><button data-fps="120" role="radio">120</button><button data-fps="240" role="radio">240</button><button data-fps="-1" role="radio">Unlimited</button></div>
+  <p id="fpsNote" class="qdesc"></p>
   <label class="opt"><input type="checkbox" id="optMenuBg"><span><b>Moving menu background</b><br>Scenes recorded from the game play behind the main menu. Off shows a still picture of each instead.</span></label>
   <div class="qlbl">Audio</div>
   <div class="vrow"><label for="vol_m">Master volume</label><input type="range" id="vol_m" min="0" max="100" step="1"><output id="volv_m" for="vol_m">80%</output></div>
@@ -6424,12 +6428,30 @@ let last=performance.now(),acc=0,frame=0;
 function dynFrame(dt,work,now){if(!DESK)return;if(dt>0&&dt<250){DYN.ema=DYN.ema?DYN.ema*.9+dt*.1:dt;DYN.work=DYN.work?DYN.work*.9+work*.1:work;
     if(DYN.iv.length<120){DYN.iv.push(dt);if(DYN.iv.length===120){const a=DYN.iv.slice().sort((x,y)=>x-y);DYN.period=clamp(a[12],1000/60,1000/48);}}}
   // the target frame time: 60 frames a second, or the screen's own rate if it is slower (a 50 Hz television), judged from the quickest frames
-  if(!DYN.on||!G||G.paused||now-DYN.tick<1000)return;DYN.tick=now;const P=DYN.period;
+  if(!DYN.on||!G||G.paused||now-DYN.tick<1000)return;DYN.tick=now;const P=Math.max(DYN.period,FPSL.iv);
   if(DYN.ema>P*1.25&&DYN.cur>DYN.min+.01){DYN.cur=Math.max(DYN.min,DYN.cur*.85);if(now-DYN.lastUp<3000)DYN.wait=Math.min(60000,DYN.wait*2);DYN.lastDown=now;DYN.re=1;}
   else if(DYN.ema<P*1.1&&DYN.work<P*.45&&DYN.cur<DYN.max-.01&&now-DYN.lastDown>DYN.wait&&now-DYN.lastUp>3000){DYN.cur=Math.min(DYN.max,DYN.cur*1.12);DYN.lastUp=now;DYN.re=1;}}
 // F3: frame rate readout, and which renderer draws the Rootweb
 const FPS={n:0,t:0};window.addEventListener('keydown',e=>{if(e.key==='F3'){e.preventDefault();const b=$('fpsBox');b.hidden=!b.hidden;}});
-function loop(now){const w0=performance.now(),rawDt=now-last;
+// The browser offers one frame per screen refresh (60 on most screens), which is why the game ran at 60. Going above the refresh needs
+// the desktop app started with its frame limit off; it reads the setting when it starts (see electron/main.js).
+const FPSL={cap:0,iv:0,t:0,ivs:[],hz:0};
+try{const v=parseInt(localStorage.getItem('lc_fps'),10);if([0,30,60,80,120,240,-1].includes(v))FPSL.cap=v;}catch(_){}
+FPSL.iv=FPSL.cap>0?1000/FPSL.cap:0;
+// the screen's own rate, for the note: the quickest tenth of the last 120 refreshes, since a busy frame only ever runs long
+function fpsSkip(now){if(FPSL.prev){FPSL.ivs.push(now-FPSL.prev);if(FPSL.ivs.length>=120){const a=FPSL.ivs.sort((x,y)=>x-y),hz=Math.round(1000/a[12]);FPSL.ivs=[];if(hz!==FPSL.hz){FPSL.hz=hz;fpsUI();}}}FPSL.prev=now;
+  if(!FPSL.iv)return false;if(now-FPSL.t<FPSL.iv-1)return true;FPSL.t=now-FPSL.t>FPSL.iv*2?now:FPSL.t+FPSL.iv;return false;}
+function fpsSet(v){FPSL.cap=v;FPSL.iv=v>0?1000/v:0;FPSL.t=0;try{localStorage.setItem('lc_fps',String(v));}catch(_){}
+  if(DESK&&lcDesktop.setFps)try{lcDesktop.setFps(v);}catch(_){}fpsUI();}
+function fpsUI(){const bar=$('fpsBar');if(!bar)return;for(const b of bar.querySelectorAll('button')){const on=+b.dataset.fps===FPSL.cap;b.classList.toggle('on',on);b.setAttribute('aria-checked',on?'true':'false');}
+  const hz=DESK&&lcDesktop.uncapped?0:FPSL.hz,want=FPSL.cap===-1||FPSL.cap>60,uncapped=DESK&&!!lcDesktop.uncapped;let t;
+  if(FPSL.cap===0)t='One frame for each refresh of your screen'+(hz?' ('+hz+' a second here)':'')+', as before. Smooth and easy on laptops.';
+  else if(FPSL.cap===-1)t='As many frames as your computer can draw.';else t='At most '+FPSL.cap+' frames a second.';
+  if(DESK){if(want!==uncapped)t+=' Restart the app for this to take full effect.';else if(want)t+=' The screen refresh limit is off, which can show tearing.';}
+  else if((FPSL.cap===-1||FPSL.cap>hz)&&hz)t+=' A browser cannot show more frames than the screen refreshes ('+hz+' a second here); the desktop app can.';
+  if(FPSL.cap&&FPSL.cap!==-1&&FPSL.cap<=60)t+=' The game runs at the same speed whatever the limit.';
+  $('fpsNote').textContent=t;}
+function loop(now){if(fpsSkip(now)){requestAnimationFrame(loop);return;}const w0=performance.now(),rawDt=now-last;
   if(DYN.re){DYN.re=0;resize();}   // a new resolution clears the canvas, so it is only set just before a frame is drawn
   const dt=Math.min(.1,(now-last)/1000);last=now;
   FPS.n++;FPS.t+=now-(FPS.l||now);FPS.l=now;if(FPS.t>=500){const b=$('fpsBox');if(!b.hidden)b.textContent=Math.round(FPS.n*1000/FPS.t)+' fps · Rootweb on '+(webGPU?'GPU':'2D canvas')+(DESK?' · resolution '+Math.round(DPR/(window.devicePixelRatio||1)*100)+'%':'');FPS.n=0;FPS.t=0;}
@@ -6474,14 +6496,14 @@ function applyQuality(q){const Q=QUALITY[q];if(!Q)return;const hd0=SET.hd,dpr0=S
   if(DESK){DYN.cur=0;DYN.wait=8000;resize();}else if(dpr0!==SET.dpr)resize();
   if(G){if(SET.hd&&!hd0)buildHDTerrain();GLR.terrDirty=true;repaintAllWeb();try{buildMenu();}catch(_){}}
   qualityUI();}
-function qualityUI(){for(const b of document.querySelectorAll('.qbar button')){const on=b.dataset.q===SET.q;b.classList.toggle('on',on);b.setAttribute('aria-checked',on?'true':'false');}
+function qualityUI(){for(const b of document.querySelectorAll('.qbar button[data-q]')){const on=b.dataset.q===SET.q;b.classList.toggle('on',on);b.setAttribute('aria-checked',on?'true':'false');}
   $('qdesc').textContent=QDESC[SET.q]||'';const n=$('qgpu');
   if(!SET.gl)n.textContent='';
   else if(glOn())n.textContent='Your graphics card is drawing the ground and Rootweb.';
   else if(!(APP?webArtLoaded():webArtOn()))n.textContent='The graphics card takes over once the painted artwork has loaded.';
   else n.textContent='Your graphics card can\u2019t be used here ('+(GLR.why||'WebGL 2 unavailable')+'), so the processor draws the ground and Rootweb instead.';}
-function openSettings(){$('optFog').checked=SET.fog;if(DESK){$('optSteady').checked=DYN.on;try{lcDesktop.isFullScreen().then(f=>{$('optFull').checked=!!f;});}catch(e){}}qualityUI();audioUI();$('settings').hidden=false;snd('ui','ui_open');}
-for(const b of document.querySelectorAll('.qbar button'))b.onclick=()=>{const q=b.dataset.q;if(q===SET.q)return;
+function openSettings(){$('optFog').checked=SET.fog;if(DESK){$('optSteady').checked=DYN.on;try{lcDesktop.isFullScreen().then(f=>{$('optFull').checked=!!f;});}catch(e){}}qualityUI();audioUI();fpsUI();$('settings').hidden=false;snd('ui','ui_open');}
+for(const b of document.querySelectorAll('.qbar button[data-q]'))b.onclick=()=>{const q=b.dataset.q;if(q===SET.q)return;
   // building the HD ground takes a moment: say so first
   if(QUALITY[q].hd&&!SET.hd&&G){msg('Building HD textures...');setTimeout(()=>applyQuality(q),30);}else applyQuality(q);};
 $('setBtn').onclick=openSettings;$('sgalBtn').onclick=()=>sgalOpen();
@@ -6490,6 +6512,7 @@ if(DESK){for(const e of document.querySelectorAll('.dsk'))e.hidden=false;
   $('optSteady').onchange=e=>{DYN.on=e.target.checked;DYN.cur=0;resize();try{localStorage.setItem('lc_steady',DYN.on?'1':'0');}catch(_){}};
   $('optFull').onchange=e=>{try{lcDesktop.setFullScreen(e.target.checked);}catch(_){}};}
 $('optFog').onchange=e=>{SET.fog=e.target.checked;try{localStorage.setItem('lc_fog',SET.fog?'1':'0');}catch(_){}};
+for(const b of document.querySelectorAll('#fpsBar button'))b.onclick=()=>{fpsSet(+b.dataset.fps);snd('ui','ui_select');};fpsUI();
 $('setClose').onclick=()=>{$('settings').hidden=true;snd('ui','ui_close');};
 $('settings').onclick=e=>{if(e.target.id==='settings'){$('settings').hidden=true;snd('ui','ui_close');}};
 // ===== v55: the title splash. Shown once when the game launches, over the main menu, until any key, mouse button or controller button.

@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('lcDesktop', {
   version: ((process.argv || []).find((a) => a.startsWith('--lc-version=')) || '').slice(13),
   platform: process.platform,
+  uncapped: (process.argv || []).includes('--lc-uncapped=1'),
   saves: {
     get: (k) => ipcRenderer.invoke('saves:get', k),
     set: (k, v) => ipcRenderer.invoke('saves:set', k, v),
@@ -12,4 +13,5 @@ contextBridge.exposeInMainWorld('lcDesktop', {
   setFullScreen: (on) => ipcRenderer.invoke('app:fullscreen', on),
   isFullScreen: () => ipcRenderer.invoke('app:isFullscreen'),
   achieve: (name) => ipcRenderer.invoke('app:achieve', name),
+  setFps: (v) => ipcRenderer.invoke('app:setFps', v),
 });

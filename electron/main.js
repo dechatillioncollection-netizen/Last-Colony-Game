@@ -8,6 +8,13 @@ app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('force_high_performance_gpu');
 
+// ---- frame rate: the game's Settings can lift the screen-refresh limit (Unlimited, or a limit above 60). Chromium only takes that
+// at start-up, so the choice is kept in <user data>/fps.json and read here; the game itself enforces any lower limit.
+const fpsFile = () => path.join(app.getPath('userData'), 'fps.json');
+let uncapped = false;
+try { const v = JSON.parse(fs.readFileSync(fpsFile(), 'utf8')).fps; uncapped = v === -1 || v > 60; } catch (e) {}
+if (uncapped) { app.commandLine.appendSwitch('disable-frame-rate-limit'); app.commandLine.appendSwitch('disable-gpu-vsync'); }
+
 // ---- Steam (optional): steamworks.js is bundled in the Steam build; without it, or without Steam running, the game runs as normal
 let steam = null;
 function startSteam() {
@@ -61,7 +68,7 @@ function create() {
     width: s.width || 1440, height: s.height || 900, x: s.x, y: s.y, minWidth: 960, minHeight: 600,
     backgroundColor: '#11100e', title: 'Last Colony', autoHideMenuBar: true, fullscreen: !!s.full, show: false,
     icon: path.join(__dirname, 'icon.png'),
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), additionalArguments: ['--lc-version=' + app.getVersion()], contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false },
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), additionalArguments: ['--lc-version=' + app.getVersion(), '--lc-uncapped=' + (uncapped ? 1 : 0)], contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false },
   });
   if (s.max && !s.full) win.maximize();
   win.once('ready-to-show', () => win.show());
@@ -76,6 +83,12 @@ function create() {
   win.on('close', () => saveWin(win));
 }
 
+ipcMain.handle('app:setFps', async (_e, v) => {
+  if (![0, 30, 60, 80, 120, 240, -1].includes(v)) throw new Error('bad frame rate');
+  await fs.promises.mkdir(app.getPath('userData'), { recursive: true });
+  await fs.promises.writeFile(fpsFile(), JSON.stringify({ fps: v }));
+  return true;
+});
 ipcMain.handle('app:quit', () => { if (win) saveWin(win); app.quit(); });
 ipcMain.handle('app:fullscreen', (_e, on) => { if (win) win.setFullScreen(!!on); return win ? win.isFullScreen() : false; });
 ipcMain.handle('app:isFullscreen', () => (win ? win.isFullScreen() : false));

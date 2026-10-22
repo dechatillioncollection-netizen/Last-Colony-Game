@@ -14,7 +14,7 @@ python3 -m http.server 8000
 
 Then open http://localhost:8000. Opened straight from disk, Chrome won't let WebGL read the art, so the game falls back to drawing the Rootweb on the processor. Serving the folder avoids that.
 
-Press F3 in game to see the frame rate and which renderer is drawing the Rootweb.
+Press F3 in game to see the frame rate and which renderer is drawing the Rootweb. Settings > Frame rate limit caps the frame rate at 30, 60, 80, 120 or 240, or lifts it (Unlimited; above the screen refresh only in the desktop app, after a restart).
 
 ## What is here
 
