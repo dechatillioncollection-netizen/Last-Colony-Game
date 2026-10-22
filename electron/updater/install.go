@@ -1,8 +1,9 @@
 package main
 
-// The installer half: run as LastColonySetup it puts the newest release into the user's programs folder (no administrator
-// rights needed), adds shortcuts, and on Windows lists the game under Installed apps. The Updater inside that folder is the same
-// program, so from then on it updates the game, and with --uninstall removes it.
+// The installer half: run as LastColonySetup it puts the newest release into its own folder (or one the player types), adds
+// shortcuts, and on Windows lists the game under Installed apps. With the game next to it, the same program is the updater, so
+// from then on it updates the game, and with --uninstall removes it. The folder may hold other files: the game's own top-level
+// files and folders are listed in .lastcolony-files, and only those are ever replaced or removed.
 
 import (
 	"bufio"
@@ -19,18 +20,6 @@ import (
 
 const uninstallKey = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\LastColony`
 
-// %LOCALAPPDATA%\Programs\Last Colony on Windows, ~/.local/share/last-colony elsewhere
-func defaultInstallDir() (string, error) {
-	if runtime.GOOS == "windows" {
-		base := os.Getenv("LOCALAPPDATA")
-		if base == "" {
-			return "", fmt.Errorf("LOCALAPPDATA is not set")
-		}
-		return filepath.Join(base, "Programs", "Last Colony"), nil
-	}
-	return filepath.Join(dataHome(), "last-colony"), nil
-}
-
 func dataHome() string {
 	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
 		return d
@@ -46,15 +35,18 @@ func updaterName() string {
 	return "updater"
 }
 
+// the same program again, under a name that makes it uninstall (see run)
+func uninstallerName() string {
+	if runtime.GOOS == "windows" {
+		return "Uninstall Last Colony.exe"
+	}
+	return "uninstall-last-colony"
+}
+
 func install(self string) int {
 	target := *dirFlag
 	if target == "" {
-		d, err := defaultInstallDir()
-		if err != nil {
-			fmt.Println("Could not find your programs folder:", err)
-			return 1
-		}
-		target = d
+		target = filepath.Dir(self)
 	}
 	target, _ = filepath.Abs(target)
 	installed := exists(filepath.Join(target, gameExe()))
@@ -73,7 +65,7 @@ func install(self string) int {
 		registerVersion(target, localVersion(target))
 		return update(target)
 	}
-	fmt.Printf("Last Colony setup\nThis installs the game into:\n  %s\n", target)
+	fmt.Printf("Last Colony setup\nThis installs the game into this folder:\n  %s\n", target)
 	if !*yes {
 		fmt.Print("Press Enter to install there, type another folder, or type n to cancel: ")
 		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -91,10 +83,6 @@ func install(self string) int {
 			}
 		}
 	}
-	if ents, err := os.ReadDir(target); err == nil && len(ents) > 0 {
-		fmt.Printf("%s already has other files in it. Choose an empty or new folder.\n", target)
-		return 1
-	}
 	fmt.Printf("Checking GitHub (%s) for the newest version...\n", defaultRepo)
 	cfg := config{Repo: defaultRepo, Asset: defaultAsset()}
 	want, a, err := findRelease(cfg)
@@ -103,13 +91,11 @@ func install(self string) int {
 		return 1
 	}
 	fmt.Printf("Installing version %s (%.0f MB).\n", want, float64(a.Size)/1e6)
-	parent := filepath.Dir(target)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
+	if err := os.MkdirAll(target, 0o755); err != nil {
 		fmt.Println("Could not make the folder:", err)
 		return 1
 	}
-	// downloaded next to the target, so the finished folder only has to be renamed into place
-	tmp, err := os.MkdirTemp(parent, ".lastcolony-install-")
+	tmp, err := os.MkdirTemp(target, tmpPrefix)
 	if err != nil {
 		fmt.Println("Could not make a folder for the download:", err)
 		return 1
@@ -120,11 +106,23 @@ func install(self string) int {
 		fmt.Println(err)
 		return 1
 	}
-	_ = os.Remove(target) // an empty folder left from before
-	if err := os.Rename(root, target); err != nil {
+	// the folder can hold other things, but nothing the game would replace
+	var clash []string
+	for _, n := range topNames(root) {
+		if n != "updater.json" && exists(filepath.Join(target, n)) {
+			clash = append(clash, n)
+		}
+	}
+	if len(clash) > 0 {
+		fmt.Printf("This folder already has files the game would replace (%s). Put the installer in an empty folder and run it again.\n", strings.Join(clash, ", "))
+		return 1
+	}
+	names := topNames(root)
+	if err := swapIn(target, root); err != nil {
 		fmt.Println("Could not put the game in place:", err)
 		return 1
 	}
+	recordFiles(target, names)
 	if !exists(filepath.Join(target, "updater.json")) {
 		b, _ := json.MarshalIndent(cfg, "", "  ")
 		_ = os.WriteFile(filepath.Join(target, "updater.json"), append(b, '\n'), 0o644)
@@ -133,24 +131,30 @@ func install(self string) int {
 	addShortcuts(target)
 	register(target)
 	registerVersion(target, want)
-	fmt.Printf("Installed Last Colony %s.\n", want)
+	fmt.Printf("Installed Last Colony %s in %s.\n", want, target)
 	if runtime.GOOS == "windows" {
-		fmt.Println("It is in the Start menu and on the desktop. To update it later, run \"Update Last Colony\" from the Start menu.")
+		fmt.Println("It is in the Start menu and on the desktop. To update it later, run this installer again, or \"Update Last Colony\" from the Start menu.")
 	} else {
-		fmt.Println("It is in your applications menu. To update it later, run \"Update Last Colony\" from there.")
+		fmt.Println("It is in your applications menu. To update it later, run this installer again, or \"Update Last Colony\" from there.")
 	}
 	offerStart(target)
 	return 0
 }
 
-// puts this program in the game folder as its updater, so it can uninstall too even when the release's own copy is older
+// puts this program in the game folder as its updater and its uninstaller, so both can do everything even when the release's own
+// updater is older
 func ensureUpdater(self, dir string) {
+	for _, name := range []string{updaterName(), uninstallerName()} {
+		copySelf(self, filepath.Join(dir, name))
+	}
+}
+
+func copySelf(self, dst string) {
 	in, err := os.Open(self)
 	if err != nil {
 		return
 	}
 	defer in.Close()
-	dst := filepath.Join(dir, updaterName())
 	out, err := os.OpenFile(dst+".new", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return
@@ -166,7 +170,7 @@ func ensureUpdater(self, dir string) {
 }
 
 func uninstall(dir string) int {
-	fmt.Printf("This removes Last Colony from %s, with its shortcuts. Your saves are kept.\n", dir)
+	fmt.Printf("This removes Last Colony from %s, with its shortcuts. Other files in the folder and your saves are kept.\n", dir)
 	if !*yes && !ask("Remove it? [Y/n] ") {
 		fmt.Println("Nothing removed.")
 		return 0
@@ -177,30 +181,90 @@ func uninstall(dir string) int {
 	}
 	removeShortcuts()
 	unregister()
-	if runtime.GOOS == "windows" {
-		// a running program can't delete itself on Windows, so everything else goes now and a helper removes the folder after this exits
-		ents, _ := os.ReadDir(dir)
-		self, _ := os.Executable()
-		for _, e := range ents {
-			p := filepath.Join(dir, e.Name())
-			if !strings.EqualFold(p, self) {
-				_ = os.RemoveAll(p)
-			}
+	self, _ := os.Executable()
+	var later []string
+	failed := false
+	for _, n := range gameFiles(dir) {
+		p := filepath.Join(dir, n)
+		if runtime.GOOS == "windows" && strings.EqualFold(p, self) {
+			later = append(later, p) // a running program can't delete itself on Windows; a hidden helper does it once this has closed
+			continue
 		}
-		removeLater(dir)
-	} else if err := os.RemoveAll(dir); err != nil {
-		fmt.Println("Some files could not be removed:", err)
+		if err := os.RemoveAll(p); err != nil {
+			fmt.Println("Could not remove", n+":", err)
+			failed = true
+		}
+	}
+	_ = os.Remove(dir) // only if nothing else is left in it
+	if len(later) > 0 {
+		removeLater(later, dir)
+	}
+	if failed {
 		return 1
 	}
 	fmt.Println("Last Colony has been removed.")
 	return 0
 }
 
-func removeLater(dir string) {
+const manifest = ".lastcolony-files"
+
+// the game's own top-level files and folders in dir; without a list (a game unzipped by hand), everything in the folder
+func gameFiles(dir string) []string {
+	var names []string
+	if b, err := os.ReadFile(filepath.Join(dir, manifest)); err == nil {
+		for _, n := range strings.Split(string(b), "\n") {
+			if n = strings.TrimSpace(n); n != "" && n != "." && n != ".." && !strings.ContainsAny(n, `/\`) {
+				names = append(names, n)
+			}
+		}
+		return append(names, "updater.json", updaterName(), uninstallerName(), manifest)
+	}
+	return topEntries(dir)
+}
+
+func topEntries(dir string) []string {
+	var names []string
+	ents, _ := os.ReadDir(dir)
+	for _, e := range ents {
+		names = append(names, e.Name())
+	}
+	return names
+}
+
+func topNames(root string) []string { return topEntries(root) }
+
+// adds names to the list of the game's files (an update can bring new ones)
+func recordFiles(dir string, names []string) {
+	seen := map[string]bool{}
+	var all []string
+	add := func(n string) {
+		if n != "" && !seen[n] {
+			seen[n] = true
+			all = append(all, n)
+		}
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, manifest)); err == nil {
+		for _, n := range strings.Split(string(b), "\n") {
+			add(strings.TrimSpace(n))
+		}
+	}
+	for _, n := range names {
+		add(n)
+	}
+	add("updater.json")
+	add(updaterName())
+	add(uninstallerName())
+	_ = os.WriteFile(filepath.Join(dir, manifest), []byte(strings.Join(all, "\n")+"\n"), 0o644)
+}
+
+func removeLater(files []string, dir string) {
 	bat := filepath.Join(os.TempDir(), "lastcolony-uninstall.bat")
-	q := strings.ReplaceAll(dir, "%", "%%")
-	script := "@echo off\r\nfor /l %%i in (1,1,600) do (\r\n  ping -n 2 127.0.0.1 >nul\r\n  rmdir /s /q \"" + q + "\" 2>nul\r\n" +
-		"  if not exist \"" + q + "\" goto done\r\n)\r\n:done\r\n(goto) 2>nul & del \"%~f0\"\r\n"
+	q := func(p string) string { return `"` + strings.ReplaceAll(p, "%", "%%") + `"` }
+	script := "@echo off\r\nfor /l %%i in (1,1,600) do (\r\n  ping -n 2 127.0.0.1 >nul\r\n"
+	for _, f := range files {
+		script += "  del /f /q " + q(f) + " 2>nul\r\n"
+	}
+	script += "  if not exist " + q(files[0]) + " goto done\r\n)\r\n:done\r\nrmdir " + q(dir) + " 2>nul\r\n(goto) 2>nul & del \"%~f0\"\r\n"
 	if os.WriteFile(bat, []byte(script), 0o644) != nil {
 		return
 	}
@@ -228,7 +292,8 @@ func addShortcuts(dir string) {
 				";$s.Arguments=" + psQuote(args) + ";$s.WorkingDirectory=" + psQuote(dir) + ";$s.IconLocation=" + psQuote(game+",0") + ";$s.Save();"
 		}
 		script := "$w=New-Object -ComObject WScript.Shell;$p=[Environment]::GetFolderPath('Programs');$d=[Environment]::GetFolderPath('Desktop');" +
-			lnk("$p", "Last Colony", game, "") + lnk("$d", "Last Colony", game, "") + lnk("$p", "Update Last Colony", upd, "")
+			lnk("$p", "Last Colony", game, "") + lnk("$d", "Last Colony", game, "") + lnk("$p", "Update Last Colony", upd, "") +
+			lnk("$p", "Uninstall Last Colony", filepath.Join(dir, uninstallerName()), "")
 		if err := powershell(script); err != nil {
 			fmt.Println("The shortcuts could not be made:", err)
 		}
@@ -246,6 +311,8 @@ func addShortcuts(dir string) {
 			[]byte(entry("Last Colony", "Grow the hive and take back the sectors", filepath.Join(dir, gameExe()), false)), 0o644)
 		_ = os.WriteFile(filepath.Join(apps, "last-colony-update.desktop"),
 			[]byte(entry("Update Last Colony", "Fetch the newest version of Last Colony", filepath.Join(dir, updaterName()), true)), 0o644)
+		_ = os.WriteFile(filepath.Join(apps, "last-colony-uninstall.desktop"),
+			[]byte(entry("Uninstall Last Colony", "Remove Last Colony (saves are kept)", filepath.Join(dir, uninstallerName()), true)), 0o644)
 	}
 }
 
@@ -259,12 +326,13 @@ func removeShortcuts() {
 	switch runtime.GOOS {
 	case "windows":
 		script := "$p=[Environment]::GetFolderPath('Programs');$d=[Environment]::GetFolderPath('Desktop');" +
-			"foreach($f in @((Join-Path $p 'Last Colony.lnk'),(Join-Path $d 'Last Colony.lnk'),(Join-Path $p 'Update Last Colony.lnk'))){Remove-Item -LiteralPath $f -ErrorAction SilentlyContinue}"
+			"foreach($f in @((Join-Path $p 'Last Colony.lnk'),(Join-Path $d 'Last Colony.lnk'),(Join-Path $p 'Update Last Colony.lnk'),(Join-Path $p 'Uninstall Last Colony.lnk'))){Remove-Item -LiteralPath $f -ErrorAction SilentlyContinue}"
 		_ = powershell(script)
 	case "linux":
 		apps := filepath.Join(dataHome(), "applications")
 		_ = os.Remove(filepath.Join(apps, "last-colony.desktop"))
 		_ = os.Remove(filepath.Join(apps, "last-colony-update.desktop"))
+		_ = os.Remove(filepath.Join(apps, "last-colony-uninstall.desktop"))
 	}
 }
 
@@ -296,7 +364,7 @@ func register(dir string) {
 		{"Publisher", "REG_SZ", "Last Colony"},
 		{"InstallLocation", "REG_SZ", dir},
 		{"DisplayIcon", "REG_SZ", filepath.Join(dir, gameExe())},
-		{"UninstallString", "REG_SZ", `"` + upd + `" --uninstall`},
+		{"UninstallString", "REG_SZ", `"` + filepath.Join(dir, uninstallerName()) + `"`},
 		{"QuietUninstallString", "REG_SZ", `"` + upd + `" --uninstall --yes`},
 		{"URLInfoAbout", "REG_SZ", "https://github.com/" + defaultRepo},
 		{"NoModify", "REG_DWORD", "1"},

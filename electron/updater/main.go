@@ -56,6 +56,9 @@ type release struct {
 // where the installer looks; build.sh sets it from UPDATE_REPO (the copy in a game folder reads updater.json instead)
 var defaultRepo = "dechatillioncollection-netizen/Last-Colony-Game"
 
+// the temporary folder a download is unpacked in, inside the game folder
+const tmpPrefix = ".lastcolony-update-"
+
 var (
 	yes           = flag.Bool("yes", false, "update without asking, and do not wait for Enter at the end")
 	check         = flag.Bool("check", false, "only say whether an update is available")
@@ -95,6 +98,10 @@ func run() int {
 	if err != nil {
 		fmt.Println("Could not find where this program is:", err)
 		return 1
+	}
+	// a copy named like "Uninstall Last Colony.exe" uninstalls
+	if strings.Contains(strings.ToLower(filepath.Base(self)), "uninstall") {
+		*uninstallFlag = true
 	}
 	dir := *dirFlag
 	if dir == "" {
@@ -193,7 +200,7 @@ func update(dir string) int {
 		fmt.Println(err)
 		return 1
 	}
-	tmp, err := os.MkdirTemp(dir, ".update-")
+	tmp, err := os.MkdirTemp(dir, tmpPrefix)
 	if err != nil {
 		fmt.Println("Could not make a folder for the download:", err)
 		return 1
@@ -204,11 +211,15 @@ func update(dir string) int {
 		fmt.Println(err)
 		return 1
 	}
+	names := topNames(root)
 	if err := swapIn(dir, root); err != nil {
 		fmt.Println("Update failed, your game was left as it was:", err)
 		return 1
 	}
 	cleanOld(dir)
+	if exists(filepath.Join(dir, manifest)) {
+		recordFiles(dir, names)
+	}
 	registerVersion(dir, want)
 	fmt.Printf("Updated to version %s.\n", want)
 	offerStart(dir)
@@ -502,7 +513,7 @@ func swapIn(dir, root string) error {
 				continue // keep the local settings
 			}
 		}
-		cur, nw, old := filepath.Join(dir, name), filepath.Join(root, name), filepath.Join(dir, name+".old")
+		cur, nw, old := filepath.Join(dir, name), filepath.Join(root, name), filepath.Join(dir, name+".lcold")
 		if _, err := os.Lstat(cur); err == nil {
 			_ = os.RemoveAll(old)
 			if err := os.Rename(cur, old); err != nil {
@@ -527,8 +538,11 @@ func cleanOld(dir string) {
 		return
 	}
 	for _, e := range ents {
-		if strings.HasSuffix(e.Name(), ".old") || strings.HasPrefix(e.Name(), ".update-") {
-			_ = os.RemoveAll(filepath.Join(dir, e.Name()))
+		n := e.Name()
+		// .old and .update- are what versions up to 0.6.0 left, only ever in a folder of the game's own
+		legacy := !exists(filepath.Join(dir, manifest)) && (strings.HasSuffix(n, ".old") || strings.HasPrefix(n, ".update-"))
+		if strings.HasSuffix(n, ".lcold") || strings.HasPrefix(n, tmpPrefix) || legacy {
+			_ = os.RemoveAll(filepath.Join(dir, n))
 		}
 	}
 }

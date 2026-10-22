@@ -91,15 +91,25 @@ When a player runs it:
 
 `LastColonySetup.exe` (and `LastColonySetup-Linux`) is the same program as the updater. `electron/build.sh` builds it into `electron/out/` next to the zips. What it does depends on where it runs:
 
-- **On its own** (for example in Downloads), it is the installer:
-  1. It offers to install into `%LOCALAPPDATA%\Programs\Last Colony` on Windows, or `~/.local/share/last-colony` on Linux. The player can press Enter, type another folder, or cancel. That folder needs no administrator rights. `--dir` sets the folder without asking.
-  2. It downloads the newest release's zip, checks it, unpacks it next to the folder and renames it into place. A folder that already holds other files is refused.
-  3. It puts a copy of itself in the game folder as `Updater.exe` (`updater`), so that copy can also uninstall, even if the release's own updater is older.
-  4. On Windows it adds Last Colony to the Start menu and the desktop, and "Update Last Colony" to the Start menu. It also lists the game under Installed apps, with its version, size and an Uninstall button. On Linux it adds the same two entries to the applications menu.
-  5. It offers to start the game.
-- **Run again** once the game is installed, it repairs the shortcuts, then updates the game like the updater.
-- **In the game folder** (as `Updater.exe`), it updates, as above. After an update it also sets the version shown under Installed apps.
-- **With `--uninstall`** (from either copy, or from Installed apps), it removes the shortcuts, the Installed apps entry and the game folder, after asking. Saves are kept. On Windows a running program can't delete itself, so a hidden helper removes the folder once it has closed.
+- **With no game next to it,** it is the installer:
+  1. It offers to install into its own folder. The player can press Enter, type another folder, or cancel. `--dir` sets the folder without asking.
+  2. It downloads the newest release's zip, checks it and unpacks it into that folder. The folder can hold other files. If any of them has the same name as one of the game's, it stops and changes nothing.
+  3. It writes the names of the game's own top-level files and folders to `.lastcolony-files`. Updates add any new ones, and only those are ever replaced or removed.
+  4. It puts two copies of itself next to the game:
+     - `Updater.exe` (`updater` on Linux);
+     - `Uninstall Last Colony.exe` (`uninstall-last-colony`). A copy whose name contains "uninstall" uninstalls when run.
+
+     So both work fully, even if the release's own updater is older.
+  5. On Windows it adds to the Start menu: Last Colony, Update Last Colony and Uninstall Last Colony, plus Last Colony on the desktop. It also lists the game under Installed apps, with its version, size and an Uninstall button. On Linux it adds the same three entries to the applications menu.
+  6. It offers to start the game.
+- **With the game next to it** (the installer again, or `Updater.exe`), it updates. After an update it also sets the version shown under Installed apps.
+- **To uninstall,** use `Uninstall Last Colony`, Installed apps, or `--uninstall` on either copy. After asking, it removes:
+  - the shortcuts;
+  - the Installed apps entry;
+  - the game's own files.
+
+  The player's other files in the folder stay, and so does the installer, and saves are kept. The folder itself goes only if that leaves it empty. On Windows a running program can't delete itself, so a hidden helper removes it once it has closed.
+- **A folder unzipped by hand** has no `.lastcolony-files`. Uninstalling there removes the whole folder's contents, as it is the game's own folder.
 
 **Where it looks.** The installer looks in `UPDATE_REPO` (set when building), and the copy in the game folder reads `updater.json` as before.
 
@@ -127,13 +137,19 @@ When a player runs it:
   - an update that replaces the game, checks the checksum and leaves nothing behind;
   - the local `updater.json` kept, and files still executable;
   - "already the newest version" on a second run.
-- **`tests/insttest.py` on `LastColonySetup-Linux`: 18 of 18 pass.** It runs against a stand-in GitHub server and covers:
-  - n at the first question installing nothing, and a typed folder used instead of the usual one;
-  - an install that leaves the game ready to run, nothing behind, itself as the updater (replacing an older one), `updater.json`, and both menu entries;
-  - the installer run again finding the install, saying it is up to date, then finding a newer version, which the installed updater fetches;
-  - a folder with other files in it refused;
-  - uninstalling: n removing nothing, the installer removing the game and both menu entries, saves kept, "not installed" when it isn't, and the updater in a game folder uninstalling too.
-- **The installer against the real GitHub release:** on Linux it installed 0.6.0 from `Last-Colony-Game` with the checksum checked. The installed updater then said it was the newest version and uninstalled it, leaving nothing behind.
+- **`tests/insttest.py` on `LastColonySetup-Linux`: 21 of 21 pass.** It runs against a stand-in GitHub server, from a Downloads folder that also holds a file of the player's. It covers:
+  - n at the first question installing nothing, and a typed folder used instead;
+  - an install into the installer's own folder that:
+    - leaves the game ready to run, with the player's file and the installer kept and nothing behind;
+    - adds itself as the updater and the uninstaller (replacing an older updater), `updater.json`, a list holding only the game's files, and three menu entries;
+  - the installer run again becoming the updater: up to date, then updating to a newer version with the player's file kept;
+  - a folder with a file the game would replace refused, and left as it was;
+  - uninstalling:
+    - the uninstaller asking first, then removing the game and its menu entries;
+    - only the installer and the player's file left, and saves kept;
+    - "not installed" when it isn't;
+    - `--uninstall` on the updater removing a game folder that is then empty.
+- **The installer against the real GitHub release:** on Linux it installed 0.6.0 from `Last-Colony-Game` into a folder next to another file, with the checksum checked. The uninstaller then removed it, leaving only the installer and that file.
 - **`tests/elcheck50.js` on the Linux app: 22 of 22 pass.** This adds Esc in a match opening the pause menu, whose Quit saves and closes the app.
 - **Not tested:**
   - `Updater.exe` and `LastColonySetup.exe` on Windows, because this machine cannot run them. They are the same code, built for Windows, and it compiles and passes `go vet` for Windows. Their Windows-only steps were not exercised: checking the game is closed, the shortcuts (made with PowerShell), the Installed apps entry (made with `reg`), and removing the folder after closing.
