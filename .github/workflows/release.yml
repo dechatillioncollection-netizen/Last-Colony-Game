@@ -1,10 +1,13 @@
 # Builds the desktop zips and installers and publishes them as a GitHub release, which is where the in-game updater and the
-# installer look for new versions. Runs when a tag like v0.6.1 is pushed, or by hand from the Actions tab.
-# The release is named after electron/package.json's version; running it again for the same version replaces the files.
+# installer look for new versions. Runs by itself whenever a push to main changes electron/package.json and its version has no
+# release yet, so every new version goes live for the updater; also when a tag like v0.6.1 is pushed, or by hand from the Actions tab.
+# The release is named after electron/package.json's version; running it by tag or by hand for an existing version replaces the files.
 name: Release
 on:
   push:
+    branches: [main]
     tags: ['v*']
+    paths: ['electron/package.json']
   workflow_dispatch:
 permissions:
   contents: write
@@ -13,16 +16,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Is this version new?
+        id: need
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="v$(node -p "require('./electron/package.json').version")"
+          if [ "$GITHUB_REF" = "refs/heads/main" ] && gh release view "$v" >/dev/null 2>&1; then
+            echo "$v is already released; nothing to do"; echo "go=0" >> "$GITHUB_OUTPUT"
+          else echo "go=1" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v4
+        if: steps.need.outputs.go == '1'
         with:
           node-version: 22
       - uses: actions/setup-go@v5
+        if: steps.need.outputs.go == '1'
         with:
           go-version: '1.24'
           cache: false
       - name: Build
+        if: steps.need.outputs.go == '1'
         run: bash electron/build.sh
       - name: Publish
+        if: steps.need.outputs.go == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
