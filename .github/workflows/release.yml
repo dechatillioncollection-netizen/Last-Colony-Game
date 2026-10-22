@@ -1,0 +1,36 @@
+# Builds the desktop zips and installers and publishes them as a GitHub release, which is where the in-game updater and the
+# installer look for new versions. Runs when a tag like v0.6.1 is pushed, or by hand from the Actions tab.
+# The release is named after electron/package.json's version; running it again for the same version replaces the files.
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: false
+      - name: Build
+        run: bash electron/build.sh
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="v$(node -p "require('./electron/package.json').version")"
+          cd electron/out
+          files=(LastColony-Windows.zip LastColony-Linux.zip LastColony-macOS-Intel.zip LastColony-macOS-AppleSilicon.zip LastColonySetup.exe LastColonySetup-Linux)
+          if gh release view "$v" >/dev/null 2>&1; then
+            gh release upload "$v" "${files[@]}" --clobber
+          else
+            gh release create "$v" "${files[@]}" --title "Last Colony $v" --notes "Download the zip for your computer, or run LastColonySetup to install. Installed copies update themselves with Updater."
+          fi
