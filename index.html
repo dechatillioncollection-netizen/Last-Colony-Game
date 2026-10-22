@@ -124,6 +124,20 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .vrow input{accent-color:var(--amber);width:100%;margin:0}.vrow output{color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
 .snote{color:var(--muted);font-size:13px;line-height:1.4;margin:0 0 10px}
 /* planet sector map */
+#splash{position:fixed;inset:0;z-index:45;background:#050407;cursor:pointer;overflow:hidden;transition:opacity .9s ease;user-select:none;-webkit-user-select:none}
+#splash[hidden]{display:none}#splash.out{opacity:0}#splash canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#splash .sv{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 75% 70% at 50% 54%,rgba(0,0,0,0) 45%,rgba(3,2,6,.55) 78%,rgba(3,2,6,.92) 100%),linear-gradient(180deg,rgba(3,2,8,.62) 0%,rgba(3,2,8,.12) 34%,rgba(3,2,8,0) 55%,rgba(3,2,8,.4) 100%)}
+#splash .st{position:absolute;left:0;right:0;top:12%;text-align:center;pointer-events:none;opacity:0;transform:translateY(10px);transition:opacity 2.4s ease .5s,transform 3.2s ease .5s}
+#splash.on .st{opacity:1;transform:none}#splash.out .st{transform:translateY(-6px) scale(1.02);transition:transform .9s ease}
+#splash h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(36px,7.4vw,118px);letter-spacing:.12em;padding-left:.12em;line-height:1;color:#ece6f4;
+  text-shadow:0 0 18px rgba(170,120,220,.42),0 0 60px rgba(110,200,210,.18),0 3px 0 rgba(0,0,0,.6)}
+#splash .sr{width:min(46vw,560px);height:1px;margin:clamp(14px,2.2vh,24px) auto 0;background:linear-gradient(90deg,rgba(150,220,225,0),rgba(150,220,225,.55),rgba(190,140,230,.55),rgba(190,140,230,0))}
+#splash .sp{position:absolute;left:0;right:0;bottom:clamp(40px,11vh,120px);text-align:center;pointer-events:none;font-family:var(--f-ui);font-weight:500;font-size:clamp(14px,1.7vw,23px);
+  letter-spacing:.32em;text-transform:uppercase;color:#d9e6ea;text-shadow:0 0 12px rgba(120,210,220,.45),0 2px 4px rgba(0,0,0,.8);opacity:0;transition:opacity 1.6s ease}
+#splash.ready .sp{opacity:1;animation:spPulse 2.8s ease-in-out 1.6s infinite}
+@keyframes spPulse{0%,100%{opacity:1}50%{opacity:.42}}
+#splash .sx{position:absolute;right:16px;bottom:12px;font-family:var(--f-ui);font-size:12px;letter-spacing:.08em;color:rgba(200,200,215,.4);pointer-events:none}
+@media (prefers-reduced-motion:reduce){#splash.ready .sp{animation:none}#splash .st{transition:opacity 1.2s ease}}
 #intro{position:fixed;inset:0;z-index:40;--lb:0px;transition:opacity .45s}#intro[hidden]{display:none}#intro.out{opacity:0}
 #introCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #intro .ibar{position:absolute;left:0;right:0;height:var(--lb);background:#000}#intro .ibar.top{top:0}#intro .ibar.bot{bottom:0}
@@ -275,6 +289,7 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
     <div class="cfoot"><span>Click, tap or press Space · <b id="commCount"></b></span><button id="commSkip" title="Skip this conversation (Esc)">Skip ▸▸</button></div></div>
   <div class="cport" id="cport1"><canvas width="264" height="264"></canvas><span></span></div>
 </div></div>
+<div id="splash" hidden role="button" aria-label="Last Colony. Press any key to continue."><canvas id="splashCv"></canvas><div class="sv"></div><div class="st"><h1>LAST COLONY</h1><div class="sr"></div></div><div class="sp">Press any key to continue</div><div class="sx" id="splashVer"></div></div>
 <div id="intro" hidden><canvas id="introCv"></canvas><div class="ibar top"></div><div class="ibar bot"></div><div id="introTitle"><b></b><span></span></div><div id="introRadio"><span class="lbl"></span><span class="txt"></span></div><div id="introCap"></div><button id="introSkip" aria-label="Skip the intro">Skip <kbd>Esc</kbd></button></div>
 <div id="overlay">
   <div class="card" id="ovcard">
@@ -441,7 +456,7 @@ const miniBase=document.createElement('canvas');miniBase.width=MW;miniBase.heigh
 function setMapSize(w){if(w===MW&&w===MH)return;MW=MH=w;N=w*w;
   terrCanvas.width=terrCanvas.height=w*T;miniBase.width=miniBase.height=w;webClearAll();miniWeb.width=miniWeb.height=w;hdCanvas.width=hdCanvas.height=w*HDR;webImg=null;
   webArtImg=null;webPat=null;if(webArtOn())webPat=webSel(0,0).x.createPattern(ART.plant.rootweb.img[0],'repeat');}
-function newGame(mode,mis){
+function newGame(mode,mis){splashEnd(true);
   RADIO.length=0;PINGS.length=0;sndReset();cineReset();
   setMapSize(mis?mis.size:mode==='siege'?MAXM:96);
   G={mode,mission:mis?mis.id:null,diff:mis&&mis.diff||1,winWave:mis&&mis.waves||WIN_WAVE,ezone:mis&&mis.ezone||(mode==='siege'?23:7),
@@ -6118,7 +6133,7 @@ function introCues(t){for(let k=0;k<INTRO_CUES.length;k++){const [at,kind,name,o
   if(kind==='bed')introBed(name,o.to,o.fade);else if(kind==='bedoff')introBedOff(name,o.fade);else introSnd(name,o);}}
 
 // ---- the start, the end, skipping
-function introStart(mode){if(INTRO.on)return;sndUnlock();
+function introStart(mode){if(INTRO.on)return;splashEnd(true);sndUnlock();
   if(mode==='replay'&&G&&!G.over)return;   // never over a game in progress
   Object.assign(INTRO,{on:true,mode,t:0,last:0,ending:false,cues:new Set(),beds:{},hold:false});INTRO.low=SET.q==='low';
   // the meadow, the Bloom and the hand-off camera all come from the real mission, created now but held still
@@ -6430,6 +6445,95 @@ if(DESK){for(const e of document.querySelectorAll('.dsk'))e.hidden=false;
 $('optFog').onchange=e=>{SET.fog=e.target.checked;try{localStorage.setItem('lc_fog',SET.fog?'1':'0');}catch(_){}};
 $('setClose').onclick=()=>{$('settings').hidden=true;snd('ui','ui_close');};
 $('settings').onclick=e=>{if(e.target.id==='settings'){$('settings').hidden=true;snd('ui','ui_close');}};
+// ===== v55: the title splash. Shown once when the game launches, over the main menu, until any key, mouse button or controller button.
+// The picture is art/title/bg.jpg (painted by art/source/paint_title.js from the game's own Bloom, Seed Pod and Scout Tank art) with
+// art/title/glow.png on top for the light that pulses outward from the Bloom; fog, drifting spores and the survey lamps are drawn here.
+// Without the images (or before they load) it is a dark screen with the title, and it works the same.
+var SPL={on:false,t:0,last:0,raf:0,bg:null,glow:null,fog:null,motes:[],pads:null,pulses:[],nextPulse:2.2,ending:false,lite:false,rm:false,amb:null};
+// where things are in the 2560×1440 picture (from paint_title.js's meta.json)
+const SPL_PIC={W:2560,H:1440,bloom:[1280,835],lamps:[[1899,-50],[2071,70],[2244,189],[2417,308],[2590,427]],tank:[2138,200,2.505]};
+function splashStart(){const el=$('splash');if(!el)return;
+  // automated test browsers go straight to the menu, as before, unless a test asks for the title screen (lc_splash=1); the desktop app always shows it
+  let ask=false;try{ask=localStorage.getItem('lc_splash')==='1';}catch(_){}if(navigator.webdriver&&!DESK&&!ask){SPL.why='automated';return;}
+  SPL.on=true;SPL.t=0;SPL.last=0;SPL.ending=false;
+  SPL.lite=SET.q==='low';SPL.rm=ART_RM;el.hidden=false;el.classList.remove('out','on','ready');
+  try{$('splashVer').textContent=DESK&&lcDesktop.version?'v'+lcDesktop.version:'';}catch(_){}
+  for(const [k,f] of [['bg','bg.jpg'],['glow','glow.png']]){const im=new Image();im.onload=()=>{SPL[k]=im;};im.onerror=()=>console.warn('Title art missing: '+f+' (the title screen shows without it)');im.src='art/title/'+f;}
+  SPL.fog=splashFog();SPL.motes=[];const n=SPL.lite?24:SPL.rm?30:70;for(let i=0;i<n;i++)SPL.motes.push(splashMote(true));
+  // controller buttons already held at launch do not count
+  SPL.pads=splashPadState();
+  requestAnimationFrame(()=>el.classList.add('on'));setTimeout(()=>{if(SPL.on)el.classList.add('ready');},2300);
+  // the desktop app may start sound at once; a browser waits for the first key or click, which here is the one that continues
+  if(DESK)sndUnlock();
+  SPL.raf=requestAnimationFrame(splashLoop);}
+function splashPadState(){try{return [...(navigator.getGamepads?navigator.getGamepads():[])].map(p=>p?p.buttons.map(b=>b.pressed):null);}catch(_){return [];}}
+function splashPadPressed(){let any=false;try{const P=navigator.getGamepads?navigator.getGamepads():[];for(let i=0;i<P.length;i++){const p=P[i];if(!p)continue;const was=SPL.pads[i]||[];
+  p.buttons.forEach((b,j)=>{if(b.pressed&&!was[j])any=true;});}}catch(_){}SPL.pads=splashPadState();return any;}
+// leave: a fade to the menu that is already underneath; instant when a game starts some other way
+function splashEnd(instant){if(!SPL||!SPL.on)return;const el=$('splash');SPL.why=instant?'game started: '+(new Error().stack.split('\n')[2]||'').trim():'continued';
+  if(instant){SPL.on=false;cancelAnimationFrame(SPL.raf);el.hidden=true;el.classList.remove('out','on','ready');splashSound(false,.3);return;}
+  if(SPL.ending)return;SPL.ending=true;el.classList.add('out');splashSound(false,1.4);snd('ui','ui_open');
+  setTimeout(()=>{if(!SPL.on)return;SPL.on=false;cancelAnimationFrame(SPL.raf);el.hidden=true;el.classList.remove('out','on','ready');
+    const b=document.querySelector('#ovcard .mode');if(b&&!$('overlay').hidden&&b.focus)b.focus({preventScroll:true});},900);}
+function splashKey(e){if(!SPL.on)return;if(['Shift','Control','Alt','Meta','CapsLock','Tab','F11','F12'].includes(e.key))return;
+  e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)splashEnd(false);}
+function splashPointer(e){if(!SPL.on)return;e.preventDefault();e.stopImmediatePropagation();splashEnd(false);}
+window.addEventListener('keydown',splashKey,{capture:true});
+$('splash').addEventListener('pointerdown',splashPointer);$('splash').addEventListener('contextmenu',e=>e.preventDefault());
+// a soft fog texture, drawn twice at different scales and drifting
+function splashFog(){const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d'),id=g.createImageData(256,128),D=id.data;
+  const R=[];for(let i=0;i<32*16;i++)R.push(Math.random());const v=(x,y)=>{const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,u=fx*fx*(3-2*fx),w=fy*fy*(3-2*fy),
+    a=R[(yi&15)*32+(xi&31)],b=R[(yi&15)*32+((xi+1)&31)],c2=R[((yi+1)&15)*32+(xi&31)],d=R[((yi+1)&15)*32+((xi+1)&31)];return a+(b-a)*u+(c2-a)*w+(a-b-c2+d)*u*w;};
+  for(let y=0;y<128;y++)for(let x=0;x<256;x++){const n=v(x/8,y/8)*.6+v(x/4+3,y/4+5)*.3+v(x/2,y/2)*.1,k=(y*256+x)*4,a=Math.max(0,n-.42)*2.1;D[k]=168;D[k+1]=176;D[k+2]=200;D[k+3]=Math.min(255,a*255);}
+  g.putImageData(id,0,0);return c;}
+// motes: spores and seed-fluff drifting up out of the marsh, a few of them catching the light
+function splashMote(any){return {x:Math.random(),y:any?Math.random():1.05,v:.006+Math.random()*.016,w:Math.random()*6.3,r:.6+Math.random()*1.8,h:Math.random()<.6?'150,225,230':'200,160,240',a:.25+Math.random()*.55};}
+function splashLoop(now){if(!SPL.on)return;const dt=SPL.last?Math.min(.1,(now-SPL.last)/1000):0;SPL.last=now;if(!document.hidden)SPL.t+=dt;
+  if(splashPadPressed())splashEnd(false);
+  splashDraw(SPL.t,dt);splashSoundTick(dt);SPL.raf=requestAnimationFrame(splashLoop);}
+function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
+  const PW=Math.round(W*dpr),PH=Math.round(H*dpr);if(cv.width!==PW||cv.height!==PH){cv.width=PW;cv.height=PH;}
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#050407';g.fillRect(0,0,W,H);
+  // the picture covers the screen, drifting in very slowly; the Bloom is kept below the title on tall and narrow screens
+  const P=SPL_PIC,z=SPL.rm?1.02:1.02+.03*(.5-.5*Math.cos(Math.min(1,t/70)*Math.PI)),k=Math.max(W/P.W,H/P.H)*z;
+  const bx=P.bloom[0],by=P.bloom[1],ox=W/2-P.W/2*k+(SPL.rm?0:Math.sin(t*.05)*W*.004),oy=Math.min(H*.56-by*k,Math.max(H-P.H*k,0))+(SPL.rm?0:Math.cos(t*.043)*H*.004);
+  const X=x=>ox+x*k,Y=y=>oy+y*k;
+  if(SPL.bg){g.globalAlpha=Math.min(1,t/1.6);g.drawImage(SPL.bg,ox,oy,P.W*k,P.H*k);g.globalAlpha=1;}
+  // light from the Bloom: a slow breath everywhere, and a wave that runs out along the conduits every few seconds
+  if(SPL.glow&&SPL.bg){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,t/2)*(.16+.06*Math.sin(t*.9));g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();
+    SPL.nextPulse-=dt;if(SPL.nextPulse<=0){SPL.nextPulse=6.5+Math.random()*2.5;SPL.pulses.push({t:0});splashSound('pulse');}
+    for(const p of SPL.pulses){p.t+=dt;const r=p.t*360*k*1.6,fade=Math.max(0,1-p.t/4.2);if(fade<=0)continue;
+      if(SPL.lite){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.25*fade*Math.min(1,p.t*3);g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();continue;}
+      const m=splashMask(PW,PH);m.g.setTransform(1,0,0,1,0,0);m.g.globalCompositeOperation='source-over';m.g.clearRect(0,0,PW,PH);m.g.setTransform(dpr,0,0,dpr,0,0);
+      m.g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);m.g.globalCompositeOperation='destination-in';const cx=X(bx),cy=Y(by),w=120*k*1.6+40;
+      const gr=m.g.createRadialGradient(cx,cy,Math.max(0,r-w),cx,cy,r+w*.4);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(.7,'rgba(0,0,0,1)');gr.addColorStop(1,'rgba(0,0,0,0)');
+      m.g.fillStyle=gr;m.g.fillRect(0,0,W,H);g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='lighter';g.globalAlpha=.9*fade;g.drawImage(m.c,0,0);g.restore();}
+    SPL.pulses=SPL.pulses.filter(p=>p.t<4.3);}
+  // the Bloom's heart, breathing
+  {const cx=X(bx),cy=Y(by),R=150*k,a=Math.min(1,t/2.5)*(.12+.08*Math.sin(t*1.1));const gr=g.createRadialGradient(cx,cy,0,cx,cy,R);gr.addColorStop(0,`rgba(170,255,200,${a})`);gr.addColorStop(1,'rgba(170,255,200,0)');
+    g.save();g.globalCompositeOperation='lighter';g.fillStyle=gr;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();}
+  // people: survey lamps blinking down the line, and the tank's lamps
+  if(SPL.bg){g.save();g.globalCompositeOperation='lighter';
+    P.lamps.forEach(([x,y],i)=>{const ph=(t*.8-i*.22)%2.4,on=ph>0&&ph<.18?1:.18;const r=(on>.5?9:5)*k*1.6,cx=X(x),cy=Y(y);const gr=g.createRadialGradient(cx,cy,0,cx,cy,r*3);
+      gr.addColorStop(0,`rgba(255,190,90,${.9*on})`);gr.addColorStop(.3,`rgba(255,150,60,${.35*on})`);gr.addColorStop(1,'rgba(255,150,60,0)');g.fillStyle=gr;g.fillRect(cx-r*3,cy-r*3,r*6,r*6);});
+    const [tx,ty,ta]=P.tank,fl=.92+.08*Math.sin(t*23)*Math.sin(t*7.1);for(const s of [-1,1]){const lx=X(tx+Math.cos(ta)*38-Math.sin(ta)*s*15),ly=Y(ty+Math.sin(ta)*38+Math.cos(ta)*s*15),r=16*k*1.6;
+      const gr=g.createRadialGradient(lx,ly,0,lx,ly,r);gr.addColorStop(0,`rgba(255,240,205,${.85*fl})`);gr.addColorStop(1,'rgba(255,240,205,0)');g.fillStyle=gr;g.fillRect(lx-r,ly-r,r*2,r*2);}
+    g.restore();}
+  // fog over the marsh
+  if(SPL.fog&&!SPL.lite){g.save();g.globalCompositeOperation='screen';for(const [sc,sp,al,yo] of [[3.4,.012,.11,.15],[5.2,-.007,.08,.55]]){const fw=SPL.fog.width*sc*k*1.6,fh=SPL.fog.height*sc*k*1.6;
+      let x0=((t*sp*W)%fw+fw)%fw-fw;g.globalAlpha=al*Math.min(1,t/3);for(let x=x0;x<W;x+=fw)for(let y=-fh*yo;y<H;y+=fh)g.drawImage(SPL.fog,x,y,fw,fh);}g.restore();}
+  // motes
+  g.save();g.globalCompositeOperation='lighter';for(const m of SPL.motes){if(!SPL.rm){m.y-=m.v*dt;m.x+=Math.sin(t*.4+m.w)*.0009*dt*60/60;}if(m.y<-.05)Object.assign(m,splashMote(false));
+    const tw=.55+.45*Math.sin(t*1.7+m.w*3),a=m.a*tw*Math.min(1,t/2.5);g.fillStyle=`rgba(${m.h},${a})`;g.beginPath();g.arc(m.x*W,m.y*H,m.r*(W/1600+.4),0,7);g.fill();}g.restore();}
+const SPLM={c:null,g:null};function splashMask(w,h){if(!SPLM.c){SPLM.c=document.createElement('canvas');SPLM.g=SPLM.c.getContext('2d');}if(SPLM.c.width!==w||SPLM.c.height!==h){SPLM.c.width=w;SPLM.c.height=h;}return SPLM;}
+// sound: the menu's own ambience (wind, the deep air) plays as usual; the title adds the deep bed under the ground and a soft pulse with
+// each wave of light. Both go through the ambience volume.
+function splashSound(what,fade){if(!SND.ctx||!SND.bus)return;const c=SND.ctx;
+  if(what===false){const a=SPL.amb;SPL.amb=null;if(a)try{const t=c.currentTime;a.g.gain.cancelScheduledValues(t);a.g.gain.setTargetAtTime(0,t,fade/3);a.src.stop(t+fade*1.8+.1);}catch(_){}return;}
+  if(what==='pulse'){if(!sndReady('a'))return;const buf=sndBuf('intro_pulse');if(!buf)return;const s=c.createBufferSource(),g=c.createGain();s.buffer=buf;g.gain.value=.32;s.connect(g);g.connect(SND.bus.a);s.start();}}
+function splashSoundTick(dt){if(SPL.ending||SPL.amb||!sndReady('a')||!SND.buf.intro_under)return;const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();
+  s.buffer=SND.buf.intro_under;s.loop=true;g.gain.value=0;s.connect(g);g.connect(SND.bus.a);s.start();g.gain.setTargetAtTime(.42,c.currentTime,1.2);SPL.amb={src:s,g};}
+splashStart();
 requestAnimationFrame(loop);
 window.__game=()=>G;
 </script>

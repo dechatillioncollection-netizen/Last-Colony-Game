@@ -8,7 +8,8 @@ const R={},ck=[];const T=(n,ok,d)=>{ck.push([n,!!ok]);console.log((ok?'PASS ':'F
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
  // ---- first run
- let app=await launch();let w=await app.firstWindow();const errs=[];w.on('pageerror',e=>errs.push(e.message));await w.waitForTimeout(3000);
+ let app=await launch();let w=await app.firstWindow();const errs=[];w.on('pageerror',e=>errs.push(e.message));await w.waitForTimeout(3000);await w.evaluate(()=>{if(window.splashEnd)splashEnd(true);});   // v55: past the title screen to the menu
+
  const b=await w.evaluate(async()=>({desk:DESK,ver:lcDesktop.version,plat:lcDesktop.platform,mode:await Store.init(),url:location.protocol,node:typeof require,
    quit:!$('m-quit').hidden,full:await lcDesktop.isFullScreen(),vw:VW,vh:VH,ultra:!!QUALITY.ultra}));
  T('the desktop bridge is there and nothing else of Node is',b.desk&&b.ver===require(path.join(__dirname,'../electron/package.json')).version&&b.plat==='linux'&&b.url==='file:'&&b.node==='undefined',b);
@@ -73,7 +74,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  const winj=JSON.parse(fs.readFileSync(path.join(ud,'window.json'),'utf8'));
  T('Quit closes the app and remembers windowed mode',!nf&&q&&winj.full===false,{nf,q,winj});
  // ---- second run: saves are still there, the window comes back windowed, the intro plays for a new campaign
- app=await launch();w=await app.firstWindow();w.on('pageerror',e=>errs.push(e.message));await w.waitForTimeout(3000);
+ app=await launch();w=await app.firstWindow();w.on('pageerror',e=>errs.push(e.message));await w.waitForTimeout(3000);await w.evaluate(()=>{if(window.splashEnd)splashEnd(true);});   // v55: past the title screen to the menu
+
  const r2=await w.evaluate(async()=>({full:await lcDesktop.isFullScreen(),old:await Store.get('sector-old'),nw:await Store.get('sector-new'),steady:DYN.on}));
  T('the second run keeps the saves and the window mode',!r2.full&&r2.old==='{"from":"browser"}'&&r2.nw==='{"n":1}'&&r2.steady,r2);
  await w.evaluate(async()=>{if(DLG.open){DLG.done=null;closeDlg();}G=null;CAMP=freshCamp();await saveCamp();openPlanet();});await w.waitForTimeout(600);await w.click('#launch');await w.waitForTimeout(1500);

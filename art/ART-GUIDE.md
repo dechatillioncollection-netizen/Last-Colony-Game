@@ -672,3 +672,15 @@ The Duo Turret, Hail Cannon, Flak Turret (`scatter` in the code) and Lancer are 
 - **Performance:** each layer has half and quarter copies. With more than 30 turrets on screen the head shadows are skipped. With more than 80 turrets on screen, or zoomed out past 0.75×, each turret draws its foundation and one baked head (`tflat`, made at load) and skips the shadow, separate barrels, radar spin and smoke. Aim, flashes and damage marks stay.
 - **Settings and fallback:** Low quality and painted art off give the built-in look. If any layer of a turret fails to load, that turret keeps its built-in look and the console names the file.
 - **Painter script:** `art/source/paint_turrets.js`. Run it with `node art/source/runpaint.js art/source/paint_turrets.js art/hdf`. The drawing code is `turDraw`, `turS`, `turFrame` and `turHideShot`.
+
+## Title screen (v55)
+
+The title screen is one painted picture with light added on top while it runs.
+
+- **Files:** in `art/title/`.
+  - `bg.jpg`: 2560×1440, the whole scene graded to night.
+  - `glow.png`: 1280×720, only what gives off light (conduit channels and beads, the Bloom's heart, the Seed Pods, a few bright stars), blurred, and hidden where the Bloom covers it.
+  - `meta.json`: the Bloom's centre, the conduit beads, the survey lamps and the tank's position in the picture. The game copies the few it needs into `SPL_PIC`; change both together.
+- **Painter:** `art/source/paint_title.js` runs inside the game page, so it can draw the Bloom, the Seed Pods and the Scout Tank with the game's own painted art. Start a web server on the repo root, then run `node art/source/runtitle.js`.
+- **Layers, bottom to top:** wet ground; pools with reflected stars; lily pads; a patch of Rootweb texture; root conduits (shadow, three tones, a wet sheen and the light channel); Seed Pods; the Bloom with its reflection; the survey track, stakes and tank. The night grade comes last: a cool multiply and a vignette, with some of the glow layer baked back in.
+- **Drawn live:** the glow layer's breathing and the light wave (the glow layer masked by a moving ring), the Bloom's heart, the survey and tank lamps, two drifting fog layers and the spores. Low quality and reduced motion trim these (see `docs/v55-title-screen.md`).
