@@ -1,4 +1,4 @@
-# v51: timed hatching, rally points, the pause menu and the updater
+# v51: timed hatching, rally points, the pause menu, the updater and the installer
 
 Screenshots are in `docs/screenshots/v51/`.
 
@@ -87,6 +87,26 @@ When a player runs it:
 
 **Where it looks.** The game is published in the public repository `dechatillioncollection-netizen/Last-Colony-Game`. That is where the updater looks and where releases go. The development repository stays private, because it held private story notes in its history. To use another repository, set `UPDATE_REPO=owner/name` when building, or edit `updater.json`. `GITHUB_TOKEN` works for testing against a private repository. Never put a token in a download.
 
+## The installer
+
+`LastColonySetup.exe` (and `LastColonySetup-Linux`) is the same program as the updater. `electron/build.sh` builds it into `electron/out/` next to the zips. What it does depends on where it runs:
+
+- **On its own** (for example in Downloads), it is the installer:
+  1. It offers to install into `%LOCALAPPDATA%\Programs\Last Colony` on Windows, or `~/.local/share/last-colony` on Linux. The player can press Enter, type another folder, or cancel. That folder needs no administrator rights. `--dir` sets the folder without asking.
+  2. It downloads the newest release's zip, checks it, unpacks it next to the folder and renames it into place. A folder that already holds other files is refused.
+  3. It puts a copy of itself in the game folder as `Updater.exe` (`updater`), so that copy can also uninstall, even if the release's own updater is older.
+  4. On Windows it adds Last Colony to the Start menu and the desktop, and "Update Last Colony" to the Start menu. It also lists the game under Installed apps, with its version, size and an Uninstall button. On Linux it adds the same two entries to the applications menu.
+  5. It offers to start the game.
+- **Run again** once the game is installed, it repairs the shortcuts, then updates the game like the updater.
+- **In the game folder** (as `Updater.exe`), it updates, as above. After an update it also sets the version shown under Installed apps.
+- **With `--uninstall`** (from either copy, or from Installed apps), it removes the shortcuts, the Installed apps entry and the game folder, after asking. Saves are kept. On Windows a running program can't delete itself, so a hidden helper removes the folder once it has closed.
+
+**Where it looks.** The installer looks in `UPDATE_REPO` (set when building), and the copy in the game folder reads `updater.json` as before.
+
+**To publish it,** attach `LastColonySetup.exe` to the GitHub release alongside the zips. Players then only need that one file.
+
+**Not signed.** Windows SmartScreen will warn about an unsigned download ("Windows protected your PC", then More info, then Run anyway). Signing it needs a code-signing certificate.
+
 ## Results
 
 - **`tests/xtest51.js`: 19 of 19 pass.** It covers:
@@ -107,10 +127,16 @@ When a player runs it:
   - an update that replaces the game, checks the checksum and leaves nothing behind;
   - the local `updater.json` kept, and files still executable;
   - "already the newest version" on a second run.
+- **`tests/insttest.py` on `LastColonySetup-Linux`: 18 of 18 pass.** It runs against a stand-in GitHub server and covers:
+  - n at the first question installing nothing, and a typed folder used instead of the usual one;
+  - an install that leaves the game ready to run, nothing behind, itself as the updater (replacing an older one), `updater.json`, and both menu entries;
+  - the installer run again finding the install, saying it is up to date, then finding a newer version, which the installed updater fetches;
+  - a folder with other files in it refused;
+  - uninstalling: n removing nothing, the installer removing the game and both menu entries, saves kept, "not installed" when it isn't, and the updater in a game folder uninstalling too.
+- **The installer against the real GitHub release:** on Linux it installed 0.6.0 from `Last-Colony-Game` with the checksum checked. The installed updater then said it was the newest version and uninstalled it, leaving nothing behind.
 - **`tests/elcheck50.js` on the Linux app: 22 of 22 pass.** This adds Esc in a match opening the pause menu, whose Quit saves and closes the app.
 - **Not tested:**
-  - `Updater.exe` on Windows, because this machine cannot run it. It is the same code, built for Windows. Its Windows-only step (checking the game is closed) was not exercised;
-  - against the real GitHub, because the repository is private and has no releases yet.
+  - `Updater.exe` and `LastColonySetup.exe` on Windows, because this machine cannot run them. They are the same code, built for Windows, and it compiles and passes `go vet` for Windows. Their Windows-only steps were not exercised: checking the game is closed, the shortcuts (made with PowerShell), the Installed apps entry (made with `reg`), and removing the folder after closing.
 
 **Full regression (56 runs).** Every test has the same result as v49's run except those that hatch ants from a Brood Chamber on a timer, which now differ by design:
 

@@ -1,5 +1,7 @@
-// Updater for the downloadable (zip) version of Last Colony. It asks GitHub for the newest release, and if that is newer than the copy
-// in this folder it downloads the zip for this computer, checks it, and swaps the new files in. Saves are never touched: they live in the
+// Installer and updater for the downloadable version of Last Colony; one program, two names. Run on its own (LastColonySetup.exe,
+// downloaded by itself) it installs the newest release into the user's programs folder with shortcuts, and the copy inside the game
+// folder (Updater.exe) then keeps it up to date. Inside a game folder it asks GitHub for the newest release, and if that is newer it
+// downloads the zip for this computer, checks it, and swaps the new files in. Saves are never touched: they live in the
 // user's own data folder, not here. Steam and the itch.io app update the game themselves, so this is only for the zip.
 //
 // Settings come from updater.json next to this program:
@@ -35,25 +37,31 @@ type config struct {
 	Asset string `json:"asset"`
 }
 
-type release struct {
-	Tag    string `json:"tag_name"`
+type asset struct {
 	Name   string `json:"name"`
-	Draft  bool   `json:"draft"`
-	Pre    bool   `json:"prerelease"`
-	Assets []struct {
-		Name   string `json:"name"`
-		URL    string `json:"browser_download_url"`
-		API    string `json:"url"`
-		Size   int64  `json:"size"`
-		Digest string `json:"digest"`
-	} `json:"assets"`
+	URL    string `json:"browser_download_url"`
+	API    string `json:"url"`
+	Size   int64  `json:"size"`
+	Digest string `json:"digest"`
 }
 
+type release struct {
+	Tag    string  `json:"tag_name"`
+	Name   string  `json:"name"`
+	Draft  bool    `json:"draft"`
+	Pre    bool    `json:"prerelease"`
+	Assets []asset `json:"assets"`
+}
+
+// where the installer looks; build.sh sets it from UPDATE_REPO (the copy in a game folder reads updater.json instead)
+var defaultRepo = "dechatillioncollection-netizen/Last-Colony-Game"
+
 var (
-	yes     = flag.Bool("yes", false, "update without asking, and do not wait for Enter at the end")
-	check   = flag.Bool("check", false, "only say whether an update is available")
-	noStart = flag.Bool("no-start", false, "do not offer to start the game afterwards")
-	dirFlag = flag.String("dir", "", "the game folder (default: the folder this program is in)")
+	yes           = flag.Bool("yes", false, "update without asking, and do not wait for Enter at the end")
+	check         = flag.Bool("check", false, "only say whether an update is available")
+	noStart       = flag.Bool("no-start", false, "do not offer to start the game afterwards")
+	dirFlag       = flag.String("dir", "", "the game folder (default: the folder this program is in, or the usual install folder for the installer)")
+	uninstallFlag = flag.Bool("uninstall", false, "remove the installed game and its shortcuts (saves are kept)")
 )
 
 func main() {
@@ -83,22 +91,76 @@ func defaultAsset() string {
 }
 
 func run() int {
+	self, err := os.Executable()
+	if err != nil {
+		fmt.Println("Could not find where this program is:", err)
+		return 1
+	}
 	dir := *dirFlag
 	if dir == "" {
-		exe, err := os.Executable()
-		if err != nil {
-			fmt.Println("Could not find the game folder:", err)
-			return 1
-		}
-		dir = filepath.Dir(exe)
+		dir = filepath.Dir(self)
 	}
-	cleanOld(dir)
-	cfg := config{Repo: "dechatillioncollection-netizen/Last-Colony-Game", Asset: defaultAsset()}
+	// not a game folder: this is the installer (LastColonySetup), so it works on the install folder instead
+	if _, err := os.Stat(filepath.Join(dir, gameExe())); err != nil {
+		return install(self)
+	}
+	if *uninstallFlag {
+		return uninstall(dir)
+	}
+	return update(dir)
+}
+
+// the newest release and this system's zip in it
+func findRelease(cfg config) (string, *asset, error) {
+	rel, err := latest(cfg.Repo)
+	if err != nil {
+		return "", nil, err
+	}
+	want := strings.TrimPrefix(rel.Tag, "v")
+	for i := range rel.Assets {
+		if rel.Assets[i].Name == cfg.Asset {
+			return want, &rel.Assets[i], nil
+		}
+	}
+	return want, nil, fmt.Errorf("version %s is out, but it has no %s to download", want, cfg.Asset)
+}
+
+// downloads the zip into tmp, checks it, unpacks it, and returns the folder that holds the game
+func fetchGame(a *asset, tmp, name string) (string, error) {
+	zipPath := filepath.Join(tmp, name)
+	if err := download(a.API, a.URL, zipPath, a.Size); err != nil {
+		return "", fmt.Errorf("download failed: %w", err)
+	}
+	if strings.HasPrefix(a.Digest, "sha256:") {
+		if err := checkSum(zipPath, strings.TrimPrefix(a.Digest, "sha256:")); err != nil {
+			return "", err
+		}
+		fmt.Println("Download checked.")
+	}
+	stage := filepath.Join(tmp, "new")
+	if err := unzip(zipPath, stage); err != nil {
+		return "", fmt.Errorf("the download could not be unpacked: %w", err)
+	}
+	_ = os.Remove(zipPath)
+	return gameRoot(stage)
+}
+
+func loadConfig(dir string) (config, error) {
+	cfg := config{Repo: defaultRepo, Asset: defaultAsset()}
 	if b, err := os.ReadFile(filepath.Join(dir, "updater.json")); err == nil {
 		if err := json.Unmarshal(b, &cfg); err != nil {
-			fmt.Println("updater.json could not be read:", err)
-			return 1
+			return cfg, fmt.Errorf("updater.json could not be read: %w", err)
 		}
+	}
+	return cfg, nil
+}
+
+func update(dir string) int {
+	cleanOld(dir)
+	cfg, err := loadConfig(dir)
+	if err != nil {
+		fmt.Println(err)
+		return 1
 	}
 	if _, err := os.Stat(filepath.Join(dir, gameExe())); err != nil {
 		fmt.Printf("This doesn't look like a Last Colony folder (no %s in %s).\n", gameExe(), dir)
@@ -106,34 +168,20 @@ func run() int {
 	}
 	have := localVersion(dir)
 	fmt.Printf("Last Colony updater\nInstalled version: %s\nChecking GitHub (%s) for a newer one...\n", orUnknown(have), cfg.Repo)
-
-	rel, err := latest(cfg.Repo)
-	if err != nil {
+	want, a, err := findRelease(cfg)
+	if err != nil && a == nil && want == "" {
 		fmt.Println("Could not check for updates:", err)
 		return 1
 	}
-	want := strings.TrimPrefix(rel.Tag, "v")
-	if have != "" && compareVersions(want, have) <= 0 {
+	if have != "" && want != "" && compareVersions(want, have) <= 0 {
 		fmt.Printf("You have the newest version (%s).\n", have)
 		return 0
 	}
-	var asset *struct {
-		Name   string `json:"name"`
-		URL    string `json:"browser_download_url"`
-		API    string `json:"url"`
-		Size   int64  `json:"size"`
-		Digest string `json:"digest"`
-	}
-	for i := range rel.Assets {
-		if rel.Assets[i].Name == cfg.Asset {
-			asset = &rel.Assets[i]
-		}
-	}
-	if asset == nil {
-		fmt.Printf("Version %s is out, but it has no %s to download.\n", want, cfg.Asset)
+	if a == nil {
+		fmt.Println(err)
 		return 1
 	}
-	fmt.Printf("Version %s is available (%.0f MB).\n", want, float64(asset.Size)/1e6)
+	fmt.Printf("Version %s is available (%.0f MB).\n", want, float64(a.Size)/1e6)
 	if *check {
 		return 0
 	}
@@ -145,31 +193,13 @@ func run() int {
 		fmt.Println(err)
 		return 1
 	}
-
 	tmp, err := os.MkdirTemp(dir, ".update-")
 	if err != nil {
 		fmt.Println("Could not make a folder for the download:", err)
 		return 1
 	}
 	defer os.RemoveAll(tmp)
-	zipPath := filepath.Join(tmp, cfg.Asset)
-	if err := download(asset.API, asset.URL, zipPath, asset.Size); err != nil {
-		fmt.Println("\nDownload failed:", err)
-		return 1
-	}
-	if strings.HasPrefix(asset.Digest, "sha256:") {
-		if err := checkSum(zipPath, strings.TrimPrefix(asset.Digest, "sha256:")); err != nil {
-			fmt.Println(err)
-			return 1
-		}
-		fmt.Println("Download checked.")
-	}
-	stage := filepath.Join(tmp, "new")
-	if err := unzip(zipPath, stage); err != nil {
-		fmt.Println("The download could not be unpacked:", err)
-		return 1
-	}
-	root, err := gameRoot(stage)
+	root, err := fetchGame(a, tmp, cfg.Asset)
 	if err != nil {
 		fmt.Println(err)
 		return 1
@@ -179,13 +209,18 @@ func run() int {
 		return 1
 	}
 	cleanOld(dir)
+	registerVersion(dir, want)
 	fmt.Printf("Updated to version %s.\n", want)
+	offerStart(dir)
+	return 0
+}
+
+func offerStart(dir string) {
 	if !*noStart && !*yes && ask("Start Last Colony now? [Y/n] ") {
 		cmd := exec.Command(filepath.Join(dir, gameExe()))
 		cmd.Dir = dir
 		_ = cmd.Start()
 	}
-	return 0
 }
 
 func orUnknown(s string) string {

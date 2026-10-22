@@ -2,7 +2,8 @@
 # Builds the desktop app as plain folders (what Steam and itch.io upload) and a zip of each.
 #   ./build.sh                 Windows, Linux and macOS (Intel and Apple silicon)
 #   ./build.sh win linux       only those
-# Output: electron/out/Last Colony-<platform>-<arch>/ and electron/out/LastColony-<Platform>.zip
+# Output: electron/out/Last Colony-<platform>-<arch>/ and electron/out/LastColony-<Platform>.zip,
+# plus the installers electron/out/LastColonySetup.exe (Windows) and LastColonySetup-Linux
 # Needs Node 18+ and npm. electron-packager and the Electron runtime are fetched on first use.
 # steamworks.js (Steam overlay and achievements) is bundled; the game runs the same without Steam.
 # The Windows and Linux folders also get the updater (Updater.exe / updater, built from updater/ with Go 1.22+) and updater.json,
@@ -39,16 +40,25 @@ pack() { # platform arch
   echo "built $dir"
 }
 updater() { # GOOS exe-name folder asset
-  (cd updater && CGO_ENABLED=0 GOOS="$1" GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "../out/$3/$2" .)
+  goexe "$1" "../out/$3/$2"
   printf '{\n  "repo": "%s",\n  "asset": "%s"\n}\n' "$UPDATE_REPO" "$4" > "out/$3/updater.json"
+}
+goexe() { # GOOS output
+  (cd updater && CGO_ENABLED=0 GOOS="$1" GOARCH=amd64 go build -trimpath -ldflags="-s -w -X main.defaultRepo=$UPDATE_REPO" -o "$2" .)
+}
+# the installer is the same program; run on its own it installs the game, and the copy it leaves in the game folder updates it
+setup() { # GOOS output-name
+  goexe "$1" "../out/$2" && echo "built out/$2"
 }
 zipit() { # folder zipname
   (cd out && rm -f "$2" && zip -qry "$2" "$1") && echo "zipped out/$2"
 }
 for t in "${targets[@]}"; do
   case "$t" in
-    win)   pack win32 x64;   updater windows Updater.exe "Last Colony-win32-x64" LastColony-Windows.zip; zipit "Last Colony-win32-x64" LastColony-Windows.zip ;;
-    linux) pack linux x64;   updater linux updater "Last Colony-linux-x64" LastColony-Linux.zip; zipit "Last Colony-linux-x64" LastColony-Linux.zip ;;
+    win)   pack win32 x64;   updater windows Updater.exe "Last Colony-win32-x64" LastColony-Windows.zip; zipit "Last Colony-win32-x64" LastColony-Windows.zip
+           setup windows LastColonySetup.exe ;;
+    linux) pack linux x64;   updater linux updater "Last Colony-linux-x64" LastColony-Linux.zip; zipit "Last Colony-linux-x64" LastColony-Linux.zip
+           setup linux LastColonySetup-Linux ;;
     mac)   pack darwin x64;  zipit "Last Colony-darwin-x64" LastColony-macOS-Intel.zip
            pack darwin arm64; zipit "Last Colony-darwin-arm64" LastColony-macOS-AppleSilicon.zip ;;
     *) echo "unknown target $t (use win, linux or mac)"; exit 1 ;;
