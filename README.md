@@ -31,4 +31,4 @@ Press F3 in game to see the frame rate and which renderer is drawing the Rootweb
 
 ## Notes
 
-`docs/story-bible.txt` section 6 is a private long-term twist. Keep it out of player-facing text.
+The story bible is kept outside this repository (it holds private story direction).
