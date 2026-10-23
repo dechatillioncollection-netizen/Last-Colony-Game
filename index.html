@@ -112,10 +112,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 body.mdlive #overlay.mm,body.mdlive #overlay.mm #mmBg{background:transparent}body.mdlive .hud,body.mdlive #msgs,body.mdlive #tut{visibility:hidden}
 #mdFade{position:absolute;inset:0;background:#06080c;opacity:0;transition:opacity .7s ease}#mdFade.on{opacity:1}
 #mmBg .mmvig{position:absolute;inset:0;background:radial-gradient(ellipse 72% 85% at 64% 50%,rgba(3,4,8,0) 52%,rgba(3,4,8,.62) 100%),
-  linear-gradient(180deg,rgba(3,4,8,.42) 0%,rgba(3,4,8,0) 20%,rgba(3,4,8,0) 72%,rgba(3,4,8,.55) 100%),linear-gradient(90deg,rgba(3,4,8,.55) 0%,rgba(3,4,8,0) 46%)}
+  linear-gradient(180deg,rgba(3,4,8,.42) 0%,rgba(3,4,8,0) 20%,rgba(3,4,8,0) 72%,rgba(3,4,8,.55) 100%),linear-gradient(90deg,rgba(3,4,8,.66) 0%,rgba(3,4,8,.4) 31%,rgba(3,4,8,.12) 40%,rgba(3,4,8,0) 50%),radial-gradient(ellipse 30% 15% at 86% 100%,rgba(3,4,8,.62),rgba(3,4,8,0))}
 #overlay.mm #ovcard{position:absolute;left:0;top:0;bottom:0;width:clamp(340px,31vw,760px);max-width:none;box-sizing:border-box;margin:0;overflow-y:auto;display:flex;flex-direction:column;
-  padding:clamp(28px,7vh,84px) clamp(22px,2.6vw,48px) 22px;background:linear-gradient(90deg,rgba(7,9,15,.94),rgba(9,11,19,.84));border-right:1px solid rgba(165,138,224,.22);
-  box-shadow:28px 0 70px rgba(0,0,0,.35)}
+  padding:clamp(28px,7vh,84px) clamp(22px,2.6vw,48px) 22px;background:linear-gradient(90deg,rgba(7,9,15,.95),rgba(9,11,19,.89));border-right:1px solid rgba(165,138,224,.22);
+  box-shadow:16px 0 34px rgba(2,3,6,.5),60px 0 120px rgba(2,3,6,.35)}
 #overlay.mm #ovcard::before{content:'';flex:none;width:36px;height:3px;background:var(--mm-y);margin-bottom:20px}
 #overlay.mm h1{color:var(--mm-t);font-size:clamp(30px,2.75vw,50px);letter-spacing:.08em;text-shadow:0 0 22px rgba(165,138,224,.38),0 2px 0 rgba(0,0,0,.6)}
 #overlay.mm h2{font-weight:500;font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--mm-v);margin:12px 0 clamp(18px,4vh,36px)}
@@ -123,7 +123,7 @@ body.mdlive #overlay.mm,body.mdlive #overlay.mm #mmBg{background:transparent}bod
 #overlay.mm .mode{position:relative;background:transparent;border:0;border-left:2px solid rgba(165,138,224,.2);padding:11px 14px 11px 18px;color:var(--mm-t);cursor:pointer;
   transition:background .18s ease,border-color .18s ease,padding-left .18s ease}
 #overlay.mm .mode b{color:var(--mm-t);font-size:17px;letter-spacing:.06em;margin-bottom:3px}
-#overlay.mm .mode span{display:block;color:var(--mm-m);font-size:13px;line-height:1.42}
+#overlay.mm .mode span{display:block;color:#a4abb7;font-size:13px;line-height:1.42;text-shadow:0 1px 2px rgba(0,0,0,.55)}
 #overlay.mm .mode::after{content:'';position:absolute;left:-2px;top:22%;bottom:22%;width:2px;background:var(--mm-y);transform:scaleY(0);transition:transform .18s ease}
 #overlay.mm .mode:hover,#overlay.mm .mode:focus-visible{background:linear-gradient(90deg,rgba(165,138,224,.17),rgba(165,138,224,0) 92%);border-left-color:var(--mm-v);padding-left:22px}
 #overlay.mm .mode:hover::after,#overlay.mm .mode:focus-visible::after{transform:none}
@@ -929,7 +929,7 @@ const WEB_FEED_SKIP={wall:1,wallL:1,twall:1,door:1,doorL:1};
 function webArtOn(){try{return SET.art&&ART.plant.rootweb.state==='ready';}catch(e){return false;}}
 // the Rootweb membrane texture has loaded (the desktop app's GPU path uses it even on Low)
 function webArtLoaded(){try{return ART.plant.rootweb.state==='ready';}catch(e){return false;}}
-function webArtReady(a){webPat=webSel(0,0).x.createPattern(a.img[0],'repeat');if(G&&G.web)repaintAllWeb();}
+function webArtReady(a){webPat=webSel(0,0).x.createPattern(a.img[0],'repeat');if(G&&G.web)repaintAllWeb();else if(!G&&typeof MD!=='undefined'&&MD.G)mdRepaintWeb();}
 function webFeedType(b){return b&&b.team===0&&!B[b.t].belt&&!VINE[b.t]&&!WEB_FEED_SKIP[b.t];}
 // growths close to this tile: their feeder veins and the thicker veins around them
 function webFeeders(x,y){const out=[],seen=new Set();
@@ -1056,7 +1056,7 @@ function paintWebArt(x,y){
 // a newly grown tile is repainted as it reaches each stage: tendrils, a thin membrane, veins, then its full look
 // All Rootweb painting shares one small time budget per frame (more only while a whole repaint is filling in), so fast growth
 // can never drag the frame rate down: if painting falls behind, a growing tile simply skips ahead to its current stage.
-function webArtTick(){if(!webQ.size)webBulk=false;const t0=performance.now(),bud=webBulk?12:1.6;
+function webArtTick(b){if(!webQ.size)webBulk=false;const t0=performance.now(),bud=b||(webBulk?12:1.6);
   for(const [i,bn] of webBorn){const age=G.time-bn.t,st=age<.55?0:age<1.1?1:2;if(st===bn.s)continue;bn.s=st;
     if(st===2)webBorn.delete(i);if(G.web[i])paintWeb(i%MW,(i/MW)|0);else webBorn.delete(i);if(performance.now()-t0>bud*.65)break;}
   for(const i of webQ){webQ.delete(i);if(G.web[i])paintWeb(i%MW,(i/MW)|0);if(performance.now()-t0>bud)break;}}
@@ -6542,7 +6542,7 @@ function splashStart(){const el=$('splash');if(!el)return;
   // the desktop app may start sound at once; a browser waits for the first key or click, which here is the one that continues
   if(DESK)sndUnlock();
   SPL.raf=requestAnimationFrame(splashLoop);}
-function splashReady(){if(SPL.on&&SPL.minT&&SPL.got>=2)$('splash').classList.add('ready');}
+function splashReady(){if(SPL.on&&SPL.minT&&SPL.got>=2){$('splash').classList.add('ready');if(!SPL.prepT)SPL.prepT=setTimeout(vinePrep,450);}}
 function splashPadState(){try{return [...(navigator.getGamepads?navigator.getGamepads():[])].map(p=>p?p.buttons.map(b=>b.pressed):null);}catch(_){return [];}}
 function splashPadPressed(){let any=false;try{const P=navigator.getGamepads?navigator.getGamepads():[];for(let i=0;i<P.length;i++){const p=P[i];if(!p)continue;const was=SPL.pads[i]||[];
   p.buttons.forEach((b,j)=>{if(b.pressed&&!was[j])any=true;});}}catch(_){}SPL.pads=splashPadState();return any;}
@@ -6573,14 +6573,14 @@ function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,win
   const PW=Math.round(W*dpr),PH=Math.round(H*dpr);if(cv.width!==PW||cv.height!==PH){cv.width=PW;cv.height=PH;}
   const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#050407';g.fillRect(0,0,W,H);
   // the picture covers the screen, drifting in very slowly; the Bloom is kept below the title on tall and narrow screens
-  let A=0;if(SPL.hb){SPL.hb.t+=dt;A=hbEnv(SPL.hb,SPL.hb.t);if(SPL.hb.t>hbLen(SPL.hb))SPL.hb=null;}SPL.hbA=A;
+  let A=0;if(SPL.hb){SPL.hb.t+=dt;A=hbEnv(SPL.hb,SPL.hb.t);if(SPL.hb.t>hbLen(SPL.hb))SPL.hb=null;}if(dt>0&&dt<.5)SPL.fdt=SPL.fdt?SPL.fdt*.92+dt*.08:dt;SPL.hbA=A;SPL.hbAft=Math.max((SPL.hbAft||0)*Math.exp(-dt*1.6),A/.05);
   const P=SPL_PIC,z=SPL.rm?1.02:1.02+.03*(.5-.5*Math.cos(Math.min(1,t/70)*Math.PI)),k=Math.max(W/P.W,H/P.H)*z;
   const bx=P.bloom[0],by=P.bloom[1],ox=W/2-P.W/2*k+(SPL.rm?0:Math.sin(t*.05)*W*.004),oy=Math.min(H*.56-by*k,Math.max(H-P.H*k,0))+(SPL.rm?0:Math.cos(t*.043)*H*.004);
   const X=x=>ox+x*k,Y=y=>oy+y*k;
-  if(SPL.bg){g.globalAlpha=Math.min(1,t/1.6);g.drawImage(SPL.bg,ox,oy,P.W*k,P.H*k);if(A&&!SPL.rm)hbWarp(g,ox,oy,k,A);g.globalAlpha=1;}
+  if(SPL.bg){g.globalAlpha=Math.min(1,t/1.6);g.drawImage(SPL.bg,ox,oy,P.W*k,P.H*k);if(SPL.hb&&!SPL.rm)hbWarp(g,ox,oy,k,SPL.hb);g.globalAlpha=1;}
   // light from the Bloom: a slow breath everywhere, and a wave that runs out along the conduits every few seconds
-  if(SPL.glow&&SPL.bg){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,t/2)*(.16+.06*Math.sin(t*.9));g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();
-    SPL.nextPulse-=dt;if(SPL.nextPulse<=0){SPL.nextPulse=5+Math.random()*3;const p=SPL.hb=hbNew();SPL.beats=(SPL.beats||0)+1;hbSound(p);SPL.pulses.push({t:-p.c1-.05,s:.8},{t:-p.c1-p.d-.04,s:.55});}
+  if(SPL.glow&&SPL.bg){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,Math.min(1,t/2)*(.16+.06*Math.sin(t*.9))+hbGlow());g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();
+    SPL.nextPulse-=dt;if(SPL.nextPulse<=0){SPL.nextPulse=5+Math.random()*3;const p=SPL.hb=hbNew();SPL.beats=(SPL.beats||0)+1;hbSound(p);SPL.pulses.push({t:-p.c1-.05,s:.62},{t:-p.c1-p.d-.04,s:.9});}
     for(const p of SPL.pulses){p.t+=dt;if(p.t<=0)continue;const r=p.t*360*k*1.6,fade=Math.max(0,1-p.t/4.2)*p.s;if(fade<=0)continue;
       if(SPL.lite){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.25*fade*Math.min(1,p.t*3);g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();continue;}
       const m=splashMask(PW,PH);m.g.setTransform(1,0,0,1,0,0);m.g.globalCompositeOperation='source-over';m.g.clearRect(0,0,PW,PH);m.g.setTransform(dpr,0,0,dpr,0,0);
@@ -6591,6 +6591,9 @@ function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,win
   // the Bloom's heart, breathing
   {const cx=X(bx),cy=Y(by),R=150*k,a=Math.min(1,t/2.5)*(.12+.08*Math.sin(t*1.1));const gr=g.createRadialGradient(cx,cy,0,cx,cy,R);gr.addColorStop(0,`rgba(170,255,200,${a})`);gr.addColorStop(1,'rgba(170,255,200,0)');
     g.save();g.globalCompositeOperation='lighter';g.fillStyle=gr;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();
+    // each beat the heart brightens as it tightens, and the light settles slowly after the second
+    if(!SPL.rm&&SPL.hbAft>.01){const R2=125*k,b=Math.min(1,SPL.hbAft),g2=g.createRadialGradient(cx,cy,0,cx,cy,R2);g2.addColorStop(0,`rgba(205,255,222,${.26*b})`);g2.addColorStop(.5,`rgba(150,240,200,${.12*b})`);g2.addColorStop(1,'rgba(150,240,200,0)');
+      g.save();g.globalCompositeOperation='lighter';g.fillStyle=g2;g.fillRect(cx-R2,cy-R2,R2*2,R2*2);g.restore();}
     // reduced motion: the heart glows a little with each beat instead of moving
     if(SPL.rm&&A>0){const R2=160*k,g2=g.createRadialGradient(cx,cy,0,cx,cy,R2);g2.addColorStop(0,`rgba(190,255,215,${2.4*A})`);g2.addColorStop(1,'rgba(190,255,215,0)');
       g.save();g.globalCompositeOperation='lighter';g.fillStyle=g2;g.fillRect(cx-R2,cy-R2,R2*2,R2*2);g.restore();}}
@@ -6607,65 +6610,161 @@ function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,win
   // motes
   g.save();g.globalCompositeOperation='lighter';for(const m of SPL.motes){if(!SPL.rm){m.y-=m.v*dt;m.x+=Math.sin(t*.4+m.w)*.0009*dt*60/60;}if(m.y<-.05)Object.assign(m,splashMote(false));
     const tw=.55+.45*Math.sin(t*1.7+m.w*3),a=m.a*tw*Math.min(1,t/2.5);g.fillStyle=`rgba(${m.h},${a})`;g.beginPath();g.arc(m.x*W,m.y*H,m.r*(W/1600+.4),0,7);g.fill();}g.restore();}
-// ===== v59: continuing from the title. Broad dark tendrils grow in from the left, right and lower edges along curves, translucent
-// membranes bloom between them until nothing of the title shows, the menu is put underneath, and the membranes tear open from the middle
-// while the tendrils peel back to the edges: about two seconds in all, on the wall clock, so a slow computer is never kept longer. Drawn
-// fresh each frame on its own canvas above the title, at three quarters of the screen's resolution (soft shapes need no more). Another key goes straight to the menu; reduced motion is a short crossfade instead.
+// ===== v60: continuing from the title. Living Rootweb overgrows the screen: large translucent tendrils, each with its own pace,
+// thickness, bend and side shoots, push in from the left, right and lower edges with turquoise nutrient flowing inside them, and the
+// membrane follows them in from the edges as a living surface (cells, veins and nodules, with a lit wet front and a shadow ahead of it)
+// until nothing of the title shows. The menu is put underneath, the membrane tears open from the middle with a wet edge, and the
+// tendrils peel back to the edges: about two seconds in all, on the wall clock, so a slow computer only draws fewer frames. The membrane
+// itself is painted once while the title waits; each frame only reveals it through a small growth field and draws the tendrils.
+// Another key goes straight to the menu; reduced motion is a short crossfade instead.
 const VN={ACK:.15,COVER:.85,SWAP:.9,PEEL:1.05,GONE:1.85,END:2.05};
-function vineStart(){const el=$('splash'),c=document.createElement('canvas');c.id='splashVn';c.setAttribute('aria-hidden','true');el.appendChild(c);el.classList.add('vines');
-  const dpr=Math.min(SPL.lite?.6:.75,window.devicePixelRatio||1),W=c.clientWidth||innerWidth,H=c.clientHeight||innerHeight,R=Math.random;
+const VNS={c:null,W:0,H:0,dpr:0,veins:[],ms:0};
+const vnS=x=>x<=0?0:x>=1?1:x*x*(3-2*x),vnOut=x=>x<=0?0:x>=1?1:1-Math.pow(1-x,3),vnInv=u=>1-Math.cbrt(1-Math.min(.999,u));
+// the lighter version (fewer shoots and strokes, a coarser canvas) for Low quality, and for a computer that draws the title itself slowly
+function vnLite(){return SPL.lite||(SPL.fdt||0)>1/28;}
+function vnDpr(){return Math.min(SPL.vlite?.6:.7,window.devicePixelRatio||1);}
+// the membrane, painted once for this screen size: a deep living surface with cloudy depth, the Rootweb's own cell texture in two
+// layers, branching veins (the thick ones carrying turquoise channels), nodules and moist sheen
+function vnSheet(W,H){const dpr=vnDpr(),tex=webArtLoaded();if(VNS.c&&VNS.W===W&&VNS.H===H&&VNS.dpr===dpr&&(VNS.tex||!tex))return VNS;const t0=performance.now(),R=seeded(4242),D=Math.hypot(W,H),k=D/2200;
+  const c=VNS.c||document.createElement('canvas');c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  let m=g.createRadialGradient(W/2,H*.48,0,W/2,H*.48,D*.62);m.addColorStop(0,'#3a1240');m.addColorStop(.55,'#2a0c2e');m.addColorStop(1,'#16061a');g.fillStyle=m;g.fillRect(0,0,W,H);
+  // cloudy depth: darker hollows and paler swellings, from two small noise fields drawn large
+  const nw=72,nh=Math.max(8,Math.round(72*H/W)),nc=document.createElement('canvas');nc.width=nw;nc.height=nh;const ng=nc.getContext('2d'),id=ng.createImageData(nw,nh),Q=id.data;
+  for(const [sc,col,mul,op] of [[.09,[6,0,10],1.5,'source-over'],[.21,[130,56,140],.55,'screen']]){
+    for(let y=0;y<nh;y++)for(let x=0;x<nw;x++){const v=vn(x*sc+3,y*sc+11)*.65+vn(x*sc*2.3+40,y*sc*2.3)*.35,o=(y*nw+x)*4;Q[o]=col[0];Q[o+1]=col[1];Q[o+2]=col[2];
+      Q[o+3]=255*Math.max(0,Math.min(1,op==='screen'?(v-.52)*mul:(.58-v)*mul));}
+    ng.putImageData(id,0,0);g.save();g.globalCompositeOperation=op;g.imageSmoothingQuality='high';g.drawImage(nc,0,0,W,H);g.restore();}
+  // the Rootweb's own cells, as in the game: a coarse layer deep down and a finer one on top
+  try{const im=ART.plant.rootweb.state==='ready'&&ART.plant.rootweb.img[0];if(im)for(const [s,a,ox] of [[2.6*k,.42,37],[1.35*k,.62,0]]){const p=g.createPattern(im,'repeat');
+    p.setTransform(new DOMMatrix([s,0,0,s,ox,ox*.6]));g.globalAlpha=a;g.fillStyle=p;g.fillRect(0,0,W,H);}g.globalAlpha=1;}catch(_){g.globalAlpha=1;}
+  // veins: branching from the edges and from a few points inside, meandering; each in a dark groove with a pale wet lumen
+  // folds: overlapping lobes of tissue, each a little paler in the middle with a dark crease round it, so the surface has layers
+  for(let i=0;i<Math.round(W*H/30000);i++){const x=R()*W,y=R()*H,r=(50+R()*110)*k*2,q=g.createRadialGradient(x-r*.2,y-r*.25,r*.1,x,y,r);
+    q.addColorStop(0,'rgba(120,52,128,.2)');q.addColorStop(.78,'rgba(70,24,80,.1)');q.addColorStop(.93,'rgba(10,2,14,.32)');q.addColorStop(1,'rgba(10,2,14,0)');g.fillStyle=q;
+    g.beginPath();g.ellipse(x,y,r,r*(.6+R()*.4),R()*3.1,0,7);g.fill();}
+  const V=[];const vein=(x,y,a,w,d)=>{const pts=[[x,y]];let L=0,da=0;const n=8+Math.floor(R()*8),st=(18+R()*16)*k*2;
+    for(let i=0;i<n&&w>.5;i++){da=da*.6+(R()-.5)*.55;a+=da;x+=Math.cos(a)*st;y+=Math.sin(a)*st;L+=st;pts.push([x,y]);
+      if(d<2&&R()<.22)vein(x,y,a+(R()<.5?-1:1)*(.6+R()*.7),w*(.42+R()*.18),d+1);}
+    V.push({pts,w,d,L});};
+  for(let i=0;i<11;i++){const e=i%4,u=.1+R()*.8;const x=e===0?-10:e===1?W+10:u*W,y=e===2?H+10:e===3?-10:u*H;vein(x,y,Math.atan2(H*.48-y,W/2-x)+(R()-.5)*.9,(7+R()*6)*k*2,0);}
+  for(let i=0;i<4;i++)vein(W*(.15+R()*.7),H*(.15+R()*.7),R()*6.3,(3+R()*2)*k*2,1);
+  const path=v=>{g.beginPath();v.pts.forEach(([x,y],j)=>{if(!j)g.moveTo(x,y);else{const [px,py]=v.pts[j-1];g.quadraticCurveTo(px,py,(px+x)/2,(py+y)/2);}});};
+  g.lineCap='round';g.lineJoin='round';
+  for(const v of V){path(v);g.strokeStyle='rgba(8,1,12,.55)';g.lineWidth=v.w*2.6;g.stroke();}
+  for(const v of V){path(v);g.strokeStyle=v.d?'rgba(70,26,84,.9)':'rgba(88,34,102,.95)';g.lineWidth=v.w;g.stroke();}
+  for(const v of V){path(v);g.strokeStyle='rgba(18,4,22,.5)';g.lineWidth=v.w*.55;g.stroke();}
+  for(const v of V)if(!v.d){path(v);g.strokeStyle='rgba(48,170,160,.34)';g.lineWidth=Math.max(1,v.w*.24);g.stroke();}
+  for(const v of V){g.save();g.translate(-v.w*.22,-v.w*.22);path(v);g.strokeStyle='rgba(196,140,214,.26)';g.lineWidth=Math.max(.7,v.w*.14);g.stroke();g.restore();}
+  // nodules: pale swellings with a dark rim and a wet highlight, and clusters of tiny fungal buds
+  const nn=Math.round(W*H/40000);for(let i=0;i<nn;i++){const x=R()*W,y=R()*H,r=(4+R()*11)*k*2;
+    g.fillStyle='rgba(22,6,28,.85)';g.beginPath();g.arc(x,y,r*1.18,0,7);g.fill();
+    const q=g.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);q.addColorStop(0,'rgba(160,98,174,.95)');q.addColorStop(1,'rgba(78,30,90,.95)');g.fillStyle=q;g.beginPath();g.arc(x,y,r,0,7);g.fill();
+    g.fillStyle='rgba(255,235,255,.32)';g.beginPath();g.arc(x-r*.35,y-r*.38,r*.22,0,7);g.fill();}
+  g.fillStyle='rgba(160,104,178,.6)';for(let i=0;i<nn*2;i++){const x=R()*W,y=R()*H;for(let j=0;j<5;j++){g.beginPath();g.arc(x+(R()-.5)*14*k*2,y+(R()-.5)*14*k*2,(.8+R()*1.4)*k*2,0,7);g.fill();}}
+  // moist sheen
+  g.globalCompositeOperation='screen';for(let i=0;i<10;i++){const x=R()*W,y=R()*H,r=(60+R()*120)*k*2,q=g.createRadialGradient(x,y,0,x,y,r);
+    q.addColorStop(0,'rgba(120,70,130,.22)');q.addColorStop(1,'rgba(120,70,130,0)');g.fillStyle=q;g.fillRect(x-r,y-r,r*2,r*2);}g.globalCompositeOperation='source-over';
+  Object.assign(VNS,{c,W,H,dpr,tex,veins:V.filter(v=>!v.d),ms:Math.round(performance.now()-t0)});return VNS;}
+// painted while the title waits, so the first frame after the key costs nothing extra
+function vinePrep(){if(SPL.rm||!SPL.on||SPL.vine)return;SPL.vlite=vnLite();try{const el=$('splash');vnSheet(el.clientWidth||innerWidth,el.clientHeight||innerHeight);}catch(e){console.warn('Title membrane not prepared: '+(e&&e.message));}}
+// a tendril (or a side shoot): a curve, its width, its own start, pace, wobble and peel
+function vnTendril(R,sx,sy,tx,ty,w,s,dur){const L=Math.hypot(tx-sx,ty-sy),dx=(tx-sx)/L,dy=(ty-sy)/L,b1=(R()-.5)*L*.5,b2=(R()-.5)*L*.45;
+  return {p:[[sx,sy],[sx+dx*L*(.28+R()*.14)-dy*b1,sy+dy*L*(.28+R()*.14)+dx*b1],[tx-dx*L*(.22+R()*.14)+dy*b2,ty-dy*L*(.22+R()*.14)-dx*b2],[tx,ty]],
+    w,s,dur,L,ph:R()*6.3,wf:6+R()*6,wa:.04+R()*.05,pk:R()*.14,pd:.5+R()*.2,g:0,br:[]};}
+function vineStart(){SPL.vlite=vnLite();const el=$('splash'),c=document.createElement('canvas');c.id='splashVn';c.setAttribute('aria-hidden','true');el.appendChild(c);el.classList.add('vines');
+  const W=c.clientWidth||innerWidth,H=c.clientHeight||innerHeight,S=vnSheet(W,H),dpr=S.dpr,R=Math.random,D=Math.hypot(W,H);
   c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);
-  const V=SPL.vine={t:0,t0:performance.now(),c,g:c.getContext('2d'),dpr,W,H,D:Math.hypot(W,H),T:[],snd:null,skip:false,ph:[R()*6.3,R()*6.3,R()*6.3]};
-  // seven tendrils (five on a narrow screen): three from below, two from each side, each aimed past the middle so they cross
-  const B=W<700?[[.25,1],[.75,1],[0,.45],[1,.35],[.5,1]]:[[.18,1],[.5,1],[.82,1],[0,.28],[0,.74],[1,.24],[1,.7]];
-  B.forEach(([fx,fy],k)=>{const sx=fx===0?-W*.03:fx===1?W*1.03:fx*W+(R()-.5)*W*.06,sy=fy===1?H*1.03:fy*H+(R()-.5)*H*.08,cx=W/2+(R()-.5)*W*.16,cy=H*.48+(R()-.5)*H*.14;
-    const tx=cx+(cx-sx)*(.28+R()*.16),ty=cy+(cy-sy)*(.28+R()*.16),L=Math.hypot(tx-sx,ty-sy),dx=(tx-sx)/L,dy=(ty-sy)/L,bend=(R()<.5?-1:1)*L*(.12+R()*.14);
-    V.T.push({p:[[sx,sy],[sx+dx*L*.35-dy*bend,sy+dy*L*.35+dx*bend],[tx-dx*L*.3+dy*bend*.6,ty-dy*L*.3-dx*bend*.6],[tx,ty]],w:V.D*(.075+R()*.035),ph:R()*6.3,
-      s:.1+k*.03+R()*.03,a:Math.atan2(sy-H/2,sx-W/2),g:0});});
-  V.T.sort((a,b)=>a.a-b.a);SPL.vfr=[];vineSound(V);SPL.why='continued';}
-// a point and direction on a tendril's curve
+  const V=SPL.vine={t:0,t0:performance.now(),c,g:c.getContext('2d'),dpr,W,H,D,T:[],snd:null,skip:false,S};
+  // seven tendrils (five on a narrow screen): three from below, two from each side, each aimed past the middle so they cross; no two
+  // alike, and none mirrors another
+  const B=W<700?[[.25,1],[.75,1],[0,.45],[1,.35],[.5,1]]:[[.16,1],[.47,1],[.8,1],[0,.3],[0,.72],[1,.22],[1,.66]];
+  const st=B.map(()=>.05+R()*.2).sort((a,b)=>a-b);for(let i=st.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[st[i],st[j]]=[st[j],st[i]];}
+  B.forEach(([fx,fy],k)=>{const sx=fx===0?-W*.08:fx===1?W*1.08:fx*W+(R()-.5)*W*.1,sy=fy===1?H*1.1:fy*H+(R()-.5)*H*.12,cx=W/2+(R()-.5)*W*.22,cy=H*.48+(R()-.5)*H*.2;
+    const f=.22+R()*.28,T=vnTendril(R,sx,sy,cx+(cx-sx)*f,cy+(cy-sy)*f,D*(.07+R()*.07),st[k],.42+R()*.24);
+    // side shoots, budding once the tip has passed
+    const nb=SPL.vlite?1:1+Math.floor(R()*2.6);for(let b=0;b<nb;b++){const u=.22+R()*.5,[x,y,nx,ny]=vnAt(T.p,u),a=Math.atan2(-nx,ny)+(R()<.5?-1:1)*(.45+R()*.6),l=T.L*(.18+R()*.22);
+      const S2=vnTendril(R,x,y,x+Math.cos(a)*l,y+Math.sin(a)*l,T.w*(.32+R()*.22),T.s+T.dur*vnInv(u)+R()*.06,.28+R()*.2);S2.pk=T.pk*.5;S2.pd=.32+R()*.15;S2.u0=u;T.br.push(S2);}
+    V.T.push(T);});
+  // when the membrane reaches each part of the screen: led by the tendrils, creeping in from the edges, never later than 0.78 s,
+  // and when it tears open again: from the middle outwards, raggedly
+  const GW=SPL.vlite?120:200,GH=Math.max(8,Math.round(GW*H/W)),A=new Float32Array(GW*GH),Rr=new Float32Array(GW*GH),all=V.T.flatMap(T=>[T,...T.br]),sm=[];
+  for(const T of all)for(let j=0;j<=14;j++){const u=j/14,[x,y]=vnAt(T.p,u);sm.push(x,y,T.s+T.dur*vnInv(u));}
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const px=(x+.5)/GW*W,py=(y+.5)/GH*H,i=y*GW+x;
+    const e=Math.min(px/W*2,(W-px)/W*2,(H-py)/H*1.7,py/H*2.3);let a=.2+.56*e;
+    for(let q=0;q<sm.length;q+=3){const d=Math.hypot(px-sm[q],py-sm[q+1]);a=Math.min(a,sm[q+2]+.04+d/(D*.75));}
+    a+=(vn(px*.009,py*.009+7)-.5)*.16+(vn(px*.022+20,py*.022)-.5)*.06;A[i]=Math.max(.08,Math.min(.72,a));
+    const rr=Math.hypot(px-W/2,(py-H*.48)/.9)/(D*.5),th=Math.atan2(py-H*.48,px-W/2);
+    Rr[i]=Math.min(VN.GONE-.1,VN.PEEL+.04+rr*.6+(vn(Math.cos(th)*2.2+9,Math.sin(th)*2.2)-.5)*.16+(vn(px*.018,py*.018+50)-.5)*.05);}
+  const mk=()=>{const q=document.createElement('canvas');q.width=GW;q.height=GH;const x=q.getContext('2d');return {c:q,x,d:x.createImageData(GW,GH)};};
+  Object.assign(V,{GW,GH,A,Rr,rmin:Math.min(...Rr),mask:mk(),rim:mk(),shade:mk()});
+  SPL.vfr=[];vineSound(V);SPL.why='continued';}
+// a point and direction on a curve
 function vnAt(p,u){const v=1-u,a=v*v*v,b=3*v*v*u,c=3*v*u*u,d=u*u*u,x=a*p[0][0]+b*p[1][0]+c*p[2][0]+d*p[3][0],y=a*p[0][1]+b*p[1][1]+c*p[2][1]+d*p[3][1];
   const ex=3*v*v*(p[1][0]-p[0][0])+6*v*u*(p[2][0]-p[1][0])+3*u*u*(p[3][0]-p[2][0]),ey=3*v*v*(p[1][1]-p[0][1])+6*v*u*(p[2][1]-p[1][1])+3*u*u*(p[3][1]-p[2][1]),l=Math.hypot(ex,ey)||1;
   return [x,y,-ey/l,ex/l];}
-const vnS=x=>x<=0?0:x>=1?1:x*x*(3-2*x),vnOut=x=>x<=0?0:x>=1?1:1-Math.pow(1-x,3);
+// the growth field for this moment, into three tiny pictures drawn large: the membrane's reach, its lit wet front, and its shadow ahead
+function vnField(V,t){const {A,Rr,mask,rim,shade}=V,M=mask.d.data,Q=rim.d.data,Z=shade.d.data;
+  for(let i=0;i<A.length;i++){const gr=vnS((t-A[i])/.11),te=vnS((t-Rr[i])/.09),al=gr*(1-te),o=i*4;
+    M[o+3]=255*al;
+    const rg=gr*(1-gr)*4*(1-te),rt=te*(1-te)*4*gr,r=Math.max(rg,rt);Q[o]=rt>rg?236:206;Q[o+1]=rt>rg?178:150;Q[o+2]=rt>rg?240:228;Q[o+3]=255*r*r*.3;
+    Z[o+3]=255*vnS((t-A[i]+.08)/.1)*(1-te)*.7;}
+  mask.x.putImageData(mask.d,0,0);rim.x.putImageData(rim.d,0,0);shade.x.putImageData(shade.d,0,0);}
 function vineTick(){const V=SPL.vine;if(!V)return;const t=V.t=(performance.now()-V.t0)/1000,g=V.g,W=V.W,H=V.H,D=V.D;vineSound(V);SPL.vfr.push(+t.toFixed(3));
   if(t>=VN.SWAP&&!SPL.ending){SPL.ending=true;SPL.swapT=t;$('splash').classList.add('vopen');splashSound(false,.6);}
-  // how far each tendril reaches: out from its edge as it grows, back to it as it peels
-  for(const [k,T] of V.T.entries())T.g=t<VN.PEEL?vnOut((t-T.s)/.5):1-vnS((t-VN.PEEL-k*.025)/.62);
-  g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,V.c.width,V.c.height);g.setTransform(V.dpr,0,0,V.dpr,0,0);
-  const fade=1-vnS((t-VN.GONE)/(VN.END-VN.GONE));g.globalAlpha=fade;
-  // the edges darken at once (the key was heard), then a deep flesh-dark ground closes in behind the membranes
-  const rim=vnS(t/VN.ACK)*(1-vnS((t-VN.PEEL)/.3)),base=vnS((t-.5)/(VN.COVER-.5));
-  if(rim>0&&base<1){const m=g.createRadialGradient(W/2,H/2,D*.25,W/2,H/2,D*.6);m.addColorStop(0,'rgba(12,3,12,0)');m.addColorStop(1,`rgba(12,3,12,${.6*rim})`);g.fillStyle=m;g.fillRect(0,0,W,H);}
-  if(base>0){const m=g.createRadialGradient(W/2,H*.48,0,W/2,H*.48,D*.6);m.addColorStop(0,`rgba(27,7,26,${base})`);m.addColorStop(1,`rgba(9,2,9,${base})`);g.fillStyle=m;g.fillRect(0,0,W,H);}
-  // membranes between neighbouring tendrils: translucent, veined, thickening as the tendrils reach in
-  const n=V.T.length,line=(u,T)=>vnAt(T.p,u*T.g);
-  for(let i=0;i<n;i++){const A=V.T[i],Bt=V.T[(i+1)%n],a=Math.min(A.g,Bt.g)*(t<VN.PEEL?.9:1);if(a<=.01)continue;
-    g.beginPath();const pa=A.p[0],pb=Bt.p[0];g.moveTo(pa[0]+(pa[0]-W/2)*.25,pa[1]+(pa[1]-H/2)*.25);
-    for(let j=0;j<=12;j++){const [x,y]=line(j/12,A);g.lineTo(x,y);}for(let j=12;j>=0;j--){const [x,y]=line(j/12,Bt);g.lineTo(x,y);}
-    g.lineTo(pb[0]+(pb[0]-W/2)*.25,pb[1]+(pb[1]-H/2)*.25);g.closePath();
-    const m=g.createRadialGradient(W/2,H/2,0,W/2,H/2,D*.55);m.addColorStop(0,`rgba(58,17,54,${.6*a})`);m.addColorStop(1,`rgba(24,6,24,${.82*a})`);g.fillStyle=m;g.fill();
-    if(!SPL.lite){g.strokeStyle=`rgba(140,50,120,${.2*a})`;g.lineWidth=1.2;g.beginPath();
-      for(let j=1;j<6;j++){const [x1,y1]=line(j/6,A),[x2,y2]=line(j/6+.04,Bt),mx=(x1+x2)/2+(W/2-(x1+x2)/2)*.18,my=(y1+y2)/2+(H/2-(y1+y2)/2)*.18;g.moveTo(x1,y1);g.quadraticCurveTo(mx,my,x2,y2);}g.stroke();}}
-  // the tear: from the middle outward, a ragged hole through the ground and the membranes, its wet edge catching the light
-  const e=vnS((t-VN.PEEL)/(VN.GONE-VN.PEEL-.1));
-  if(e>0){const R0=D*.86*e,hole=[];for(let j=0;j<=48;j++){const th=j/48*Math.PI*2,r=R0*(1+.16*Math.sin(3*th+V.ph[0])+.09*Math.sin(5*th+V.ph[1])+.05*Math.sin(11*th+V.ph[2]));hole.push([W/2+Math.cos(th)*r,H*.48+Math.sin(th)*r*.9]);}
-    const path=()=>{g.beginPath();hole.forEach(([x,y],j)=>j?g.lineTo(x,y):g.moveTo(x,y));g.closePath();};
-    g.save();g.globalCompositeOperation='destination-out';g.globalAlpha=1;g.fillStyle='#000';path();g.fill();g.restore();
-    path();g.lineJoin='round';g.strokeStyle=`rgba(70,18,64,${.85*fade})`;g.lineWidth=10;g.stroke();g.strokeStyle=`rgba(225,160,235,${.3*fade})`;g.lineWidth=2;g.stroke();}
-  // the tendrils, over everything: tapered bodies with a dark rim, vessels along them and a wet sheen down one side
-  for(const T of V.T){if(T.g<=.005)continue;const m=SPL.lite?18:30,L=[],Rt=[],C=[];
-    for(let j=0;j<=m;j++){const u=j/m*T.g,[x,y,nx,ny]=vnAt(T.p,u),tip=Math.sqrt(Math.min(1,(T.g-u)/.1)),w=T.w*Math.pow(1-u*.8,.8)*tip*.5,wob=Math.sin(u*9+t*4.5+T.ph)*T.w*.05;
-      const cx=x+nx*wob,cy=y+ny*wob;C.push([cx,cy,nx,ny,w]);L.push([cx+nx*w,cy+ny*w]);Rt.push([cx-nx*w,cy-ny*w]);}
-    g.beginPath();L.forEach(([x,y],j)=>j?g.lineTo(x,y):g.moveTo(x,y));for(let j=Rt.length-1;j>=0;j--)g.lineTo(Rt[j][0],Rt[j][1]);g.closePath();
-    const [ax,ay]=T.p[0],[bx,by]=C[C.length-1],gr=g.createLinearGradient(ax,ay,bx,by);gr.addColorStop(0,'#12060f');gr.addColorStop(.55,'#2a0e28');gr.addColorStop(1,'#361333');
-    g.fillStyle=gr;g.fill();g.strokeStyle='rgba(8,2,8,.85)';g.lineWidth=2.5;g.stroke();
-    const along=(off,col,lw,k0)=>{g.strokeStyle=col;g.lineWidth=lw;g.beginPath();C.forEach(([x,y,nx,ny,w],j)=>{if(j<k0)return;const o=w*(off+.06*Math.sin(j*.9+T.ph+off*7));j===k0?g.moveTo(x+nx*o,y+ny*o):g.lineTo(x+nx*o,y+ny*o);});g.stroke();};
-    along(.5,'rgba(4,0,5,.4)',Math.max(2,T.w*.16),0);for(const o of SPL.lite?[-.2,.3]:[-.42,-.12,.22,.48])along(o,'rgba(98,24,80,.55)',Math.max(1,T.w*.022),0);
-    if(!SPL.lite)along(.05,'rgba(200,90,170,.18)',1,2);
-    along(-.6,'rgba(214,160,228,.16)',Math.max(1.5,T.w*.04),1);}
-  g.globalAlpha=1;
+  // how far each tendril and shoot reaches: out from its edge as it grows, back to it as it peels (shoots first)
+  for(const T of V.T){T.g=t<VN.PEEL?vnOut((t-T.s)/T.dur):1-vnS((t-VN.PEEL-T.pk)/T.pd);
+    for(const b of T.br)b.g=T.g<b.u0?0:t<VN.PEEL?vnOut((t-b.s)/b.dur):1-vnS((t-VN.PEEL-b.pk)/b.pd);}
+  g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,V.c.width,V.c.height);g.setTransform(V.dpr,0,0,V.dpr,0,0);
+  const fade=1-vnS((t-VN.GONE)/(VN.END-VN.GONE));
+  // the membrane: revealed through the growth field, its shadow cast ahead of it onto the title, its front lit and wet
+  const full=t>=VN.COVER&&t<V.rmin-.1;g.imageSmoothingEnabled=true;
+  if(full)g.drawImage(V.S.c,0,0,W,H);else{vnField(V,t);g.drawImage(V.mask.c,0,0,W,H);g.globalCompositeOperation='source-in';g.drawImage(V.S.c,0,0,W,H);}
+  // nutrient flowing along the thick veins, only where there is membrane
+  g.globalCompositeOperation='source-atop';g.lineCap='round';const fl=t*D*.2;
+  for(const v of V.S.veins){g.beginPath();v.pts.forEach(([x,y],j)=>{if(!j)g.moveTo(x,y);else{const [px,py]=v.pts[j-1];g.quadraticCurveTo(px,py,(px+x)/2,(py+y)/2);}});
+    g.setLineDash([v.w*.6,v.w*7,v.w*.3,v.w*11]);g.lineDashOffset=-fl-v.L*.3;g.strokeStyle='rgba(80,230,206,.16)';g.lineWidth=v.w*1.1;g.stroke();
+    g.strokeStyle='rgba(170,255,236,.55)';g.lineWidth=Math.max(1,v.w*.3);g.stroke();}
+  g.setLineDash([]);
+  if(!full){g.globalCompositeOperation='destination-over';if(!SPL.vlite)g.drawImage(V.shade.c,0,0,W,H);
+  // the edges darken at once (the key was heard), behind everything
+  const rim0=vnS(t/VN.ACK)*(1-vnS((t-VN.PEEL)/.3));if(rim0>0){const m=g.createRadialGradient(W/2,H/2,D*.25,W/2,H/2,D*.6);m.addColorStop(0,'rgba(12,3,12,0)');m.addColorStop(1,`rgba(12,3,12,${.6*rim0})`);g.fillStyle=m;g.fillRect(0,0,W,H);}
+  g.globalCompositeOperation='lighter';g.drawImage(V.rim.c,0,0,W,H);}g.globalCompositeOperation='source-over';
+  // the tendrils over everything: shoots first, so each joins under its parent
+  for(const T of V.T){for(const b of T.br)vnDraw(g,b,t,D);vnDraw(g,T,t,D);}
+  // the last of it fades
+  if(fade<1){g.globalCompositeOperation='destination-out';g.globalAlpha=1-fade;g.fillStyle='#000';g.fillRect(0,0,W,H);g.globalCompositeOperation='source-over';g.globalAlpha=1;}
   if(t>=VN.END)vineDone();}
+// one tendril: a translucent outer tissue with a defined edge, shaded round like a living limb (a dark underside, a lit flank, a wet
+// highlight and a thin rim of light), a darker fleshy core seen through it, two turquoise nutrient channels weaving inside with beads of
+// light flowing in towards the tip, fine vessels, and a shadow cast onto the membrane beneath
+function vnDraw(g,T,t,D){if(T.g<=.005)return;const m=SPL.vlite?16:28,C=[];
+  for(let j=0;j<=m;j++){const u=j/m*T.g,[x,y,nx,ny]=vnAt(T.p,u),tip=Math.sqrt(Math.min(1,(T.g-u)/.12)),sw=1+.16*Math.sin(u*T.wf*.7+T.ph*2)+.08*Math.sin(u*T.wf*1.9+T.ph),
+      w=T.w*Math.pow(1-u*.78,.85)*tip*.5*sw,wob=Math.sin(u*T.wf+t*4.2+T.ph)*T.w*T.wa;C.push([x+nx*wob,y+ny*wob,nx,ny,w]);}
+  // a band across the limb, from o1 to o2 (fractions of its half-width, the underside negative)
+  const band=(o1,o2)=>{g.beginPath();for(let j=0;j<=m;j++){const [x,y,nx,ny,w]=C[j];j?g.lineTo(x+nx*w*o2,y+ny*w*o2):g.moveTo(x+nx*w*o2,y+ny*w*o2);}
+    for(let j=m;j>=0;j--){const [x,y,nx,ny,w]=C[j];g.lineTo(x+nx*w*o1,y+ny*w*o1);}g.closePath();};
+  const along=(off,lw,k0,k1,wv)=>{g.lineWidth=lw;g.beginPath();let s=false;C.forEach(([x,y,nx,ny,w],j)=>{if(j<k0||j>k1)return;const o=w*(off+(wv||0)*Math.sin(j*.55+T.ph+off*9));s?g.lineTo(x+nx*o,y+ny*o):(g.moveTo(x+nx*o,y+ny*o),s=true);});};
+  if(T.u0===undefined){const sh=T.w*.1;g.save();g.translate(sh,sh*1.3);band(-1,1);g.fillStyle='rgba(4,0,6,.4)';g.fill();g.restore();}
+  const [ax,ay]=C[0],[bx,by]=C[m];
+  // outer tissue: translucent, so the membrane shows through its edges
+  let gr=g.createLinearGradient(ax,ay,bx,by);gr.addColorStop(0,'rgba(70,24,76,.66)');gr.addColorStop(1,'rgba(118,50,122,.56)');band(-1,1);g.fillStyle=gr;g.fill();
+  g.lineJoin='round';g.strokeStyle='rgba(10,2,12,.8)';g.lineWidth=2;g.stroke();
+  // the fleshy core, seen through it
+  gr=g.createLinearGradient(ax,ay,bx,by);gr.addColorStop(0,'rgba(20,5,24,.9)');gr.addColorStop(.6,'rgba(42,12,46,.84)');gr.addColorStop(1,'rgba(70,24,72,.78)');band(-.62,.48);g.fillStyle=gr;g.fill();
+  // round shading: the underside in shadow, the upper flank lit
+  band(-1,-.52);g.fillStyle='rgba(6,0,10,.42)';g.fill();band(.14,.8);g.fillStyle='rgba(186,112,194,.26)';g.fill();
+  // fine vessels in the outer tissue
+  g.lineCap='round';if(!SPL.vlite){g.strokeStyle='rgba(176,96,170,.3)';for(const o of [-.84,.7,.88]){along(o,Math.max(.8,T.w*.012),1,m,.05);g.stroke();}}
+  // nutrient channels weaving inside, and beads of light flowing along them towards the tip
+  const fl=t*D*.3+T.ph*40,chs=SPL.vlite?[-.12]:[-.24,.12];
+  for(const o of chs){g.strokeStyle=SPL.vlite?'rgba(40,150,146,.7)':'rgba(28,108,108,.6)';along(o,Math.max(1.2,T.w*.055),1,m,SPL.vlite?.3:.2);g.stroke();
+    g.setLineDash([.1,T.w*1.05,.1,T.w*1.6,.1,T.w*.7]);g.lineDashOffset=-fl-o*T.w*5;
+    if(!SPL.vlite){g.strokeStyle='rgba(70,236,206,.12)';g.lineWidth=Math.max(6,T.w*.24);g.stroke();g.strokeStyle='rgba(110,246,220,.28)';g.lineWidth=Math.max(3,T.w*.12);g.stroke();}
+    g.strokeStyle='rgba(200,255,240,.9)';g.lineWidth=Math.max(1.5,T.w*(SPL.vlite?.07:.05));g.stroke();g.setLineDash([]);}
+  // the living tip, the wet highlight (broken, as light on a wet surface is) and the rim of light
+  const tg=g.createRadialGradient(bx,by,0,bx,by,T.w*.35);tg.addColorStop(0,'rgba(140,255,226,.36)');tg.addColorStop(1,'rgba(140,255,226,0)');g.fillStyle=tg;g.fillRect(bx-T.w*.35,by-T.w*.35,T.w*.7,T.w*.7);
+  g.strokeStyle='rgba(250,222,252,.38)';const h1=Math.round(m*(.45+.2*Math.sin(T.ph)));along(.5,Math.max(1,T.w*.035),2,h1,.1);g.stroke();g.strokeStyle='rgba(250,222,252,.22)';along(.42,Math.max(1,T.w*.03),h1+2,m-2,.12);g.stroke();
+  g.strokeStyle='rgba(236,176,240,.42)';along(.95,1,1,m);g.stroke();}
 // the sound starts with the growth (the key that continues also starts sound in a browser); one that loads late joins from where it has got to
 function vineSound(V){if(V.snd||V.skip||V.t>.6||!SND.on||!SND.ctx||SND.ctx.state!=='running'||sndEff().s<=0||!SND.buf.title_open)return;
   const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();s.buffer=SND.buf.title_open;g.gain.value=.85;s.connect(g);g.connect(SND.bus.s);s.start(0,V.t);V.snd={s,g};}
@@ -6674,7 +6773,7 @@ function vineSkip(){const V=SPL.vine;if(!V)return;V.skip=true;if(V.snd)try{const
 function vineClear(){const V=SPL.vine;SPL.vine=null;if(!V)return;V.c.remove();$('splash').classList.remove('vines','vopen');}
 function vineDone(){const el=$('splash');SPL.on=false;cancelAnimationFrame(SPL.raf);vineClear();el.hidden=true;el.classList.remove('out','on','ready');
   const b=document.querySelector('#ovcard .mode');if(b&&!$('overlay').hidden&&b.focus)b.focus({preventScroll:true});}
-// ===== v59: the heartbeat. Every 5 to 8 seconds the Bloom, and only the Bloom, contracts twice like a heart: a lub that tightens it by 3
+// ===== v59 (v60: deeper response): the heartbeat. Every 5 to 8 seconds the Bloom, and only the Bloom, contracts twice like a heart: a lub that tightens it by 3
 // to 4% over about 120 ms and lets go over about 200 ms, then a dub 180 to 260 ms after it, quicker and a little stronger, a slight give
 // past rest as it recovers, and a wave of light along the conduits after each beat. Each beat is a little different. The rest of the
 // picture, the title and its brightness never move. The Bloom is redrawn in rings, each drawn smaller toward its centre by the amount
@@ -6684,9 +6783,13 @@ function hbNew(){const R=Math.random,p={t:0,c1:.1+R()*.04,r1:.17+R()*.06,d:.18+R
 function hbEnv(p,t){const P=(x,c,r)=>x<=0?0:x<c?Math.sin(x/c*Math.PI/2)**2:x<c+r?Math.cos((x-c)/r*Math.PI/2)**2:0,x=t-(p.c1+p.d+p.r2);
   return Math.max(p.a1*P(t,p.c1,p.r1),p.a2*P(t-(p.c1+p.d-p.c2),p.c2,p.r2))-(x>0&&x<p.rec?.14*p.a2*Math.sin(x/p.rec*Math.PI):0);}
 function hbLen(p){return p.c1+p.d+p.r2+p.rec;}
-function hbWarp(g,ox,oy,k,A){const [bx,by]=SPL_PIC.bloom,Rw=HB.R,cx=ox+bx*k,cy=oy+by*k,n=SPL.lite?7:14;
-  for(let i=n;i>=1;i--){const rm=(i-.5)/n,f=(1-rm*rm)**2,s=1-A*f;g.save();g.beginPath();g.arc(cx,cy,i/n*Rw*k,0,7);g.clip();
+// the beat travels outwards through the Bloom: its heart tightens first and the outer membrane and petals follow about 70 ms later,
+// so each ring takes the beat's strength from a moment a little earlier the further out it sits
+function hbWarp(g,ox,oy,k,p){const [bx,by]=SPL_PIC.bloom,Rw=HB.R,cx=ox+bx*k,cy=oy+by*k,n=SPL.lite?7:14;
+  for(let i=n;i>=1;i--){const rm=(i-.5)/n,f=(1-rm*rm)**2,A=hbEnv(p,p.t-rm*.07),s=1-A*f;g.save();g.beginPath();g.arc(cx,cy,i/n*Rw*k,0,7);g.clip();
     g.translate(cx,cy);g.scale(s,1-A*f*.85);g.translate(-cx,-cy);g.drawImage(SPL.bg,bx-Rw,by-Rw,Rw*2,Rw*2,cx-Rw*k,cy-Rw*k,Rw*2*k,Rw*2*k);g.restore();}}
+// the filaments and conduits round the Bloom answer each beat a moment after it, the second answer a little stronger
+function hbGlow(){const p=SPL.hb;return p&&!SPL.rm?Math.max(0,hbEnv(p,p.t-.09))*3.4:0;}
 // the lub and the dub are timed to land on the two tightest moments
 function hbSound(p){if(!SND.ctx||!SND.bus||!SND.on||SND.ctx.state!=='running'||sndEff().a<=0)return;const c=SND.ctx,t=c.currentTime;
   for(const [nm,at,v] of [['title_lub',p.c1-.012,.55],['title_dub',p.c1+p.d-.01,.66]]){const b=sndBuf(nm);if(!b)continue;const s=c.createBufferSource(),gn=c.createGain();s.buffer=b;gn.gain.value=v;s.connect(gn);gn.connect(SND.bus.a);s.start(t+Math.max(0,at));}}
@@ -6743,7 +6846,7 @@ function mdBuild(i){mdStop();const sc=MMS[i],keepR=rnd,t0=performance.now();
   try{MD.rnd=seeded(9001+i*77);rnd=MD.rnd;MD.sc=MDS[sc.id]();MD.G=G;MD.i=i;MD.t=0;MD.acc=0;MD.last=0;MD.rlast=0;MD.vol=0;MD.work=0;MD.workN=0;MD.warm=0;MD.builds++;
     if(MDRES!==MD.res){MDRES=MD.res;resize();}
     // drawn once now, while it cannot be seen, so the renderer's first-time work (painting the Rootweb, its caches) never stalls a frame later
-    const z=cam.z,x=cam.x,y=cam.y;mdCam(0);render();cam.z=z;cam.x=x;cam.y=y;MD.buildMs=Math.round(performance.now()-t0);return true;}
+    const z=cam.z,x=cam.x,y=cam.y;mdCam(0);render();cam.z=z;cam.x=x;cam.y=y;MD.look=mdLook();MD.buildMs=Math.round(performance.now()-t0);return true;}
   catch(e){console.warn('Menu scene '+sc.id+' could not be built ('+(e&&e.message)+'); showing a still picture');MD.why='build: '+(e&&e.message);G=null;mdStop();return false;}
   finally{G=null;rnd=keepR;loop.idle=0;mmSync();}}
 // throws the world away: its sounds, its leftovers in the renderer's own lists, and every reference to it
@@ -6751,18 +6854,25 @@ function mdStop(){clearTimeout(MD.ft);MD.fade=0;const f=$('mdFade');if(f)f.class
   if(MD.G){const keep=G;G=MD.G;try{sndReset();}catch(_){}G=keep;MD.disposed++;}
   if(MDRES!==1){MDRES=1;resize();}MD.G=null;MD.sc=null;VEHW.length=0;ANTDIE.length=0;PODFX.length=0;PINGS.length=0;WFX.length=0;webClearAll();loop.idle=0;
   if(document.body)document.body.classList.remove('mdlive');}
+function mdRepaintWeb(){const keep=G,keepR=rnd;G=MD.G;rnd=MD.rnd;
+  try{if(glOn())repaintAllWeb();else{webGPU=false;WSUP.gpu=true;webQ.clear();webChan=webChanBuild();webClearAll();mwctx.clearRect(0,0,MW,MH);webBorn.clear();mwctx.fillStyle='rgba(150,80,180,.45)';
+      for(let i=0;i<N;i++)if(G.web[i]){mwctx.fillRect(i%MW,(i/MW)|0,1,1);webQ.add(i);}webBulk=webQ.size>0;}MD.repaints=(MD.repaints||0)+1;MD.look=mdLook();}
+  catch(e){console.warn('Menu scene Rootweb not repainted ('+(e&&e.message)+')');}finally{G=keep;rnd=keepR;}}
+// which Rootweb the current world is drawn with: the graphics card's, the painted art, or the plain looks used without the art
+function mdLook(){return webGPU?'gpu':webArtOn()?'painted':SET.hd?'hd':'classic';}
 function mdFail(e){console.warn('Menu scene stopped ('+(e&&e.message)+'); showing a still picture');MD.why='run: '+(e&&e.message);const i=MD.i;G=null;mdStop();MMB.fails++;if(MMB.fails>=2)MMB.noVideo=true;if(MMS[i])mmPut(mmStill(MMS[i]));}
 // one menu frame: called by the game loop when no game is running. Steps the world on its fixed clock and draws it, at most MD.fps a second
 function mdFrame(now){if(!MD.G)return false;const st=mmState();
   // under the title screen it is drawn a few times out of sight once the art has loaded, so the first frames shown after the title are quick
-  if(st!=='play'){MD.last=0;if(st==='hold'&&MD.warm<3&&SPL.got>=2&&now-(MD.wt||0)>1200){MD.wt=now;MD.warm++;const keepR=rnd;G=MD.G;rnd=MD.rnd;try{mdCam(0);render();}catch(_){}finally{G=null;rnd=keepR;}}return true;}
+  if(st!=='play'){MD.last=0;if(st==='hold'&&webQ.size&&!webGPU&&webArtOn()){const keepR=rnd;G=MD.G;rnd=MD.rnd;try{webArtTick(4);}catch(_){}finally{G=null;rnd=keepR;}}
+    if(st==='hold'&&MD.warm<3&&SPL.got>=2&&now-(MD.wt||0)>1200){MD.wt=now;MD.warm++;const keepR=rnd;G=MD.G;rnd=MD.rnd;try{mdCam(0);render();}catch(_){}finally{G=null;rnd=keepR;}}return true;}
   if(MD.rlast&&now-MD.rlast<1000/MD.fps-2)return true;MD.rlast=now;
   const dt=MD.last?Math.min(.25,(now-MD.last)/1000):1/30;MD.last=now;const w0=performance.now(),keepR=rnd;
   G=MD.G;rnd=MD.rnd;
   try{MD.vol+=((MD.fade>0?0:1)-MD.vol)*Math.min(1,dt*1.6);MD.t+=dt;
     // while the title's membranes peel back the world is drawn but not stepped: new growth repaints the Rootweb, which is the one thing
     // that can stall a frame on a computer drawing in software, and the peel should never stutter
-    if(SPL.on)MD.acc=0;else MD.acc+=dt;let n=0;while(MD.acc>=STEP&&n<8){if(MD.sc.tick)MD.sc.tick(STEP,MD.t);step(STEP);MD.acc-=STEP;n++;MD.steps++;}if(n>=8)MD.acc=0;
+    if(SPL.on){MD.acc=0;webBulk=false;}else{MD.acc+=dt;if(webQ.size>40)webBulk=true;}let n=0;while(MD.acc>=STEP&&n<8){if(MD.sc.tick)MD.sc.tick(STEP,MD.t);step(STEP);MD.acc-=STEP;n++;MD.steps++;}if(n>=8)MD.acc=0;
     mdCaps();mdCam(MD.t);sndTick(dt);render();MD.frames++;if(MD.t>=MD_LOOP&&MD.fade<=0)mdShow(MD.i);}
   catch(e){G=null;rnd=keepR;mdFail(e);return true;}
   finally{if(G===MD.G)G=null;rnd=keepR;}

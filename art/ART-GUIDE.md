@@ -694,4 +694,14 @@ Since v59 the main menu's moving background is live: four tiny worlds run by the
 - **Framing:** keep each scene's point of interest right of centre. The menu rail covers the left third, and the camera puts the subject 60% across on a wide window. The camera never shows the world's rock edge.
 - **Size:** a world is at most 36×22 tiles and keeps to its caps (at most 10 ants, 6 machines, 70 shots, 90 effects and 40 marks).
 - **Content:** no spoilers. Nothing from later in the campaign, and no HUD, messages or range rings in frame.
+- **Rootweb:** a scene's Rootweb is the game's own, drawn with the same look a game uses. Since v60 a scene built before the painted Rootweb art has loaded is repainted with it when it arrives (painted a little each frame under the title, so the first menu frame is finished). Never give a scene a Rootweb look of its own.
+
+## Title transition (v60)
+
+The transition from the title to the menu is drawn by the game, not from image files, apart from the Rootweb's own `cells.png`.
+
+- **Membrane:** painted once per screen size while the title waits (`vnSheet`): a deep plum ground with cloudy depth, `cells.png` in two layers at two scales, overlapping lobes of tissue with dark creases, meandering veins in grooves (the thick ones carry a turquoise channel), nodules with a wet highlight, fungal buds and moist sheen. Each frame only reveals it through a small growth field, with a lit wet front and a shadow ahead of it.
+- **Tendrils:** large translucent limbs, not Vines: an outer tissue the membrane shows through, a darker core, a shaded underside and lit flank, a broken wet highlight, fine vessels, and two weaving turquoise channels with beads of light flowing towards the tip. Each has its own width, pace, start, bend, wobble and one to three side shoots.
+- **Colours:** plum and violet for tissue; turquoise (about `#46ecce` to `#c8fff0`) only for nutrient light, as on the Bloom and the Rootweb's channels.
+- **Lighter version:** on Low quality, or when the title itself draws below about 28 frames a second, there is one channel per tendril, one shoot, no glow strokes and no cast shadow, on a coarser canvas.
 

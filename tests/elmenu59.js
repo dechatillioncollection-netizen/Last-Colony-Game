@@ -33,7 +33,7 @@ let fails=0;const ok=(name,c,extra='')=>{if(!c)fails++;console.log(c?'PASS':'FAI
  const m=await w.evaluate(async()=>{const a=[MD.steps,MD.frames];await new Promise(r=>setTimeout(r,3000));
    return {live:!!MD.G,id:MD.G&&MMS[MD.i].id,map:MW+'x'+MH,sps:+((MD.steps-a[0])/3).toFixed(1),fps:+((MD.frames-a[1])/3).toFixed(1),ver:$('mmVer').textContent,quit:!$('m-quit').hidden,game:!!window.__game(),focus:document.activeElement.id};});
  ok('the menu runs a live 36×22 scene at 30 steps and at most 30 frames a second, the version and Quit show, and nothing of it is the game',
-   m.live&&m.map==='36x22'&&Math.abs(m.sps-30)<=2.5&&m.fps<=31&&m.fps>=20&&m.ver==='v0.6.8'&&m.quit&&!m.game&&m.focus==='m-campaign',JSON.stringify(m));
+   m.live&&m.map==='36x22'&&Math.abs(m.sps-30)<=2.5&&m.fps<=31&&m.fps>=20&&m.ver==='v'+require('../electron/package.json').version&&m.quit&&!m.game&&m.focus==='m-campaign',JSON.stringify(m));
  await w.screenshot({path:process.env.SHOT||'elmenu59.png'});
  // ---- figures: a calm scene, the battle, still, and a real battle
  perf.liveFactory={scene:m.id,...await metrics(SECS)};
