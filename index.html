@@ -1093,6 +1093,161 @@ function webArtFx(c,time,tx0,ty0,tx1,ty1){
     if(f.k==='b'){c.globalCompositeOperation='source-over';c.globalAlpha=.9*fade;const s=S*(1+.35*Math.sin(Math.PI*u));c.drawImage(A.img[3],f.x*T-s/2,f.y*T-s/2,s,s);continue;}
     c.globalCompositeOperation=f.k==='s'?'screen':'lighter';c.globalAlpha=(f.k==='s'?.16:f.k==='g'?.22:.75)*fade;c.drawImage(A.img[f.k==='s'?2:1],f.x*T-r,f.y*T-r,S,S);}
   c.restore();}
+let artHB=0;
+// ===== v61: the colony's circulation (looks only). The Bloom beats twice every 7 to 10 seconds: its chamber tightens and brightens, the
+// petals follow a moment later and less, the veins in its membrane flare, then it rests. Each beat pumps a few turquoise nutrient lights
+// out of the Bloom; they travel through the real Rootweb that the Bloom feeds (the same flood the supply uses), never over bare ground or
+// across a cut, some down a few healthy branches and, while growths are being grown, some to each of them. A growth being grown also gets
+// a steady stream of the same lights and a temporary feeding tendril: a fleshy limb that rises from the Rootweb on the route and reaches
+// into it, swelling as each light passes. When the growth is done the stream eases off and the feeder dulls into the Rootweb and fades.
+// Nothing here touches the game: no items, no supply, no build time, no save. All of it lives in CIRC, outside the game state, keyed to
+// the game it was made for, and moves on the game clock (a paused game holds still). Routes are worked out only when the Rootweb's supply
+// or the set of growths changes. Lights are capped by quality; reduced motion keeps the feeders and drops the beat and the lights.
+// A growth that may legitimately stand off the fed Rootweb (a Root Tap on ore beyond it, or one on Rootweb that has been cut off) gets no
+// route and no lights: only its own growing roots and, where there is Rootweb beside it, a short dull feeder that carries nothing.
+const CIRC={G:null,last:-1,beat:null,next:2.5,beats:0,bursts:0,sig:'',par:null,dist:null,src:[],sites:new Map(),branches:[],P:[],scan:-9,acc:0,
+  A:0,Ap:0,V:0,aft:0,sprite:null,spawned:0};
+const CIRC_Q={low:{cap:24,beat:3,feed:.8,all:3},medium:{cap:48,beat:4,feed:1.5,all:5},high:{cap:72,beat:6,feed:2.2,all:7},epic:{cap:90,beat:7,feed:2.6,all:8}};
+function circQ(){return CIRC_Q[SET.q]||CIRC_Q.high;}
+function circReset(){Object.assign(CIRC,{G,last:-1,beat:null,next:2.5,sig:'',par:null,dist:null,src:[],branches:[],scan:-9,acc:0,A:0,Ap:0,V:0,aft:0});CIRC.sites.clear();CIRC.P.length=0;}
+// a beat: the lub, then a softer dub, then a slow settling (the title's shape, softer and slower for play)
+function circBeatNew(){const R=Math.random,a1=.026+R()*.008;return {c1:.12+R()*.04,r1:.2+R()*.06,d:.22+R()*.08,c2:.09+R()*.03,r2:.16+R()*.05,a1,a2:a1*(.7+R()*.12),rec:.55+R()*.3,em:0};}
+// the flood from the Bloom over Rootweb that is fed: each tile's step count back to the Bloom and the tile it came from
+function circTree(){const n=N,W=G.web,L=WSUP.live,c=G.core;const par=CIRC.par&&CIRC.par.length===n?CIRC.par:new Int32Array(n),dist=CIRC.dist&&CIRC.dist.length===n?CIRC.dist:new Int32Array(n);
+  par.fill(-1);dist.fill(-1);CIRC.par=par;CIRC.dist=dist;CIRC.src=[];if(!W||!c)return;const q=[];
+  for(let y=c.y-1;y<=c.y+c.size;y++)for(let x=c.x-1;x<=c.x+c.size;x++){if(!inMap(x,y))continue;const i=y*MW+x;if(W[i]&&(!L||L[i])&&dist[i]<0){dist[i]=0;q.push(i);CIRC.src.push(i);}}
+  for(let h=0;h<q.length;h++){const i=q[h],x=i%MW,y=(i/MW)|0;
+    for(let yy=y-1;yy<=y+1;yy++){if(yy<0||yy>=MH)continue;for(let xx=x-1;xx<=x+1;xx++){if(xx<0||xx>=MW)continue;const j=yy*MW+xx;if(dist[j]>=0||!W[j]||(L&&!L[j]))continue;dist[j]=dist[i]+1;par[j]=i;q.push(j);}}}}
+// a route from the Bloom to tile i, as a smooth curve in tiles, with its running length; it leaves from the edge of the Bloom's chamber
+function circRoute(i,end){const c=G.core,[cx,cy]=bCenter(c),tiles=[];for(let k=i,g=0;k>=0&&g<4000;k=CIRC.par[k],g++)tiles.push(k);tiles.reverse();
+  let P=tiles.map((k,j)=>{const x=k%MW+.5,y=((k/MW)|0)+.5,h=j&&j<tiles.length-1?(hash(x,y,G.seed+71)-.5)*.32:0;return [x+h,y+(hash(y,x,G.seed+72)-.5)*.32*(j?1:0)];});
+  const fx=P.length?P[0][0]:cx,fy=P.length?P[0][1]:cy,a=Math.atan2(fy-cy,fx-cx);P.unshift([cx+Math.cos(a)*.35,cy+Math.sin(a)*.35]);if(end)P.push(end);
+  for(let it=0;it<2;it++){const Q=[P[0]];for(let j=0;j<P.length-1;j++){const [x0,y0]=P[j],[x1,y1]=P[j+1];Q.push([x0*.75+x1*.25,y0*.75+y1*.25],[x0*.25+x1*.75,y0*.25+y1*.75]);}Q.push(P[P.length-1]);P=Q;}
+  const S=[0];for(let j=1;j<P.length;j++)S.push(S[j-1]+Math.hypot(P[j][0]-P[j-1][0],P[j][1]-P[j-1][1]));return {P,S,L:S[S.length-1],tiles:tiles.length,ti:tiles};}
+function circAt(r,s,o){const S=r.S,P=r.P;if(s<=0)return P[0];if(s>=r.L)return P[P.length-1];let k=o&&o.k||0;while(k<S.length-2&&S[k+1]<s)k++;while(k>0&&S[k]>s)k--;if(o)o.k=k;
+  const t=(s-S[k])/((S[k+1]-S[k])||1);return [P[k][0]+(P[k+1][0]-P[k][0])*t,P[k][1]+(P[k+1][1]-P[k][1])*t];}
+// a growth's route: to the fed Rootweb tile nearest the Bloom under it or within two tiles of it, ending at an intake inside it
+function circSiteRoute(b){if(!CIRC.dist)return null;const s=b.size,[cx,cy]=bCenter(b);let best=-1,bs=1e9,dim=-1;
+  for(let y=b.y-2;y<b.y+s+2;y++)for(let x=b.x-2;x<b.x+s+2;x++){if(!inMap(x,y))continue;const i=y*MW+x,d=CIRC.dist[i],out=Math.max(b.x-x,x-(b.x+s-1),b.y-y,y-(b.y+s-1),0);
+    if(d>=0){const sc=d+out*3;if(sc<bs){bs=sc;best=i;}}else if(G.web[i]&&dim<0)dim=i;}
+  if(best<0)return dim>=0?{dim:[dim%MW+.5,((dim/MW)|0)+.5]}:null;
+  // the intake: a little inside the growth, on the side the route comes from
+  const pi=CIRC.par[best]>=0?CIRC.par[best]:best,px=pi%MW+.5,py=((pi/MW)|0)+.5,a=Math.atan2(py-cy,px-cx),k=s*.16;
+  const r=circRoute(best,[cx+Math.cos(a)*k,cy+Math.sin(a)*k]),f0=Math.max(0,r.L-Math.min(2.6+s*.55,r.L*.7)),P=r.P,S=r.S,L=r.L,n=P.length;
+  // the feeder's own line: an asymmetric bow, to one side or the other, fixed per growth; the lights follow the same line
+  const side=hash(b.id,7,G.seed+5)>.5?1:-1,amp=(.22+.2*hash(b.id,8,G.seed+6))*side,Q=P.map(q=>q.slice());
+  for(let j=1;j<n-1;j++){if(S[j]<=f0)continue;const u=(S[j]-f0)/((L-f0)||1),tx=P[j+1][0]-P[j-1][0],ty=P[j+1][1]-P[j-1][1],l=Math.hypot(tx,ty)||1,o=amp*Math.sin(u*Math.PI)*(1+.35*Math.sin(u*6.283+side));
+    Q[j][0]+=-ty/l*o;Q[j][1]+=tx/l*o;}
+  let j0=0;while(j0<n-1&&S[j0+1]<=f0)j0++;r.P=Q;for(let j=1;j<n;j++)S[j]=S[j-1]+Math.hypot(Q[j][0]-Q[j-1][0],Q[j][1]-Q[j-1][1]);
+  r.L=S[n-1];r.f0=S[j0];return r;}
+// a few healthy branches for the idle trickle: in eight directions, the fed tile farthest out within 16 steps
+function circBranches(){const out=[],best=new Array(8).fill(-1),bd=new Array(8).fill(-1),c=G.core;if(!c||!CIRC.dist)return out;const [cx,cy]=bCenter(c),D=CIRC.dist;
+  for(let i=0;i<N;i++){const d=D[i];if(d<5||d>16)continue;const x=i%MW+.5,y=((i/MW)|0)+.5,k=((Math.atan2(y-cy,x-cx)/6.2832+1)*8|0)%8;if(d>bd[k]||(d===bd[k]&&hash(x,y,9)>.5)){bd[k]=d;best[k]=i;}}
+  for(const i of best)if(i>=0)out.push(circRoute(i));return out;}
+function circSprite(){if(CIRC.sprite)return CIRC.sprite;const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d'),r=g.createRadialGradient(16,16,0,16,16,16);
+  r.addColorStop(0,'rgba(220,255,248,1)');r.addColorStop(.25,'rgba(120,250,226,.85)');r.addColorStop(.6,'rgba(60,200,200,.25)');r.addColorStop(1,'rgba(60,200,200,0)');g.fillStyle=r;g.fillRect(0,0,32,32);return CIRC.sprite=c;}
+function circCap(){return Math.round(circQ().cap*(cam.z<ART_LOD_ZOOM?.6:1));}   // fewer when zoomed far out
+function circAdd(r,v,w,site,lag,kind){if(CIRC.P.length>=circCap()||!r||r.L<.5)return;CIRC.P.push({r,s:-(lag||0),v,w,site,kind,o:{k:0}});CIRC.spawned++;}
+// a beat pumps a few lights: some to each growth being grown (shared round them), the rest down a few branches
+function circBurst(k){const Q=circQ(),live=[...CIRC.sites.values()].filter(e=>e.r&&e.r.P&&!e.done);let n=Math.max(1,Math.round(Q.beat*k));CIRC.bursts++;
+  const toSites=live.length?Math.min(n-1>0?n-1:n,Math.max(Math.ceil(n*.6),Math.min(live.length,n))):0;
+  for(let j=0;j<toSites;j++){const e=live[(CIRC.bursts+j)%live.length],r=e.r;circAdd(r,Math.max(4.2,r.L/4),1.15,e,j*.32,'beat');}
+  const rest=live.length?n-toSites:Math.max(1,Math.round(n*.7)),B=CIRC.branches;
+  for(let j=0;j<rest&&B.length;j++){const r=B[(CIRC.bursts*3+j*5)%B.length];circAdd(r,Math.max(3.6,r.L/3.6),1,null,j*.28,'beat');}}
+// the game's clock moves the circulation; called each frame the game is drawn
+function circTick(time){if(CIRC.G!==G)circReset();const dt=CIRC.last<0?0:Math.min(.1,Math.max(0,time-CIRC.last));CIRC.last=time;
+  const c=G.core&&G.core.team===0&&G.blocks.has(G.core.id)?G.core:null;if(!c){CIRC.A=CIRC.Ap=CIRC.V=0;CIRC.P.length=0;return;}
+  // the routes: rebuilt only when the fed Rootweb changes (a new supply flood) or the growths being grown change
+  const sig=WSUP.t+'|'+(G.webCount||0)+'|'+c.id+'|'+(WSUP.live?1:0);let topo=false;
+  if(sig!==CIRC.sig){CIRC.sig=sig;circTree();CIRC.branches=circBranches();topo=true;const D=CIRC.dist;
+    CIRC.P=CIRC.P.filter(p=>{const ti=p.r.ti,k0=Math.max(0,Math.floor(p.s/(p.r.L||1)*ti.length)-1);for(let k=k0;k<ti.length;k++)if(D[ti[k]]<0)return false;return true;});}
+  if(topo||time-CIRC.scan>=.25||time<CIRC.scan){CIRC.scan=time;const seen=new Set();
+    for(const b of G.blocks.values()){if(b.team!==0||!isSite(b)||b.built<0||B[b.t].belt||VINE[b.t])continue;seen.add(b.id);let e=CIRC.sites.get(b.id);
+      if(!e){e={b,born:time,done:0,r:null,acc:0,glow:0,at:[]};CIRC.sites.set(b.id,e);topo=true;}if(topo||!e.r)e.r=circSiteRoute(b);}
+    for(const e of CIRC.sites.values())if(!e.done&&!seen.has(e.b.id)){e.done=time;e.gone=!G.blocks.has(e.b.id);}}
+  for(const [id,e] of CIRC.sites)if(e.done&&time-e.done>(e.gone?.7:1.8))CIRC.sites.delete(id);
+  // the heartbeat
+  if(!CIRC.beat&&time>=CIRC.next){CIRC.beat=circBeatNew();CIRC.beat.t0=time;CIRC.beats++;}
+  const h=CIRC.beat;let A=0,Ap=0;
+  if(h){const u=time-h.t0;A=hbEnv(h,u);Ap=hbEnv(h,u-.07);
+    if(!ART_RM){if(!(h.em&1)&&u>=h.c1){h.em|=1;circBurst(1);}if(!(h.em&2)&&u>=h.c1+h.d){h.em|=2;circBurst(.7);}}
+    if(u>hbLen(h)){CIRC.beat=null;CIRC.next=time+7+Math.random()*3;}}
+  CIRC.A=ART_RM?0:A;CIRC.Ap=ART_RM?0:Ap;CIRC.aft=Math.max(CIRC.aft*Math.exp(-dt*1.4),Math.max(0,A)/.034);CIRC.V=Math.min(1.6,CIRC.aft*1.2);
+  if(ART_RM){CIRC.P.length=0;return;}
+  // the steady stream into each growth being grown: easing in as it starts and out as it finishes, shared within a budget
+  const Q=circQ(),live=[];for(const e of CIRC.sites.values())if(e.r&&e.r.P){const k=e.done?Math.max(0,1-(time-e.done)/1.2):Math.min(1,(time-e.born)/.8);if(k>0)live.push([e,k]);}
+  const share=live.length?Math.min(1,Q.all/(Q.feed*live.length)):1;
+  for(const [e,k] of live){e.acc+=dt*Q.feed*share*k;while(e.acc>=1){e.acc-=1;circAdd(e.r,Math.max(3.2,e.r.L/5),.8,e,0,'feed');}}
+  // the lights move on
+  for(const p of CIRC.P)p.s+=p.v*dt;
+  for(let j=CIRC.P.length-1;j>=0;j--){const p=CIRC.P[j];if(p.s>=p.r.L){if(p.site)p.site.glow=Math.min(1.4,p.site.glow+(p.kind==='beat'?.9:.45));CIRC.P.splice(j,1);}}
+  for(const e of CIRC.sites.values()){e.glow=Math.max(0,e.glow-dt*2.2);e.at.length=0;}for(const p of CIRC.P)if(p.site)p.site.at.push(p.s);}
+// how wide a feeder is just here: thicker at its root, swelling where a light is passing
+function circSwell(e,s){let k=1;for(const v of e.at){const d=(v-s)/.45;if(d>-3&&d<3)k+=.32*Math.exp(-d*d);}return Math.min(1.6,k);}
+// a feeding tendril: sculpted tissue from the Rootweb into the growth, translucent at its edges, with a turquoise channel inside. Drawn
+// twice: under the buildings for its whole length, then again over the growth, cut to the growth's square, so it visibly enters it
+function circFeeder(c,e,time,inside){const r=e.r,b=e.b,rich=SET.art&&cam.z>=ART_LOD_ZOOM&&CIRC.sites.size<=6&&SET.q!=='low'&&!inside,dim=!r.P,many=CIRC.sites.size>6;
+  const reach=Math.min(1,(time-e.born)/.7),fade=e.done?Math.max(0,1-(time-e.done)/(e.gone?.6:1.6)):1,dull=e.done&&!e.gone?Math.min(1,(time-e.done)/1.1):0;if(fade<=0||reach<=0)return;
+  let pts;if(dim){const [cx,cy]=bCenter(b),[x,y]=r.dim;pts=[];for(let j=0;j<=10;j++){const u=j/10;pts.push([x+(cx-x)*u*.8+Math.sin(u*3.1)*.18,y+(cy-y)*u*.8-Math.sin(u*3.1)*.12,u]);}}
+  else{pts=[];const L=r.L-r.f0,o={k:0};for(let j=0;j<=12;j++){const s=r.f0+L*j/12,[x,y]=circAt(r,s,o);pts.push([x,y,s]);}}
+  const n=pts.length-1,m=Math.max(2,Math.round(n*reach)),C=[],sd=(b.id*.37)%6.283;
+  for(let j=0;j<=m;j++){const [x,y,s]=pts[j],q=pts[Math.min(n,j+1)],p0=pts[Math.max(0,j-1)],tx=q[0]-p0[0],ty=q[1]-p0[1],l=Math.hypot(tx,ty)||1,u=j/n,
+      tip=reach<1?Math.sqrt(Math.min(1,(m-j)/2.2)):1,root=1+.55*Math.max(0,.2-u)/.2,
+      w=T*(dim?.32:.6)*(1-.4*u)*root*tip*(dim?1:circSwell(e,s))*(1+.15*Math.sin(u*7+sd)+.08*Math.sin(u*15+sd*2));C.push([x*T,y*T,-ty/l,tx/l,w*.5]);}
+  // over the growth only the part inside it is drawn again (from a point just before its edge)
+  if(inside){const X0=b.x*T,Y0=b.y*T,S2=b.size*T;let k=C.length-1;while(k>0){const [x,y]=C[k-1];if(x<X0||y<Y0||x>X0+S2||y>Y0+S2)break;k--;}if(k>=C.length-1)return;C.splice(0,Math.max(0,k-1));}
+  const band=(o1,o2)=>{c.beginPath();for(let j=0;j<C.length;j++){const [x,y,nx,ny,w]=C[j];j?c.lineTo(x+nx*w*o2,y+ny*w*o2):c.moveTo(x+nx*w*o2,y+ny*w*o2);}
+    for(let j=C.length-1;j>=0;j--){const [x,y,nx,ny,w]=C[j];c.lineTo(x+nx*w*o1,y+ny*w*o1);}c.closePath();};
+  const along=(off,k0,k1)=>{c.beginPath();let st=false;for(let j=k0;j<Math.min(C.length,k1||99);j++){const [x,y,nx,ny,w]=C[j],o=w*(off+.16*Math.sin(j*.9+sd));st?c.lineTo(x+nx*o,y+ny*o):(c.moveTo(x+nx*o,y+ny*o),st=true);}};
+  c.save();
+  c.globalAlpha=fade*(inside?.92:1);c.lineJoin='round';c.lineCap='round';
+  const [rx,ry,rnx,rny,rw]=C[0];
+  if(!inside&&!many){
+    // its root: a swelling where it rises from the Rootweb, and rootlets splaying into it
+    c.strokeStyle=dim?'rgba(70,58,80,.6)':'rgba(66,22,80,.8)';
+    c.lineWidth=Math.max(1,rw*.42);c.beginPath();
+    for(const k of [-1.15,-.4,.45,1.2]){const a=Math.atan2(-rnx,rny)+Math.PI+k,L2=T*(.38+.16*Math.abs(Math.sin(k*3+sd)));c.moveTo(rx,ry);
+      c.quadraticCurveTo(rx+Math.cos(a+.3)*L2*.6,ry+Math.sin(a+.3)*L2*.6,rx+Math.cos(a)*L2,ry+Math.sin(a)*L2);}c.stroke();
+    if(rich){c.save();c.translate(T*.07,T*.1);band(-1,1);c.fillStyle='rgba(4,0,6,.3)';c.fill();c.restore();}
+    // the swelling it rises from
+    const g=c.createRadialGradient(rx,ry,0,rx,ry,rw*1.7);g.addColorStop(0,dim?'rgba(70,58,80,.7)':'rgba(96,36,108,.85)');g.addColorStop(.6,dim?'rgba(70,58,80,.35)':'rgba(84,30,96,.4)');g.addColorStop(1,'rgba(84,30,96,0)');
+    c.fillStyle=g;c.fillRect(rx-rw*1.7,ry-rw*1.7,rw*3.4,rw*3.4);c.fillStyle=dim?'rgba(84,70,96,.8)':'rgba(112,46,124,.95)';c.beginPath();c.arc(rx,ry,rw*1.02,0,6.283);c.fill();}
+  // the body: a fleshy limb, its colour easing into the Rootweb's own as the growth finishes; a dull grey-violet when it carries nothing
+  const mix=(a,b2,k)=>a.map((v,i)=>Math.round(v+(b2[i]-v)*k)),body=dim?[84,70,96]:mix([112,46,124],[84,38,98],dull),core=dim?[46,38,54]:mix([46,14,56],[60,24,72],dull);
+  if(!inside&&!many){band(-1,1);c.fillStyle=`rgba(${body},${dim?.55:.5})`;c.fill();}                     // translucent outer membrane
+  band(-.8,.8);c.fillStyle=`rgba(${body},${dim?.6:.9})`;c.fill();if(!many){c.strokeStyle=`rgba(14,3,18,${dim?.4:.55})`;c.lineWidth=Math.max(.8,T*.03);c.stroke();}
+  band(-.55,.4);c.fillStyle=`rgba(${core},.8)`;c.fill();
+  if(rich){band(-.8,-.42);c.fillStyle='rgba(6,0,10,.32)';c.fill();band(.12,.72);c.fillStyle=`rgba(204,132,212,${.22*(1-dull*.5)})`;c.fill();
+    // a few nodules along it, wet on top
+    for(const u of [.3,.58]){const j=Math.round(u*(C.length-1)),[x,y,nx,ny,w]=C[j],o=w*.42*(j%2?1:-1),X=x+nx*o,Y=y+ny*o;
+      c.fillStyle=`rgba(${body},.95)`;c.beginPath();c.ellipse(X,Y,w*.34,w*.26,Math.atan2(ny,nx),0,6.283);c.fill();
+      c.fillStyle='rgba(246,206,250,.35)';c.beginPath();c.ellipse(X-nx*w*.06,Y-ny*w*.06-w*.06,w*.12,w*.08,0,0,6.283);c.fill();}}
+  // the channel, with light running in it towards the growth
+  if(!dim){const ch=1-dull;if(ch>0){c.strokeStyle=`rgba(46,170,164,${.7*ch})`;c.lineWidth=Math.max(1.2,T*.06);along(-.08,1);c.stroke();
+}
+    if(rich){const n2=C.length;c.strokeStyle=`rgba(250,222,252,${.3*(1-dull*.6)})`;c.lineWidth=Math.max(1,T*.035);along(.46,1,n2*.45|0);c.stroke();along(.4,n2*.6|0,n2-1);c.stroke();}   // a broken wet highlight
+    // where it enters the growth: a soft mouth with the nutrient light pooling in it
+    if(reach>=1&&inside){const [x,y,nx,ny,w]=C[C.length-1],R=w*1.6;
+      c.fillStyle=`rgba(${core},.85)`;c.beginPath();c.ellipse(x,y,w*1.05,w*.8,Math.atan2(nx,-ny),0,6.283);c.fill();c.globalCompositeOperation='lighter';c.globalAlpha*=.6*ch;c.drawImage(circSprite(),x-R,y-R,R*2,R*2);}}
+  c.restore();}
+// under the buildings: the feeders, then the lights travelling through the Rootweb and into them
+function circFrame(c,time,tx0,ty0,tx1,ty1){if(!G||G===MD.G)return;   // not in the menu's live scenes
+  circTick(time);if(!G.core)return;const inV=(x,y,m)=>x>=tx0-m&&x<=tx1+1+m&&y>=ty0-m&&y<=ty1+1+m;
+  for(const e of CIRC.sites.values())if(e.r&&inV(e.b.x,e.b.y,4))circFeeder(c,e,time);
+  if(!CIRC.P.length)return;const S=circSprite(),far=cam.z<ART_LOD_ZOOM;c.save();c.globalCompositeOperation='lighter';
+  for(const p of CIRC.P){if(p.s<=0)continue;const [x,y]=circAt(p.r,p.s,p.o);if(!inV(x,y,1))continue;const u=p.s/p.r.L,a=Math.min(1,p.s/.6)*(p.site?1:Math.min(1,(1-u)*4)),z=T*(far?.62:.5)*p.w;
+    c.globalAlpha=a*(p.kind==='beat'?.95:.75);c.drawImage(S,x*T-z,y*T-z,z*2,z*2);}
+  c.restore();}
+// over the buildings: the Bloom's heart brightening on each beat, and the lights as they leave it, seen over its petals
+function circOver(c,time){const b=G&&G.core;if(!b||b.team!==0||CIRC.G!==G)return;const [cx,cy]=bCenter(b),X=cx*T,Y=cy*T;
+  if(CIRC.aft>.02){const R=T*1.05,k=Math.min(1,CIRC.aft),g=c.createRadialGradient(X,Y,0,X,Y,R);g.addColorStop(0,`rgba(200,255,226,${.42*k})`);g.addColorStop(.45,`rgba(110,240,210,${.16*k})`);g.addColorStop(1,'rgba(110,240,210,0)');
+    c.save();c.globalCompositeOperation='lighter';c.fillStyle=g;c.fillRect(X-R,Y-R,R*2,R*2);c.restore();}
+  const S=circSprite();c.save();c.globalCompositeOperation='lighter';
+  for(const p of CIRC.P){if(p.s<=0||p.s>1.7)continue;const [x,y]=circAt(p.r,p.s,p.o),z=T*.42*p.w;c.globalAlpha=(p.kind==='beat'?.9:.6)*Math.min(1,p.s/.3)*Math.min(1,(1.7-p.s)/.6);c.drawImage(S,x*T-z,y*T-z,z*2,z*2);}
+  c.restore();}
+// on a growth being grown: its tissue brightens a little as each light arrives
+function circSiteGlow(c,b){if(CIRC.G!==G)return;const e=CIRC.sites.get(b.id);if(!e)return;if(e.r)circFeeder(c,e,G.time,true);if(e.glow<=.02)return;const [cx,cy]=bCenter(b),R=b.size*T*.48,k=Math.min(1,e.glow),g=c.createRadialGradient(cx*T,cy*T,0,cx*T,cy*T,R);
+  g.addColorStop(0,`rgba(150,255,226,${.32*k})`);g.addColorStop(1,'rgba(150,255,226,0)');c.save();c.globalCompositeOperation='lighter';c.fillStyle=g;c.fillRect(cx*T-R,cy*T-R,R*2,R*2);c.restore();}
 // a small growth pulse where Rootweb has just spread, in step with the real expansion
 // the round nodule a tile carries, if any (the painter and the GPU shader both use these values)
 function webNodAt(x,y){const hn=hash(x,y,G.seed+31);return hn<.3?[.22+hash(x,y,G.seed+32)*.56,.22+hash(x,y,G.seed+33)*.56,.07+hn*.12]:null;}
@@ -1805,7 +1960,7 @@ function drawSite(c,b){const p=Math.max(0,b.built),S=b.size*T,x=b.x*T,y=b.y*T;c.
   c.strokeStyle='rgba(120,214,214,.75)';c.lineWidth=1.5;c.setLineDash([3,3]);c.lineDashOffset=-(G.time*12)%6;c.strokeRect(x+1.5,y+1.5,S-3,S-3);c.setLineDash([]);
   if(!VINE[b.t]){c.strokeStyle='rgba(110,200,206,.8)';c.lineWidth=Math.max(1.2,S/22);c.lineCap='round';const L=S*.45*p;
     for(const [cx,cy,dx,dy] of [[x+2,y+2,1,1],[x+S-2,y+2,-1,1],[x+2,y+S-2,1,-1],[x+S-2,y+S-2,-1,-1]]){c.beginPath();c.moveTo(cx,cy);c.quadraticCurveTo(cx+dx*L*.7,cy+dy*L*.2,cx+dx*L*.7,cy+dy*L*.7);c.stroke();}}
-  const bw=Math.max(8,S-6);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(x+(S-bw)/2,y+S-4,bw,3);c.fillStyle='#7fe0d8';c.fillRect(x+(S-bw)/2,y+S-4,bw*p,3);c.restore();}
+  circSiteGlow(c,b);const bw=Math.max(8,S-6);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(x+(S-bw)/2,y+S-4,bw,3);c.fillStyle='#7fe0d8';c.fillRect(x+(S-bw)/2,y+S-4,bw*p,3);c.restore();}
 
 // --- vine route planning (a placement solver, separate from unit pathing). A drag with a Vine or Swift Vine runs a bounded A* over free
 // tiles from the press to the release: one per step, a turn costs extra so the route keeps few bends, a little extra off the Rootweb so it
@@ -2795,7 +2950,7 @@ function drawBlockHD(c,t,x,y,rot,b,time,team){
   const spr=(key,round,inset,inner)=>c.drawImage(hdSprite('o'+key+v,S,S,(cc)=>orgPod(cc,S,round,inset,v,inner)),x,y,S,S);
   switch(t){
   case 'core':{const pu=1+Math.sin(tt*2.6)*.03;c.save();c.translate(cx,cy);c.scale(pu,pu);c.drawImage(heartSprite(),-S/2,-S/2,S,S);
-    const g=.55+.45*Math.sin(tt*2.6);c.save();c.globalCompositeOperation='lighter';hGlow(c,0,0,S*.3,'166,224,90',.25+g*.3);c.restore();wetPod(c,0,0,S*.2,S*.2,'120,190,80',null,tt,1);for(const [ex,ey,e] of [[-4,-3,.3],[5,-1,.5],[0,6,.2]]){const er=4+e*3;const eg=c.createRadialGradient(ex-1,ey-1.5,0,ex,ey,er);eg.addColorStop(0,'rgba(255,250,220,.95)');eg.addColorStop(1,'rgba(170,150,100,.6)');c.fillStyle=eg;c.beginPath();c.ellipse(ex,ey+Math.sin(tt*1.5+ex)*.6,er*.8,er,0,0,7);c.fill();}c.restore();
+    const g=.55+.45*Math.sin(tt*2.6);c.save();c.globalCompositeOperation='lighter';hGlow(c,0,0,S*.3,'166,224,90',.25+g*.3);c.restore();{const k=b&&b===G.core&&!team&&!ART_RM?1-CIRC.A*2.6:1;wetPod(c,0,0,S*.2*k,S*.2*k,'120,190,80',null,tt,1);}for(const [ex,ey,e] of [[-4,-3,.3],[5,-1,.5],[0,6,.2]]){const er=4+e*3;const eg=c.createRadialGradient(ex-1,ey-1.5,0,ex,ey,er);eg.addColorStop(0,'rgba(255,250,220,.95)');eg.addColorStop(1,'rgba(170,150,100,.6)');c.fillStyle=eg;c.beginPath();c.ellipse(ex,ey+Math.sin(tt*1.5+ex)*.6,er*.8,er,0,0,7);c.fill();}c.restore();
     c.save();c.translate(cx,cy);c.rotate(b?b.ang:0);c.fillStyle='rgba(0,0,0,.4)';c.beginPath();c.moveTo(S*.2,-2);c.lineTo(S*.44,1);c.lineTo(S*.2,4);c.fill();
     const sg=c.createLinearGradient(0,-3,0,3);sg.addColorStop(0,'#e4ffb0');sg.addColorStop(1,'#3f6a20');c.fillStyle=sg;c.beginPath();c.moveTo(S*.2,-3);c.lineTo(S*.43,0);c.lineTo(S*.2,3);c.closePath();c.fill();c.restore();break;}
   case 'junction':{c.save();c.translate(cx,cy);c.drawImage(vineSprite(false),-T/2,-T/2,T,T);c.rotate(Math.PI/2);c.drawImage(vineSprite(false),-T/2,-T/2,T,T);c.restore();
@@ -3245,7 +3400,7 @@ function artLayer(c,a,L,im,bx,by,BS,tt,ph,br,b,hk){
   const [dx,dy,dr]=a.dome||[.5,.5,.25],ox=bx+dx*BS,oy=by+dy*BS,W=6.283;
   if(L.g==='dome'&&br!==1){c.translate(ox,oy);c.scale(br,br);c.translate(-ox,-oy);}
   switch(L.anim){
-    case 'pulse':c.globalAlpha*=L.min+(L.max-L.min)*(.5+.5*Math.sin(tt*W/L.period+ph));break;
+    case 'pulse':c.globalAlpha*=Math.min(1,(L.min+(L.max-L.min)*(.5+.5*Math.sin(tt*W/L.period+ph)))*(1+artHB*.9));break;
     case 'shimmer':{const w=tt*W/L.period+ph;c.translate(Math.sin(w)*L.amp*BS,Math.cos(w*.7)*L.amp*BS);break;}
     case 'blink':c.globalAlpha*=Math.sin(tt*W/L.period+ph)>0?1:.15;break;
     case 'spin':case 'aim':{const ang=L.anim==='aim'?(b?b.ang||0:0):tt*W/L.period;c.translate(bx+BS/2,by+BS/2);c.rotate(ang);c.translate(-bx-BS/2,-by-BS/2);break;}}
@@ -3294,6 +3449,7 @@ function artDraw(c,a,x,y,S,rot,b,time,under){
   const tt=live?(time||0):0,ph=b?(b.id*1.618)%6.283:0;
   let br=a.breathe&&live?1+a.breathe.amp*Math.sin(tt*6.283/a.breathe.period+ph):1;
   let hk=a.hurtShrink&&b?1-a.hurtShrink*(1-Math.max(0,b.hp/b.max)):1;
+  if(b&&live&&b===G.core&&!b.team&&CIRC.G===G){br*=1-CIRC.A*1.15;hk*=1-CIRC.Ap*.6;artHB=CIRC.V;}else artHB=0;
   if(a.weapon&&b&&!under){const W=a.weapon;artWeapon(a,b,tt,live);const F=artFire;
     br*=(1-W.squeeze*F.fp)*(1-W.deflate*(1-Math.max(0,b.hp/b.max)));                       // squeezes on each shot, sags as it is hurt
     hk*=1-W.tight*(b._tg||0)-W.flinch*(b.hit>0?Math.min(1,b.hit/.12):0)-W.fireTight*F.fp;}  // petals tighten when engaged, hit or firing
@@ -3315,7 +3471,7 @@ function artDraw(c,a,x,y,S,rot,b,time,under){
     if(L.ammo!=null&&L.ammo!==artFire.ammo)return;
     c.save();if(L.blend)c.globalCompositeOperation=L.blend;c.globalAlpha*=L.alpha??1;
     artLayer(c,a,L,a.img[i],bx,by,BS,tt,ph,br,b,hk);c.restore();});
-  c.restore();c.imageSmoothingEnabled=sm;}
+  c.restore();c.imageSmoothingEnabled=sm;artHB=0;}
 function drawArt(c,t,x,y,rot,b,time,team){
   const a=artFor(t,team);if(!a)return false;const S=B[t].size*T;
   if(a.custom){const sm=c.imageSmoothingEnabled;c.imageSmoothingEnabled=true;a.custom(c,a,x,y,b,time||0,!b||organLite(t)?'lite':'full');c.imageSmoothingEnabled=sm;artDrawn++;return true;}
@@ -4406,6 +4562,7 @@ function render(){
   const tx0=Math.floor(cam.x/T),ty0=Math.floor(cam.y/T),tx1=Math.floor(vx1/T),ty1=Math.floor(vy1/T);
   const inView=(x,y,m)=>x>=tx0-m&&x<=tx1+1+m&&y>=ty0-m&&y<=ty1+1+m;
   if(webArtOn())webArtFx(ctx,time,tx0,ty0,tx1,ty1);
+  circFrame(ctx,time,tx0,ty0,tx1,ty1);
   for(const d of G.decals){if(!inView(d.x,d.y,1))continue;ctx.fillStyle=d.scorch?'rgba(0,0,0,.35)':'rgba(20,20,24,.55)';ctx.fillRect((d.x-d.r)*T,(d.y-d.r)*T,d.r*2*T,d.r*2*T);}
   if(!G.held&&!G.test){const sp=spawnPoint(),pulse=.5+.5*Math.sin(performance.now()/300),R=G.ezone;
     ctx.strokeStyle=`rgba(238,90,68,${.3+.25*pulse})`;ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc(G.spawn.x*T,G.spawn.y*T,R*T,0,7);ctx.stroke();ctx.setLineDash([]);
@@ -4433,6 +4590,7 @@ function render(){
       if(b.t==='mender'){ctx.strokeStyle='rgba(127,208,106,.35)';ctx.beginPath();ctx.arc((b.x+.5)*T,(b.y+.5)*T,6*T,0,7);ctx.stroke();}}
     if(b.hp<b.max&&!B[b.t].belt&&!G.demo){ctx.fillStyle='#000';ctx.fillRect(b.x*T+2,b.y*T-5,S-4,3);ctx.fillStyle=b.team===1?'#ee5a44':b.hp/b.max>.4?'#7fd06a':'#ee5a44';ctx.fillRect(b.x*T+2,b.y*T-5,(S-4)*b.hp/b.max,3);}
   }
+  circOver(ctx,time);
   if(PODFX.length)drawPodFx(ctx,time);
   vehFrame(z,inView);if(VEHW.length)vehWrecks(ctx,inView,time);
   for(const e of G.enemies)if(!E[e.t].air&&inView(e.x,e.y,1)&&fogVis(e.x,e.y))drawEnemy(ctx,e,time);

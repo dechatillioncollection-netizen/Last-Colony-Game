@@ -705,3 +705,14 @@ The transition from the title to the menu is drawn by the game, not from image f
 - **Colours:** plum and violet for tissue; turquoise (about `#46ecce` to `#c8fff0`) only for nutrient light, as on the Bloom and the Rootweb's channels.
 - **Lighter version:** on Low quality, or when the title itself draws below about 28 frames a second, there is one channel per tendril, one shoot, no glow strokes and no cast shadow, on a coarser canvas.
 
+
+## Circulation: the beat, nutrient lights and feeders (v61)
+
+All of it is drawn by the game (no image files) and is for looks only. It lives outside the game state, is never saved, and moves on the game clock, so a paused game holds still. It is not drawn in the menu's live scenes.
+
+- **The beat:** every 7 to 10 seconds, a lub and a softer dub, then a long rest (the title's shape, slower). The painted Bloom's chamber layers (`g:'dome'`) tighten by up to about 6%, the petals follow about 70 ms later by about 2%, the membrane's veins flare, and the heart glows. The collar, roots, stinger and the footprint never move. Without the painted art, the drawn Bloom's heart tightens instead.
+- **Nutrient lights:** the Rootweb's own turquoise (`#78fae2` to `#dcfff8`), drawn additively from one cached 32 px sprite. Each beat pumps a few from the Bloom's chamber edge (the dub fewer). They follow the tiles the Bloom actually feeds (the same flood the supply uses), smoothed, so they never cross bare ground or a cut.
+- **Feeding tendril:** one per growth being grown that the fed Rootweb reaches. It rises from the fed Rootweb within two tiles of the growth out of a soft swelling with rootlets and reaches into the growth, bowed to one side and tapering. It has a translucent outer membrane, an opaque violet body, a dark core, a turquoise channel, a broken wet highlight and two nodules. It swells where a light passes. The part inside the growth is drawn again over it, ending in a soft mouth where the light pools. It is not a Vine: no walls, no arrows, no even stripes.
+- **Finishing:** the steady stream eases off over about 1.2 s. The feeder dulls to the Rootweb's own violet and fades over 1.6 s. The Rootweb itself is never changed.
+- **Not connected:** a growth the fed Rootweb does not reach (a Root Tap on ore beyond it, or one cut off) gets no lights and no feeder. If unfed Rootweb lies beside it, it gets a short, dull grey-violet stub with no channel instead. Its own growing roots (the construction outline) are unchanged.
+- **Detail:** the full sculpting needs the painted art, zoom 0.75 or closer, Medium quality or above and at most six growths at once; otherwise the feeder keeps its body, core and channel. Light caps are 24, 48, 72 and 90 (Low to Epic), 60% of that zoomed far out. Reduced motion keeps the feeders and drops the beat and the lights.
