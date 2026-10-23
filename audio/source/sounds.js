@@ -534,29 +534,33 @@ def('intro_life', 1, (r) => { const L = 16, sec = L + 2, n = N(sec), g = driftL(
   const wet = mul(filt(pink(n, r), 'bp', 320, 1.5), new Float32Array(n).map((_, i) => .08 + .06 * h(i / SR)));
   return loopify(mix(n, [breath, 1], [tone, .8], [wet, .5]), L, 2); }, { loop: 16 });
 
-// ---------------- v58 title screen ----------------
-// a heartbeat for the title screen's pulse: a deep "lub" and a lighter "dub" a third of a second later, felt more than heard, damp and fleshy
-def('title_heart', 2, (r, v) => { const sec = 1.3, n = N(sec);
-  const beat = (at, f0, f1, tau, g) => { const m = N(sec), b = mul(osc(m, t => t < at ? 0 : f1 + (f0 - f1) * Math.exp(-(t - at) / (tau * .45))), ad(m, .006, tau, at));
-    const bd = mul(lp(brown(m, r), 130), ad(m, .004, tau * .8, at)); return mix(m, [b, g], [bd, g * .9]); };
-  const wet = mul(filt(pink(n, r), 'bp', 240 + v * 30, 1.6), mix(n, [ad(n, .01, .08), .5], [ad(n, .01, .06, .3), .35]));
-  return lp(mix(n, [beat(0, 62, 40, .16, 1), 1], [beat(.3, 74, 48, .11, .72), 1], [wet, .25]), 420); });
-// the vines that cover the title screen: soil splitting, then a rising mass of wet fibrous creaks, rustles and squelches as the growth
-// closes over the screen (about 5 s), a deep settle when it meets, and at 5.6 s the tear and breath of the vines parting onto the menu
-def('title_vines', 1, (r) => { const sec = 7.4, n = N(sec);
-  const rise = env(n, [[0, .15], [1.2, .45], [3.4, .8], [4.9, 1], [5.4, .5], [sec, 0]]);
-  const soil = grains(n, 70, 1.4, (d, at, r) => click(d, at, .2 + r() * .6, 400 + r() * 1200, 2, r, .004 + r() * .012), r);
-  const rustle = mul(filt(pink(n, r), 'bp', t => 500 + 900 * Math.min(1, t / 4.6), 1.1), mul(rise, new Float32Array(n).map((_, i) => .35 + .3 * Math.abs(Math.sin(i / SR * 6.1)) * Math.abs(Math.sin(i / SR * 2.3 + 1)))));
+// ---------------- v59 title screen ----------------
+// the title's heartbeat, as two sounds so each lands on its own contraction of the Bloom, however the gap between them varies: a deep,
+// soft, muffled lub (as if heard through flesh and soil), and a dub that is shorter, a little higher and firmer
+def('title_lub', 2, (r, v) => { const sec = .62, n = N(sec);
+  const body = mul(osc(n, t => 36 + 22 * Math.exp(-t / .05) + v * 2), ad(n, .008, .17));
+  const thud = mul(lp(brown(n, r), 110), ad(n, .006, .12));
+  const wet = mul(filt(pink(n, r), 'bp', 190 + v * 25, 1.4), ad(n, .012, .07));
+  return lp(mix(n, [body, 1], [thud, .9], [wet, .22]), 300); });
+def('title_dub', 2, (r, v) => { const sec = .45, n = N(sec);
+  const body = mul(osc(n, t => 46 + 30 * Math.exp(-t / .035) + v * 3), ad(n, .005, .1));
+  const thud = mul(lp(brown(n, r), 150), ad(n, .004, .07));
+  const valve = mul(filt(white(n, r), 'bp', 420, 2.2), ad(n, .002, .018));
+  return lp(mix(n, [body, 1], [thud, .9], [valve, .12]), 380); });
+// continuing from the title (2.2 s): a soft wet thump as the hive notices the key, tendrils sliding and creaking in from the edges as
+// they grow (to 0.85 s), a dull deep seal as the membranes close, then the stretch and sticky tear of the membranes peeling back
+// (1.05 to 1.85 s) and a breath of air as the menu shows
+def('title_open', 1, (r) => { const sec = 2.4, n = N(sec);
+  const ack = mix(n, [mul(osc(n, t => 44 + 26 * Math.exp(-t / .04)), ad(n, .006, .14)), 1], [mul(lp(brown(n, r), 140), ad(n, .005, .1)), .8]);
+  const slide = mul(filt(pink(n, r), 'bp', t => 260 + 1100 * Math.min(1, Math.max(0, t - .12) / .75), 1.2), env(n, [[0, 0], [.14, .15], [.5, .55], [.82, 1], [.95, .2], [1.1, 0], [sec, 0]]));
   const creaks = new Float32Array(n);
-  for (let k = 0; k < 16; k++) { const at = .3 + r() * 4.4, len = .35 + r() * .7, f = 180 + r() * 380;
-    const c = mul(creak(len, .006 + r() * .01, .002 + r() * .004, [[f, 4, 1], [f * 2.4, 5, .45], [f * 5.1, 6, .15]], r, .4), env(N(len), [[0, 0], [len * .3, 1], [len, 0]]));
-    addTo(creaks, c, at, .5 + r() * .5); }
-  const sq = new Float32Array(n); for (let k = 0; k < 9; k++) addTo(sq, squelch(r, .5, 300 + r() * 200, 700 + r() * 400, 250, 5, 3), .5 + r() * 4.2, .25 + r() * .25);
-  const groan = mul(lp(brown(n, r), t => 60 + 90 * Math.min(1, t / 4.8)), env(n, [[0, 0], [2, .4], [4.8, 1], [5.3, .6], [6, 0], [sec, 0]]));
-  const meet = mul(osc(n, t => t < 4.85 ? 0 : 34 + 20 * Math.exp(-(t - 4.85) * 6)), ad(n, .01, .45, 4.85));
-  const tear = mul(filt(white(n, r), 'bp', t => 900 + 1400 * Math.min(1, Math.max(0, t - 5.6) / .7), 1.3), env(n, [[0, 0], [5.55, 0], [5.75, .7], [6.4, .25], [7.1, 0], [sec, 0]]));
-  const fib = grains(n, 80, .9, (d, at, r) => click(d, at, .1 + r() * .35, 700 + r() * 1300, 3, r, .003 + r() * .008), r, 5.55);
-  const air = mul(lp(hp(white(n, r), 700), 3200), env(n, [[0, 0], [5.6, 0], [6.2, .35], [sec, 0]]));
-  return verb(mix(n, [soil, .7], [rustle, .55], [creaks, .8], [sq, .8], [groan, 1.2], [lp(meet, 120), 1.1], [tear, 4], [fib, 3], [air, 3]), .5, .4, .18, .8); });
+  for (let k = 0; k < 7; k++) { const at = .15 + r() * .6, len = .18 + r() * .3, f = 160 + r() * 300;
+    addTo(creaks, mul(creak(len, .005 + r() * .008, .002 + r() * .003, [[f, 4, 1], [f * 2.3, 5, .4]], r, .4), env(N(len), [[0, 0], [len * .3, 1], [len, 0]])), at, .4 + r() * .4); }
+  const sq = new Float32Array(n); for (let k = 0; k < 5; k++) addTo(sq, squelch(r, .35, 280 + r() * 180, 650 + r() * 350, 220, 5, 3), .2 + r() * .6, .25 + r() * .2);
+  const seal = mix(n, [mul(osc(n, t => t < .86 ? 0 : 34 + 18 * Math.exp(-(t - .86) * 7)), ad(n, .012, .28, .86)), 1], [mul(lp(brown(n, r), 90), ad(n, .01, .2, .86)), .9]);
+  const tear = mul(filt(white(n, r), 'bp', t => 700 + 1900 * Math.min(1, Math.max(0, t - 1.05) / .8), 1.4), env(n, [[0, 0], [1.03, 0], [1.15, .8], [1.5, .55], [1.85, .15], [2.2, 0], [sec, 0]]));
+  const stick = grains(n, 45, .8, (d, at, r) => click(d, at, .1 + r() * .3, 600 + r() * 1400, 3, r, .003 + r() * .007), r, 1.05);
+  const air = mul(lp(hp(white(n, r), 600), 3000), env(n, [[0, 0], [1.2, 0], [1.7, .3], [2.3, 0], [sec, 0]]));
+  return verb(mix(n, [ack, .9], [slide, .5], [creaks, .6], [sq, .6], [lp(seal, 130), 1.1], [tear, 2.6], [stick, 2.2], [air, 2.4]), .35, .35, .15, .7); });
 
 module.exports = S;

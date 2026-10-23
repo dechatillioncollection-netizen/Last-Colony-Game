@@ -19,3 +19,6 @@ wbtest_result*.json
 /shots56/
 /tmp/
 /audio/source/out/
+/shots59/
+/tests/shots*/
+/tests/*.png

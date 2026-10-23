@@ -1,4 +1,5 @@
-// v56: the main menu as a left rail over background scenes recorded from the game. The title screen still comes first and its key opens
+// v56: the main menu as a left rail over background scenes from the game (recorded clips in v56 to v58, live scenes since v59, whose
+// own behaviour is tested in xtest59). The title screen still comes first and its key opens
 // the menu once without pressing anything; the clips wait under it and start as it fades. Every menu entry is there in its old order
 // and works (Campaign, Survival, Base Siege, Load Game, Settings; Quit stays hidden on the web), Escape backs out of Settings, Saves and
 // the campaign map with the keyboard back on the button that opened them; the intro replay works; quitting a game goes straight back to
@@ -18,18 +19,19 @@ const open=async(br,o={})=>{const ctx=await br.newContext({viewport:o.vp||{width
     if(scene!==null)localStorage.setItem('lc_menuScene',String(scene));}catch(e){}},[!!o.splash,!!o.still,o.scene===undefined?null:o.scene]);
   await p.goto(URL+NEW,o.early?{waitUntil:'commit'}:{});await p.waitForTimeout(o.wait||2500);return p;};
 // what the background shows: the layers in it, which is on top and visible, and whether a clip is playing
-const bg=p=>p.evaluate(()=>{const L=[...document.querySelectorAll('#mmBg video,#mmBg img')];const top=MMB.el;
-  return {n:L.length,videos:L.filter(e=>e.tagName==='VIDEO').length,top:top&&top.tagName,id:top&&top.dataset.id,on:!!top&&top.classList.contains('on'),
-    playing:!!top&&top.tagName==='VIDEO'&&!top.paused&&top.readyState>=2,shown:MMB.shown.slice(),i:MMB.i,mm:$('overlay').classList.contains('mm'),menu:!$('overlay').hidden,label:$('mmScene').textContent};});
+// (v59: a live scene counts as one layer, LIVE, playing while its world steps)
+const bg=p=>p.evaluate(()=>{const L=[...document.querySelectorAll('#mmBg video,#mmBg img')];const top=MMB.el,lv=!!MD.G;
+  return {n:L.length+(lv?1:0),videos:L.filter(e=>e.tagName==='VIDEO').length,top:lv?'LIVE':top&&top.tagName,id:lv?MMS[MD.i].id:top&&top.dataset.id,on:lv||!!top&&top.classList.contains('on'),
+    playing:lv&&mmState()==='play',shown:MMB.shown.slice(),i:MMB.i,mm:$('overlay').classList.contains('mm'),menu:!$('overlay').hidden,label:$('mmScene').textContent};});
 (async()=>{const br=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']});
  // ---- 1. launch with the title screen: clips wait under it, one key opens the menu, nothing gets pressed
  {const p=await open(br,{splash:true,wait:1500,scene:3});let b=await bg(p);
-  ok('under the title screen the first scene is loaded but not playing, and its picture is ready for the fade',b.mm&&b.menu&&b.top==='VIDEO'&&!b.playing&&b.on&&b.id==='factory',JSON.stringify(b));
+  ok('under the title screen the first scene is built but held, ready for the transition',b.mm&&b.menu&&b.top==='LIVE'&&!b.playing&&b.on&&b.id==='factory',JSON.stringify(b));
   ok('no errors (launch)',!p.errs.length,p.errs[0]);
-  await p.keyboard.press('Enter');await p.waitForFunction(()=>$('splash').hidden,null,{timeout:10000}).catch(()=>{});await p.waitForTimeout(1000);b=await bg(p);   // v58: the vines take about 7 s
+  await p.keyboard.press('Enter');await p.waitForFunction(()=>$('splash').hidden,null,{timeout:10000}).catch(()=>{});await p.waitForTimeout(1000);b=await bg(p);
   const st=await p.evaluate(()=>({splash:!$('splash').hidden,game:!!window.__game(),planet:!$('planet').hidden,set:!$('settings').hidden,saves:!$('saves').hidden,focus:document.activeElement&&document.activeElement.id}));
   ok('one key: the title fades to the menu, nothing in the menu is pressed, the first button has the keyboard',!st.splash&&!st.game&&!st.planet&&!st.set&&!st.saves&&st.focus==='m-campaign',JSON.stringify(st));
-  ok('the clip plays once the title has gone, with its sound since v58 (the key allowed it)',b.playing&&b.id==='factory'&&await p.evaluate(()=>!MMB.el.muted&&MMB.el.volume>0),JSON.stringify(b));
+  ok('the scene runs once the title has gone',b.playing&&b.id==='factory',JSON.stringify(b));
   await p.screenshot({path:`${SHOTS}/menu_1920x1080.png`});
   ok('no errors (launch)',!p.errs.length,p.errs[0]);await p.context().close();}
  // ---- 1b. the title prompt does not show while the title picture is still loading (here held back five seconds)
@@ -52,57 +54,31 @@ const bg=p=>p.evaluate(()=>{const L=[...document.querySelectorAll('#mmBg video,#
   await p.focus('#m-load');await p.keyboard.press('Enter');await p.waitForTimeout(400);s=await p.evaluate(()=>!$('saves').hidden);await p.keyboard.press('Escape');await p.waitForTimeout(150);
   f=await p.evaluate(()=>({saves:!$('saves').hidden,focus:document.activeElement.id}));ok('Load Game opens the saves; Escape closes them and gives the keyboard back to Load Game',s&&!f.saves&&f.focus==='m-load',JSON.stringify(f));
   await p.click('#m-campaign');await p.waitForTimeout(500);let b=await bg(p);s=await p.evaluate(()=>!$('planet').hidden);
-  ok('Campaign opens the campaign map, and the menu clips are let go',s&&!b.menu&&b.n===0,JSON.stringify(b));
+  ok('Campaign opens the campaign map, and the menu scene is let go',s&&!b.menu&&b.n===0,JSON.stringify(b));
   await p.click('#pIntro');await p.waitForTimeout(600);s=await p.evaluate(()=>INTRO.on);await p.evaluate(()=>introSkip());await p.waitForTimeout(800);
   const after=await p.evaluate(()=>({intro:INTRO.on,planet:!$('planet').hidden}));ok('Replay intro still plays the intro and comes back to the map',s&&!after.intro&&after.planet,JSON.stringify(after));
-  await p.keyboard.press('Escape');await p.waitForTimeout(600);b=await bg(p);ok('Escape on the campaign map goes back to the main menu, and a clip plays again',b.menu&&b.mm&&b.top==='VIDEO'&&b.playing,JSON.stringify(b));
+  await p.keyboard.press('Escape');await p.waitForTimeout(600);b=await bg(p);ok('Escape on the campaign map goes back to the main menu, and a scene runs again',b.menu&&b.mm&&b.top==='LIVE'&&b.playing,JSON.stringify(b));
   const before=b.id;
   await p.click('#m-survival');await p.waitForTimeout(800);b=await bg(p);let g=await p.evaluate(()=>{const G=window.__game();return G&&G.mode;});
-  ok('Survival starts a Survival game and the clips are gone',g==='survival'&&!b.menu&&b.n===0&&b.videos===0,JSON.stringify(b));
+  ok('Survival starts a Survival game and the scene is gone',g==='survival'&&!b.menu&&b.n===0&&b.videos===0,JSON.stringify(b));
   await p.evaluate(()=>{$('quitBtn').click();});await p.waitForTimeout(900);b=await bg(p);
   const back=await p.evaluate(()=>({game:!!window.__game(),splash:!$('splash').hidden,mm:$('overlay').classList.contains('mm')}));
   ok('quitting the game goes straight back to the main menu (no title screen), one scene on',!back.game&&!back.splash&&back.mm&&b.playing&&b.id!==before,JSON.stringify([back,before,b.id]));
   await p.click('#m-siege');await p.waitForTimeout(800);g=await p.evaluate(()=>{const G=window.__game();return G&&G.mode;});ok('Base Siege starts a Base Siege game',g==='siege');
   ok('no errors (entries)',!p.errs.length,p.errs[0]);await p.context().close();}
- // ---- 3. the rotation: order, crossfade, at most two clips, preload, calm against battle
- {const p=await open(br,{scene:3});await p.evaluate(()=>{MMB.secs=4.5;});const seen=[];let most=0,pre=false,fade=false;
-  for(let k=0;k<200;k++){await p.waitForTimeout(100);const r=await p.evaluate(()=>({n:document.querySelectorAll('#mmBg video').length,vis:[...document.querySelectorAll('#mmBg video')].filter(v=>+getComputedStyle(v).opacity>.05).length,next:!!MMB.next,id:MMB.el&&MMB.el.dataset.id}));
-   most=Math.max(most,r.n);if(r.next)pre=true;if(r.vis>=2)fade=true;if(seen[seen.length-1]!==r.id)seen.push(r.id);}
-  const b=await bg(p);const ids=b.shown;
-  ok('scenes change in order: Living Factory, Quiet Frontier, Fortress Skirmish, Human Frontier, and round again',ids.slice(0,5).join()==='factory,frontier,skirmish,human,factory',ids.join());
-  const battles=ids.filter(i=>i==='skirmish').length,calm=ids.length-battles,adj=ids.some((v,k)=>k&&v==='skirmish'&&ids[k-1]==='skirmish');
-  ok('calm scenes outnumber battles three to one, and a battle never follows a battle',calm>=battles*3-1&&!adj,`calm ${calm} battle ${battles}`);
-  ok('each change is a crossfade, the next clip is loaded just before, and never more than two clips are loaded',fade&&pre&&most<=2,JSON.stringify({fade,pre,most}));
-  ok('the scene name at the foot follows',b.label==='Background scene: '+{factory:'Living Factory',frontier:'Quiet Frontier',skirmish:'Fortress Skirmish',human:'Human Frontier'}[b.id],b.label);
-  await p.evaluate(()=>MMB.secs=30);const i0=await p.evaluate(()=>MMB.i);await p.click('#mmNext');await p.waitForTimeout(1600);const i1=await p.evaluate(()=>MMB.i);
-  ok('Next scene moves on one, and the game is untouched',i1===(i0+1)%4&&!(await p.evaluate(()=>!!window.__game())),[i0,i1].join('>'));
-  // a hidden tab pauses the clip; showing it again resumes
-  const hid=await p.evaluate(async()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));await new Promise(r=>setTimeout(r,300));
-    const a=MMB.el.paused;delete document.hidden;Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));await new Promise(r=>setTimeout(r,600));return [a,!MMB.el.paused];});
-  ok('a hidden tab pauses the clip, and it carries on when the tab comes back',hid[0]&&hid[1],JSON.stringify(hid));
-  // the menu's sound is the ambience bed; the clips add none
+ // ---- 3-5. (v59) the rotation, Next scene, a hidden tab, fallbacks, reduced motion and the Settings switch are tested in xtest59
+ {const p=await open(br,{scene:3});
   const snd=await p.evaluate(async()=>{sndUnlock();for(let i=0;i<60&&!SND.ready;i++)await new Promise(r=>setTimeout(r,100));await new Promise(r=>setTimeout(r,800));
     return {amb:Object.keys(SND.amb).filter(k=>SND.amb[k]&&SND.amb[k].g&&SND.amb[k].g.gain.value>0.01)};});
-  ok('the menu plays the ambience bed (wind and deep air) through the ambience volume (v58: the clips\' own sound is tested in xtest58)',snd.amb.length>=1,JSON.stringify(snd));
-  ok('no errors (rotation)',!p.errs.length,p.errs[0]);await p.context().close();}
- // ---- 4. fallbacks
- {const p=await open(br,{block:['**/art/menu/*.webm','**/art/menu/*.mp4'],wait:9000,scene:3});const b=await bg(p);await p.screenshot({path:`${SHOTS}/menu_still_fallback.png`});
-  ok('without the clips the menu shows the scene\'s still picture and says why in the console',b.top==='IMG'&&b.on&&p.warns.some(w=>/Menu background clip factory did not play/.test(w)),JSON.stringify([b,p.warns.slice(0,2)]));
-  await p.click('#m-settings');await p.waitForTimeout(200);const s=await p.evaluate(()=>!$('settings').hidden);ok('and the menu works',s&&!p.errs.length,p.errs[0]);await p.context().close();}
- {const p=await open(br,{block:['**/art/menu/**'],wait:9000,scene:3});const b=await bg(p);await p.screenshot({path:`${SHOTS}/menu_no_art.png`});
-  const look=await p.evaluate(()=>({bg:getComputedStyle($('mmBg')).backgroundColor,txt:getComputedStyle(document.querySelector('#overlay.mm h1')).color}));
-  ok('with nothing in art/menu the menu stands on a dark backdrop and stays readable',b.n===0&&look.bg==='rgb(6, 8, 12)'&&look.txt==='rgb(238, 240, 244)'&&p.warns.some(w=>/Menu background missing/.test(w)),JSON.stringify([b,look]));
+  ok('the menu plays the ambience bed (wind and deep air) through the ambience volume',snd.amb.length>=1,JSON.stringify(snd));
+  await p.route('**/art/menu/**',r=>r.abort());const b=await p.evaluate(async()=>{MDS.factory=()=>{throw new Error('test');};mmShow(0);await new Promise(r=>setTimeout(r,1500));
+    return {n:document.querySelectorAll('#mmBg img').length,live:!!MD.G,bg:getComputedStyle($('mmBg')).backgroundColor,txt:getComputedStyle(document.querySelector('#overlay.mm h1')).color};});
+  await p.screenshot({path:`${SHOTS}/menu_no_art.png`});
+  ok('with no scene and no still picture the menu stands on a dark backdrop and stays readable',!b.live&&b.n===0&&b.bg==='rgb(6, 8, 12)'&&b.txt==='rgb(238, 240, 244)',JSON.stringify(b));
   await p.click('#m-survival');await p.waitForTimeout(500);ok('and its buttons still work',await p.evaluate(()=>!!window.__game())&&!p.errs.length,p.errs[0]);await p.context().close();}
- // ---- 5. reduced motion, and the Settings switch
- {const p=await open(br,{rm:true,scene:3});await p.evaluate(()=>{MMB.secs=2;});await p.waitForTimeout(3000);const b=await bg(p);await p.screenshot({path:`${SHOTS}/menu_reduced_motion.png`});
-  ok('reduced motion: a still picture, no clip, and it does not change while the menu is open',b.top==='IMG'&&b.videos===0&&b.shown.length===1,JSON.stringify(b));await p.context().close();}
- {const p=await open(br,{scene:3});await p.click('#m-settings');let s=await p.evaluate(()=>$('optMenuBg').checked);await p.click('#optMenuBg');await p.waitForTimeout(1800);let b=await bg(p);
-  ok('the Moving menu background switch is on by default and turning it off swaps the clip for its still',s&&b.top==='IMG'&&b.videos===0&&await p.evaluate(()=>localStorage.getItem('lc_menubg')==='0'),JSON.stringify(b));
-  await p.click('#optMenuBg');await p.waitForTimeout(1800);b=await bg(p);ok('and on again brings the clip back',b.top==='VIDEO'&&b.playing,JSON.stringify(b));await p.context().close();}
- {const p=await open(br,{still:true,scene:3});const b=await bg(p);ok('the switch is remembered',b.top==='IMG'&&b.videos===0);await p.context().close();}
  // ---- 6. sizes: the rail is about a third of a desktop window, the whole width of a phone; every button fits; nothing scrolls sideways
  for(const [w,h] of [[1920,1080],[2560,1440],[3440,1440],[1280,720],[1024,768],[800,600],[390,844]]){const p=await open(br,{vp:{width:w,height:h},scene:3});
-  const r=await p.evaluate(()=>{const c=$('ovcard').getBoundingClientRect(),B=[...document.querySelectorAll('#ovcard .mode')].filter(b=>!b.hidden).map(b=>b.getBoundingClientRect()),f=$('mmFoot').getBoundingClientRect(),v=MMB.el&&MMB.el.getBoundingClientRect();
+  const r=await p.evaluate(()=>{const c=$('ovcard').getBoundingClientRect(),B=[...document.querySelectorAll('#ovcard .mode')].filter(b=>!b.hidden).map(b=>b.getBoundingClientRect()),f=$('mmFoot').getBoundingClientRect(),v=(MD.G?$('cv'):MMB.el)&&(MD.G?$('cv'):MMB.el).getBoundingClientRect();
     return {cw:c.width,W:innerWidth,H:innerHeight,inside:B.every(b=>b.left>=0&&b.right<=c.right+.5),minH:Math.min(...B.map(b=>b.height)),reach:$('ovcard').scrollHeight<=$('ovcard').clientHeight+1||getComputedStyle($('ovcard')).overflowY==='auto',
       sx:document.documentElement.scrollWidth,foot:f.right<=innerWidth&&f.bottom<=innerHeight,bg:!!v&&v.width>=innerWidth&&v.height>=innerHeight};});
   // a third of a desktop window, capped at 760 pixels on ultrawide screens; at least 340 pixels in a small window; the whole width of a phone

@@ -685,18 +685,13 @@ The title screen is one painted picture with light added on top while it runs.
 - **Layers, bottom to top:** wet ground; pools with reflected stars; lily pads; a patch of Rootweb texture; root conduits (shadow, three tones, a wet sheen and the light channel); Seed Pods; the Bloom with its reflection; the survey track, stakes and tank. The night grade comes last: a cool multiply and a vignette, with some of the glow layer baked back in.
 - **Drawn live:** the glow layer's breathing and the light wave (the glow layer masked by a moving ring), the Bloom's heart, the survey and tank lamps, two drifting fog layers and the spores. Low quality and reduced motion trim these (see `docs/v55-title-screen.md`).
 
-## Main menu scenes (v56)
+## Main menu scenes (v59)
 
-The main menu's moving background is four 30-second clips recorded from the game itself, not painted art.
+Since v59 the main menu's moving background is live: four tiny worlds run by the game's own simulation and drawn by its own renderer, so new art, animation and behaviour show up in them by themselves. There are no clips to record any more (v56 to v58 played recorded clips; the recorder and its scene file were removed).
 
-- **Files:** in `art/menu/`. Each scene (`factory`, `frontier`, `skirmish`, `human`) has three files:
-  - `.webm`: VP9, 1920×1080, 30 frames a second, no sound track.
-  - `.mp4`: H.264, 960×540, the fallback for browsers without VP9.
-  - `.jpg`: a still from four seconds in, shown when video cannot play, when the moving background is off, and for reduced motion.
-- **Scenes:** `art/source/menu_scenes.js` builds each one in the game page from a fixed seed and a hand-laid layout, with no waves, no fog of war and no story.
-- **Recorder:** `art/source/rec_menu.js` steps the scene on its own clock, draws each frame with the game's renderer at Epic quality, and encodes the clips with ffmpeg. The last 1.5 seconds are blended into the first, so the clips loop without a cut. Start a web server on the repo root, then run `node art/source/rec_menu.js [scene]`; `--stills` saves four frames per scene to check the framing. Since v58 it records the game's own sound with the picture (its mixer on an offline clock moved with the frames), levelled to -21 LUFS, as Opus in the WebM and AAC in the MP4.
-- **When to record again:** any change to the painted art, the renderer or the growths and machines shown makes the clips out of date.
-- **Framing:** keep each scene's point of interest right of centre. The menu rail covers the left third, and the video is anchored at 62% across.
-- **Size:** keep a clip under about 3 MB (VP9 `-crf 48`).
+- **Code:** in the game page, the block that starts `// ===== v59: the main menu's live scenes`. `MDS.factory`, `MDS.frontier`, `MDS.assault` and `MDS.human` each lay out one 36×22-tile world by hand from a fixed seed.
+- **Stills:** `art/menu/<scene>.jpg` (`factory`, `frontier`, `assault`, `human`), 1920×1080, shown when the moving background is off, for reduced motion, when a scene fails and on a computer that cannot keep up. They are frames of the live scenes themselves, rendered by `tests/stills59.js` at High quality with the menu hidden. Render them again whenever a scene's layout or the art in it changes.
+- **Framing:** keep each scene's point of interest right of centre. The menu rail covers the left third, and the camera puts the subject 60% across on a wide window. The camera never shows the world's rock edge.
+- **Size:** a world is at most 36×22 tiles and keeps to its caps (at most 10 ants, 6 machines, 70 shots, 90 effects and 40 marks).
 - **Content:** no spoilers. Nothing from later in the campaign, and no HUD, messages or range rings in frame.
 

@@ -1,0 +1,44 @@
+{
+ "liveFactory": {
+  "scene": "factory",
+  "cpuPercent": 64,
+  "memoryMB": 1211,
+  "byProcess": {
+   "Browser": 0.3,
+   "GPU": 58.2,
+   "Utility": 0.2,
+   "Tab": 5.3
+  }
+ },
+ "liveAssault": {
+  "scene": "assault",
+  "cpuPercent": 69.2,
+  "memoryMB": 1196,
+  "byProcess": {
+   "Browser": 0.3,
+   "GPU": 64.6,
+   "Utility": 0.2,
+   "Tab": 4.1
+  }
+ },
+ "menuStill": {
+  "cpuPercent": 2.5,
+  "memoryMB": 1204,
+  "byProcess": {
+   "Browser": 0.3,
+   "GPU": 0.4,
+   "Utility": 0.2,
+   "Tab": 1.5
+  }
+ },
+ "battle": {
+  "cpuPercent": 63.1,
+  "memoryMB": 1168,
+  "byProcess": {
+   "Browser": 0.3,
+   "GPU": 56.1,
+   "Utility": 0.2,
+   "Tab": 6.5
+  }
+ }
+}

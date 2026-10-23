@@ -109,6 +109,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #overlay.mm #mmBg{display:block;position:absolute;inset:0;overflow:hidden;pointer-events:none;background:#06080c}
 #mmBg video,#mmBg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 50%;opacity:0;transition:opacity 1.4s ease}
 #mmBg .on{opacity:1}
+body.mdlive #overlay.mm,body.mdlive #overlay.mm #mmBg{background:transparent}body.mdlive .hud,body.mdlive #msgs,body.mdlive #tut{visibility:hidden}
+#mdFade{position:absolute;inset:0;background:#06080c;opacity:0;transition:opacity .7s ease}#mdFade.on{opacity:1}
 #mmBg .mmvig{position:absolute;inset:0;background:radial-gradient(ellipse 72% 85% at 64% 50%,rgba(3,4,8,0) 52%,rgba(3,4,8,.62) 100%),
   linear-gradient(180deg,rgba(3,4,8,.42) 0%,rgba(3,4,8,0) 20%,rgba(3,4,8,0) 72%,rgba(3,4,8,.55) 100%),linear-gradient(90deg,rgba(3,4,8,.55) 0%,rgba(3,4,8,0) 46%)}
 #overlay.mm #ovcard{position:absolute;left:0;top:0;bottom:0;width:clamp(340px,31vw,760px);max-width:none;box-sizing:border-box;margin:0;overflow-y:auto;display:flex;flex-direction:column;
@@ -177,11 +179,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
   letter-spacing:.32em;text-transform:uppercase;color:#d9e6ea;text-shadow:0 0 12px rgba(120,210,220,.45),0 2px 4px rgba(0,0,0,.8);opacity:0;transition:opacity 1.6s ease}
 #splash.ready .sp{opacity:1;animation:spPulse 2.8s ease-in-out 1.6s infinite}
 @keyframes spPulse{0%,100%{opacity:1}50%{opacity:.42}}
-#splash.vines .sp{opacity:0!important;animation:none!important;transition:opacity .35s}#splashVn{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#splash.vines .sp{opacity:0!important;animation:none!important;transition:opacity .12s}#splash.rmq{transition:opacity .2s linear}#splashVn{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #splash.vopen{background:transparent;cursor:default}#splash.vopen>:not(#splashVn){visibility:hidden}
-#splash h1{transform:scale(calc(1 + var(--hb,0)*.016))}
 #splash .sx{position:absolute;right:16px;bottom:12px;font-family:var(--f-ui);font-size:12px;letter-spacing:.08em;color:rgba(200,200,215,.4);pointer-events:none}
-@media (prefers-reduced-motion:reduce){#splash h1{transform:none}#splash.ready .sp{animation:none}#splash .st{transition:opacity 1.2s ease}}
+@media (prefers-reduced-motion:reduce){#splash.ready .sp{animation:none}#splash .st{transition:opacity 1.2s ease}}
 #intro{position:fixed;inset:0;z-index:40;--lb:0px;transition:opacity .45s}#intro[hidden]{display:none}#intro.out{opacity:0}
 #introCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #intro .ibar{position:absolute;left:0;right:0;height:var(--lb);background:#000}#intro .ibar.top{top:0}#intro .ibar.bot{bottom:0}
@@ -312,7 +313,7 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
   <div class="qlbl">Frame rate limit</div>
   <div class="qbar" id="fpsBar" role="radiogroup" aria-label="Frame rate limit"><button data-fps="0" role="radio" title="One frame for each refresh of your screen">Screen</button><button data-fps="30" role="radio">30</button><button data-fps="60" role="radio">60</button><button data-fps="80" role="radio">80</button><button data-fps="120" role="radio">120</button><button data-fps="240" role="radio">240</button><button data-fps="-1" role="radio">Unlimited</button></div>
   <p id="fpsNote" class="qdesc"></p>
-  <label class="opt"><input type="checkbox" id="optMenuBg"><span><b>Moving menu background</b><br>Scenes recorded from the game play behind the main menu. Off shows a still picture of each instead.</span></label>
+  <label class="opt"><input type="checkbox" id="optMenuBg"><span><b>Moving menu background</b><br>Small live scenes, run by the game itself, play behind the main menu. Off shows a still picture of each and runs nothing.</span></label>
   <div class="qlbl">Audio</div>
   <div class="vrow"><label for="vol_m">Master volume</label><input type="range" id="vol_m" min="0" max="100" step="1"><output id="volv_m" for="vol_m">80%</output></div>
   <div class="vrow"><label for="vol_s">Sound effects</label><input type="range" id="vol_s" min="0" max="100" step="1"><output id="volv_s" for="vol_s">80%</output></div>
@@ -340,7 +341,7 @@ body.intro-on #top,body.intro-on #bottom,body.intro-on #msgs,body.intro-on #tut,
 <div id="splash" hidden role="button" aria-label="Last Colony. Press any key to continue."><canvas id="splashCv"></canvas><div class="sv"></div><div class="st"><h1>LAST COLONY</h1><div class="sr"></div></div><div class="sp">Press any key to continue</div><div class="sx" id="splashVer"></div></div>
 <div id="intro" hidden><canvas id="introCv"></canvas><div class="ibar top"></div><div class="ibar bot"></div><div id="introTitle"><b></b><span></span></div><div id="introRadio"><span class="lbl"></span><span class="txt"></span></div><div id="introCap"></div><button id="introSkip" aria-label="Skip the intro">Skip <kbd>Esc</kbd></button></div>
 <div id="overlay" class="mm">
-  <div id="mmBg" aria-hidden="true"><div class="mmvig"></div></div>
+  <div id="mmBg" aria-hidden="true"><div id="mdFade"></div><div class="mmvig"></div></div>
   <div class="card" id="ovcard">
     <h1>LAST COLONY</h1>
     <h2>Root, spread, evolve, swarm.</h2>
@@ -505,10 +506,10 @@ const terrCanvas=document.createElement('canvas');terrCanvas.width=MW*T;terrCanv
 const tctx=terrCanvas.getContext('2d');
 const miniBase=document.createElement('canvas');miniBase.width=MW;miniBase.height=MH;
 
-function setMapSize(w){if(w===MW&&w===MH)return;MW=MH=w;N=w*w;
-  terrCanvas.width=terrCanvas.height=w*T;miniBase.width=miniBase.height=w;webClearAll();miniWeb.width=miniWeb.height=w;hdCanvas.width=hdCanvas.height=w*HDR;webImg=null;
+function setMapSize(w,h=w){if(w===MW&&h===MH)return;MW=w;MH=h;N=w*h;
+  terrCanvas.width=w*T;terrCanvas.height=h*T;miniBase.width=w;miniBase.height=h;webClearAll();miniWeb.width=w;miniWeb.height=h;hdCanvas.width=w*HDR;hdCanvas.height=h*HDR;webImg=null;
   webArtImg=null;webPat=null;if(webArtOn())webPat=webSel(0,0).x.createPattern(ART.plant.rootweb.img[0],'repeat');}
-function newGame(mode,mis){splashEnd(true);
+function newGame(mode,mis){mdStop();splashEnd(true);
   RADIO.length=0;PINGS.length=0;sndReset();cineReset();
   setMapSize(mis?mis.size:mode==='siege'?MAXM:96);
   G={mode,mission:mis?mis.id:null,diff:mis&&mis.diff||1,winWave:mis&&mis.waves||WIN_WAVE,ezone:mis&&mis.ezone||(mode==='siege'?23:7),
@@ -2076,10 +2077,10 @@ function updBlock(b,dt){
   case 'nest':case 'factory':{
     // v51: the egg is laid (its cost taken) as soon as the items are in, then grows for the ant's hatch time. A save from before v51 that was
     // part-way through keeps its progress: its items are still in the pod, so they are taken here and the egg carries on from where it was.
-    if(!b.egg&&unitOk(b.unit)&&U[b.unit].cost.every(([i,n])=>b.inv[i]>=n)&&G.units.length<UNIT_CAP){for(const [i,n] of U[b.unit].cost)b.inv[i]-=n;b.egg=b.unit;}
+    if(!b.egg&&unitOk(b.unit)&&U[b.unit].cost.every(([i,n])=>b.inv[i]>=n)&&G.units.length<(G.demo?G.demo.ucap:UNIT_CAP)){for(const [i,n] of U[b.unit].cost)b.inv[i]-=n;b.egg=b.unit;}
     b.wants=!!b.egg&&b.prog<1;
     if(b.egg){const u=U[b.egg];if(b.prog<1)b.prog=Math.min(1,b.prog+dt*(d.power?G.powSat:1)/u.time);
-      if(b.prog>=1&&G.units.length<UNIT_CAP){const k=b.egg;b.prog=0;b.egg=null;
+      if(b.prog>=1&&G.units.length<(G.demo?G.demo.ucap:UNIT_CAP)){const k=b.egg;b.prog=0;b.egg=null;
         NARROW=u.large?1:0;let sp;try{sp=exitTile(b);}finally{NARROW=0;}const nu=spawnUnit(k,sp[0],sp[1]);nu.ang=nu.tang=b.ang;if(b.rally)nu.hold=rallySpot(b);
         snd('hatch',sp[0],sp[1]);msg(`${u.name} hatched.`,'good');}}
     return;}
@@ -2171,7 +2172,7 @@ function step(dt){
   if(!G.held&&!G.test&&G.mode!=='siege'&&G.wave>=G.winWave&&!G.spawnQ.length&&!G.enemies.length)endGame(true);
 }
 function endGame(win){
-  if(G.over)return;G.over=true;
+  if(G.over||G.demo)return;G.over=true;
   if(G.mission){if(win&&storyOutro(()=>missionEndCard(true)))return;missionEndCard(win);return;}
   const card=document.getElementById('ovcard'),siege=G.mode==='siege';$('overlay').classList.remove('mm');
   card.innerHTML=(win
@@ -2184,11 +2185,13 @@ function endGame(win){
 // ---------- camera & input ----------
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const cam={x:0,y:0,z:1};let VW=0,VH=0,DPR=1;
+let MDRES=1;
 function resize(){VW=cv.clientWidth;VH=cv.clientHeight;const base=window.devicePixelRatio||1;
   if(DESK){const Q=QUALITY[SET.q]||{},cap=Math.sqrt(12.5e6/Math.max(1,VW*VH));   // never more than about 12.5 million pixels
     DYN.max=Math.max(base*.5,Math.min(Q.ss?Q.ss*base:Math.min(SET.dpr||2,base),cap));DYN.min=Math.min(DYN.max,base)*.75;   // as low as 75% of the screen resolution, whatever the preset
     DPR=DYN.on?clamp(DYN.cur||DYN.max,DYN.min,DYN.max):DYN.max;DYN.cur=DPR;cv.width=Math.round(VW*DPR);cv.height=Math.round(VH*DPR);}
-  else{DPR=Math.min(SET.dpr||2,base);cv.width=VW*DPR;cv.height=VH*DPR;}}
+  else{DPR=Math.min(SET.dpr||2,base);cv.width=VW*DPR;cv.height=VH*DPR;}
+  if(MDRES<1){DPR*=MDRES;cv.width=Math.round(VW*DPR);cv.height=Math.round(VH*DPR);}}
 window.addEventListener('resize',resize);resize();
 function centerOn(tx,ty){cam.x=tx*T-VW/2/cam.z;cam.y=ty*T-VH/2/cam.z;clampCam();}
 function clampCam(){const mw=MW*T,mh=MH*T,vw=VW/cam.z,vh=VH/cam.z;cam.x=clamp(cam.x,-vw*.3,mw-vw*.7);cam.y=clamp(cam.y,-vh*.3,mh-vh*.7);}
@@ -4342,7 +4345,7 @@ function vehDraw(c,e,time){const a=vehOn(e);if(!a)return false;const V=VEH[e.t],
     if(V.flash&&ft>=0&&ft<1.2){const tc=Math.cos(s.ta),ts=Math.sin(s.ta),mx=px+ca*V.tur[0]*S+tc*V.tip*S,my=py+sa*V.tur[0]*S+ts*V.tip*S;
       for(let i=0;i<3;i++){const u=Math.min(1,ft/1.2+i*.08);vehPuff(c,P,mx+tc*(i+1)*.06*S*(.4+u),my+ts*(i+1)*.06*S*(.4+u)-u*.15*S,(.15+.35*u)*S*Math.min(1.5,big),(1-u)*.45);}}
     c.restore();}
-  if(e.hp<e.max){const r=E[e.t].r*S;c.fillStyle='#000';c.fillRect(px-r,py-r-6,r*2,3);c.fillStyle='#ee5a44';c.fillRect(px-r,py-r-6,r*2*hp,3);}
+  if(e.hp<e.max&&!G.demo){const r=E[e.t].r*S;c.fillStyle='#000';c.fillRect(px-r,py-r-6,r*2,3);c.fillStyle='#ee5a44';c.fillRect(px-r,py-r-6,r*2*hp,3);}
   return true;}
 // wrecks: burnt hulls (the Rammer leaves scattered debris) that burn for a few seconds and fade; drawing only, never saved
 function vehWrecks(c,inView,time){for(let i=VEHW.length-1;i>=0;i--){const w=VEHW[i],age=G.time-w.at;if(age<0||age>VEH_WRECK){VEHW.splice(i,1);continue;}
@@ -4380,7 +4383,7 @@ function drawEnemy(c,e,time){
     else if(big)c.fillRect(0,-r*.13,r*1.55,r*.26);
     else c.fillRect(0,-r*.1,r*1.2,r*.2);}
   c.restore();
-  if(e.hp<e.max){c.fillStyle='#000';c.fillRect(px-r,py-r-6,r*2,3);c.fillStyle='#ee5a44';c.fillRect(px-r,py-r-6,r*2*e.hp/e.max,3);}
+  if(e.hp<e.max&&!G.demo){c.fillStyle='#000';c.fillRect(px-r,py-r-6,r*2,3);c.fillStyle='#ee5a44';c.fillRect(px-r,py-r-6,r*2*e.hp/e.max,3);}
 }
 // painted Thorn Spitter shots: a small hardened thorn tinted by its ammo, hidden until it leaves the thorn's opening
 const THORN_SHOT={'#d99d73':['#b57a52','#4e2c1a',null],'#e0a43a':['#e8a83a','#7a4a10','#fff3c0'],'#6d5a8c':['#3c3157','#d7cbf4',null]};
@@ -4428,14 +4431,14 @@ function render(){
     if(G.sel===b.id){ctx.strokeStyle=TEAM_COL[b.team];ctx.lineWidth=2;ctx.strokeRect(b.x*T-1,b.y*T-1,S+2,S+2);
       const tu=B[b.t].tur;if(tu){ctx.strokeStyle='rgba(166,224,90,.35)';ctx.beginPath();ctx.arc((b.x+b.size/2)*T,(b.y+b.size/2)*T,tu.range*T,0,7);ctx.stroke();}
       if(b.t==='mender'){ctx.strokeStyle='rgba(127,208,106,.35)';ctx.beginPath();ctx.arc((b.x+.5)*T,(b.y+.5)*T,6*T,0,7);ctx.stroke();}}
-    if(b.hp<b.max&&!B[b.t].belt){ctx.fillStyle='#000';ctx.fillRect(b.x*T+2,b.y*T-5,S-4,3);ctx.fillStyle=b.team===1?'#ee5a44':b.hp/b.max>.4?'#7fd06a':'#ee5a44';ctx.fillRect(b.x*T+2,b.y*T-5,(S-4)*b.hp/b.max,3);}
+    if(b.hp<b.max&&!B[b.t].belt&&!G.demo){ctx.fillStyle='#000';ctx.fillRect(b.x*T+2,b.y*T-5,S-4,3);ctx.fillStyle=b.team===1?'#ee5a44':b.hp/b.max>.4?'#7fd06a':'#ee5a44';ctx.fillRect(b.x*T+2,b.y*T-5,(S-4)*b.hp/b.max,3);}
   }
   if(PODFX.length)drawPodFx(ctx,time);
   vehFrame(z,inView);if(VEHW.length)vehWrecks(ctx,inView,time);
   for(const e of G.enemies)if(!E[e.t].air&&inView(e.x,e.y,1)&&fogVis(e.x,e.y))drawEnemy(ctx,e,time);
   if(ANTDIE.length)drawAntDeaths(ctx,inView);
   for(const u of G.units)if(inView(u.x,u.y,1)){drawTank(ctx,u.t,u.x*T,u.y*T,u.ang,u.tang,0,u.hit>0,u);
-    if(u.hp<u.max){const r=U[u.t].r*T;ctx.fillStyle='#000';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2,3);ctx.fillStyle='#7fd06a';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2*u.hp/u.max,3);}}
+    if(u.hp<u.max&&!G.demo){const r=U[u.t].r*T;ctx.fillStyle='#000';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2,3);ctx.fillStyle='#7fd06a';ctx.fillRect(u.x*T-r,u.y*T-r-6,r*2*u.hp/u.max,3);}}
   if(G.story)storyDrawWorld(ctx,time);
   if(PINGS.length)drawPings(ctx);
   if(G.test)testDrawWorld(ctx,time);
@@ -4672,7 +4675,7 @@ panel.addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn|
   if(btn.dataset.act==='remove')deconstruct(b);});
 
 const msgEl=$('msgs');let lastMsg='',lastMsgT=0;
-function msg(text,kind){
+function msg(text,kind){if(G&&G.demo)return;
   const now=performance.now();if(text===lastMsg&&now-lastMsgT<1500)return;lastMsg=text;lastMsgT=now;snd('msg',text,kind);
   const d=document.createElement('div');d.textContent=text;if(kind)d.className=kind;msgEl.appendChild(d);
   while(msgEl.children.length>4)msgEl.firstChild.remove();
@@ -5231,7 +5234,7 @@ function snapGame(){
 async function gz(str,dir){const s=new Blob([str]).stream().pipeThrough(dir?new CompressionStream('gzip'):new DecompressionStream('gzip'));return new Uint8Array(await new Response(s).arrayBuffer());}
 async function encodeSave(){const j=JSON.stringify(snapGame());return 'LC1:'+b64(await gz(j,true));}
 async function decodeSave(s){if(!s||!s.startsWith('LC1:'))throw new Error('Not a Last Colony save');const u=await gz(unb64(s.slice(4)),false);return JSON.parse(new TextDecoder().decode(u));}
-function applySave(S){webSupReset();
+function applySave(S){mdStop();webSupReset();
   RADIO.length=0;PINGS.length=0;sndReset();cineReset();
   setMapSize(S.MW);
   const g={};for(const k in S.g)g[k]=unpackVal(S.g[k]);
@@ -6003,7 +6006,7 @@ function sndAmbient(dt){if(!sndReady('a')){if(Object.keys(SND.amb).length)sndAmb
 // ---- the per-frame part (about ten times a second): organ beds, ant swarm, engines, ambience, dialogue ducking
 function sndTick(dt){if(!SND.on||!SND.ctx)return;SND.tAcc+=dt;if(SND.tAcc<.1)return;const T0=SND.tAcc;SND.tAcc=0;
   try{const c=SND.ctx,t=c.currentTime,duck=DLG.open?1:0;
-    SND.bus.sd.gain.setTargetAtTime(duck?.5:1,t,.3);SND.bus.ad.gain.setTargetAtTime(duck?.7:1,t,.4);
+    const dm=G&&G.demo?MD.vol:1;SND.bus.sd.gain.setTargetAtTime((duck?.5:1)*(G&&G.demo?.5*dm:1),t,.3);SND.bus.ad.gain.setTargetAtTime((duck?.7:1)*(G&&G.demo?.4+.6*dm:1),t,.4);
     if(INTRO.on){if(Object.keys(SND.amb).length)sndAmbStop();for(const k in SND.beds)sndBedStop(k);return;}   // v48: the intro has its own sound
     if(!SND.ready)return;
     sndAmbient(T0);
@@ -6458,7 +6461,7 @@ function loop(now){if(fpsSkip(now)){requestAnimationFrame(loop);return;}const w0
   if(DYN.re){DYN.re=0;resize();}   // a new resolution clears the canvas, so it is only set just before a frame is drawn
   const dt=Math.min(.1,(now-last)/1000);last=now;
   FPS.n++;FPS.t+=now-(FPS.l||now);FPS.l=now;if(FPS.t>=500){const b=$('fpsBox');if(!b.hidden)b.textContent=Math.round(FPS.n*1000/FPS.t)+' fps · Rootweb on '+(webGPU?'GPU':'2D canvas')+(DESK?' · resolution '+Math.round(DPR/(window.devicePixelRatio||1)*100)+'%':'');FPS.n=0;FPS.t=0;}
-  sndTick(dt);
+  if(!(MD.G&&!G&&mmState()==='play'))sndTick(dt);
   if(G){
     cineTick(dt);
     const sp=700*dt/cam.z;let px=0,py=0;
@@ -6469,7 +6472,7 @@ function loop(now){if(fpsSkip(now)){requestAnimationFrame(loop);return;}const w0
     if(!(INTRO.on&&INTRO.opaque))render();
     if(frame%3===0)renderMini();
     if(frame%8===0)updateHUD();
-  }else if(!loop.idle){render();loop.idle=1;}
+  }else if(!mdFrame(now)&&!loop.idle){render();loop.idle=1;}
   if(G)loop.idle=0;
   frame++;dynFrame(rawDt,performance.now()-w0,now);requestAnimationFrame(loop);
 }
@@ -6539,8 +6542,6 @@ function splashStart(){const el=$('splash');if(!el)return;
   // the desktop app may start sound at once; a browser waits for the first key or click, which here is the one that continues
   if(DESK)sndUnlock();
   SPL.raf=requestAnimationFrame(splashLoop);}
-// the heartbeat's shape over time: a strong beat, then a lighter one 0.3 s later, each a quick rise and a slower fall
-function splashBeat(b){if(b==null)return 0;const one=x=>x<0?0:x<.07?x/.07:Math.exp(-(x-.07)/.14);return Math.min(1,one(b)+.68*one(b-.3));}
 function splashReady(){if(SPL.on&&SPL.minT&&SPL.got>=2)$('splash').classList.add('ready');}
 function splashPadState(){try{return [...(navigator.getGamepads?navigator.getGamepads():[])].map(p=>p?p.buttons.map(b=>b.pressed):null);}catch(_){return [];}}
 function splashPadPressed(){let any=false;try{const P=navigator.getGamepads?navigator.getGamepads():[];for(let i=0;i<P.length;i++){const p=P[i];if(!p)continue;const was=SPL.pads[i]||[];
@@ -6549,9 +6550,9 @@ function splashPadPressed(){let any=false;try{const P=navigator.getGamepads?navi
 function splashEnd(instant){if(!SPL||!SPL.on)return;const el=$('splash');SPL.why=instant?'game started: '+(new Error().stack.split('\n')[2]||'').trim():'continued';
   if(instant){SPL.on=false;cancelAnimationFrame(SPL.raf);vineClear();el.hidden=true;el.classList.remove('out','on','ready');splashSound(false,.3);return;}
   if(SPL.vine){vineSkip();return;}if(SPL.ending)return;
-  if(!SPL.rm){vineStart();return;}SPL.ending=true;el.classList.add('out');splashSound(false,1.4);snd('ui','ui_open');
-  setTimeout(()=>{if(!SPL.on)return;SPL.on=false;cancelAnimationFrame(SPL.raf);el.hidden=true;el.classList.remove('out','on','ready');
-    const b=document.querySelector('#ovcard .mode');if(b&&!$('overlay').hidden&&b.focus)b.focus({preventScroll:true});},900);}
+  if(!SPL.rm){vineStart();return;}SPL.ending=true;el.classList.add('rmq','out');splashSound(false,.4);snd('ui','ui_open');
+  setTimeout(()=>{if(!SPL.on)return;SPL.on=false;cancelAnimationFrame(SPL.raf);el.hidden=true;el.classList.remove('rmq','out','on','ready');
+    const b=document.querySelector('#ovcard .mode');if(b&&!$('overlay').hidden&&b.focus)b.focus({preventScroll:true});},220);}
 function splashKey(e){if(!SPL.on)return;if(['Shift','Control','Alt','Meta','CapsLock','Tab','F11','F12'].includes(e.key))return;
   e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)splashEnd(false);}
 function splashPointer(e){if(!SPL.on)return;e.preventDefault();e.stopImmediatePropagation();splashEnd(false);}
@@ -6567,20 +6568,20 @@ function splashFog(){const c=document.createElement('canvas');c.width=256;c.heig
 function splashMote(any){return {x:Math.random(),y:any?Math.random():1.05,v:.006+Math.random()*.016,w:Math.random()*6.3,r:.6+Math.random()*1.8,h:Math.random()<.6?'150,225,230':'200,160,240',a:.25+Math.random()*.55};}
 function splashLoop(now){if(!SPL.on)return;const dt=SPL.last?Math.min(.1,(now-SPL.last)/1000):0;SPL.last=now;if(!document.hidden)SPL.t+=dt;
   if(splashPadPressed())splashEnd(false);
-  if(!SPL.vine||SPL.vine.t<VN.OPEN)splashDraw(SPL.t,dt);if(SPL.vine)vineTick();if(!SPL.on)return;splashSoundTick(dt);SPL.raf=requestAnimationFrame(splashLoop);}
+  if(!SPL.vine||SPL.vine.t<VN.SWAP)splashDraw(SPL.t,dt);if(SPL.vine)vineTick();if(!SPL.on)return;splashSoundTick(dt);SPL.raf=requestAnimationFrame(splashLoop);}
 function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
   const PW=Math.round(W*dpr),PH=Math.round(H*dpr);if(cv.width!==PW||cv.height!==PH){cv.width=PW;cv.height=PH;}
   const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#050407';g.fillRect(0,0,W,H);
   // the picture covers the screen, drifting in very slowly; the Bloom is kept below the title on tall and narrow screens
-  if(SPL.beat!=null){SPL.beat+=dt;if(SPL.beat>1.6)SPL.beat=null;}const hb=splashBeat(SPL.beat);$('splash').style.setProperty('--hb',SPL.rm?0:hb.toFixed(3));
-  const P=SPL_PIC,z=(SPL.rm?1.02:1.02+.03*(.5-.5*Math.cos(Math.min(1,t/70)*Math.PI)))*(SPL.rm?1:1+.011*hb),k=Math.max(W/P.W,H/P.H)*z;
+  let A=0;if(SPL.hb){SPL.hb.t+=dt;A=hbEnv(SPL.hb,SPL.hb.t);if(SPL.hb.t>hbLen(SPL.hb))SPL.hb=null;}SPL.hbA=A;
+  const P=SPL_PIC,z=SPL.rm?1.02:1.02+.03*(.5-.5*Math.cos(Math.min(1,t/70)*Math.PI)),k=Math.max(W/P.W,H/P.H)*z;
   const bx=P.bloom[0],by=P.bloom[1],ox=W/2-P.W/2*k+(SPL.rm?0:Math.sin(t*.05)*W*.004),oy=Math.min(H*.56-by*k,Math.max(H-P.H*k,0))+(SPL.rm?0:Math.cos(t*.043)*H*.004);
   const X=x=>ox+x*k,Y=y=>oy+y*k;
-  if(SPL.bg){g.globalAlpha=Math.min(1,t/1.6);g.drawImage(SPL.bg,ox,oy,P.W*k,P.H*k);g.globalAlpha=1;}
+  if(SPL.bg){g.globalAlpha=Math.min(1,t/1.6);g.drawImage(SPL.bg,ox,oy,P.W*k,P.H*k);if(A&&!SPL.rm)hbWarp(g,ox,oy,k,A);g.globalAlpha=1;}
   // light from the Bloom: a slow breath everywhere, and a wave that runs out along the conduits every few seconds
   if(SPL.glow&&SPL.bg){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=Math.min(1,t/2)*(.16+.06*Math.sin(t*.9));g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();
-    SPL.nextPulse-=dt;if(SPL.nextPulse<=0){SPL.nextPulse=5+Math.random()*3;SPL.pulses.push({t:0});SPL.beat=0;splashSound('pulse');}
-    for(const p of SPL.pulses){p.t+=dt;const r=p.t*360*k*1.6,fade=Math.max(0,1-p.t/4.2);if(fade<=0)continue;
+    SPL.nextPulse-=dt;if(SPL.nextPulse<=0){SPL.nextPulse=5+Math.random()*3;const p=SPL.hb=hbNew();SPL.beats=(SPL.beats||0)+1;hbSound(p);SPL.pulses.push({t:-p.c1-.05,s:.8},{t:-p.c1-p.d-.04,s:.55});}
+    for(const p of SPL.pulses){p.t+=dt;if(p.t<=0)continue;const r=p.t*360*k*1.6,fade=Math.max(0,1-p.t/4.2)*p.s;if(fade<=0)continue;
       if(SPL.lite){g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.25*fade*Math.min(1,p.t*3);g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);g.restore();continue;}
       const m=splashMask(PW,PH);m.g.setTransform(1,0,0,1,0,0);m.g.globalCompositeOperation='source-over';m.g.clearRect(0,0,PW,PH);m.g.setTransform(dpr,0,0,dpr,0,0);
       m.g.drawImage(SPL.glow,ox,oy,P.W*k,P.H*k);m.g.globalCompositeOperation='destination-in';const cx=X(bx),cy=Y(by),w=120*k*1.6+40;
@@ -6590,9 +6591,9 @@ function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,win
   // the Bloom's heart, breathing
   {const cx=X(bx),cy=Y(by),R=150*k,a=Math.min(1,t/2.5)*(.12+.08*Math.sin(t*1.1));const gr=g.createRadialGradient(cx,cy,0,cx,cy,R);gr.addColorStop(0,`rgba(170,255,200,${a})`);gr.addColorStop(1,'rgba(170,255,200,0)');
     g.save();g.globalCompositeOperation='lighter';g.fillStyle=gr;g.fillRect(cx-R,cy-R,R*2,R*2);g.restore();
-    // the beat: a flush of light from the Bloom and a faint warm swell over the whole picture
-    if(hb>.01){const R2=430*k,g2=g.createRadialGradient(cx,cy,0,cx,cy,R2);g2.addColorStop(0,`rgba(200,255,220,${.26*hb})`);g2.addColorStop(.45,`rgba(150,110,220,${.12*hb})`);g2.addColorStop(1,'rgba(150,110,220,0)');
-      g.save();g.globalCompositeOperation='lighter';g.fillStyle=g2;g.fillRect(cx-R2,cy-R2,R2*2,R2*2);g.fillStyle=`rgba(90,30,60,${.06*hb})`;g.fillRect(0,0,W,H);g.restore();}}
+    // reduced motion: the heart glows a little with each beat instead of moving
+    if(SPL.rm&&A>0){const R2=160*k,g2=g.createRadialGradient(cx,cy,0,cx,cy,R2);g2.addColorStop(0,`rgba(190,255,215,${2.4*A})`);g2.addColorStop(1,'rgba(190,255,215,0)');
+      g.save();g.globalCompositeOperation='lighter';g.fillStyle=g2;g.fillRect(cx-R2,cy-R2,R2*2,R2*2);g.restore();}}
   // people: survey lamps blinking down the line, and the tank's lamps
   if(SPL.bg){g.save();g.globalCompositeOperation='lighter';
     P.lamps.forEach(([x,y],i)=>{const ph=(t*.8-i*.22)%2.4,on=ph>0&&ph<.18?1:.18;const r=(on>.5?9:5)*k*1.6,cx=X(x),cy=Y(y);const gr=g.createRadialGradient(cx,cy,0,cx,cy,r*3);
@@ -6606,130 +6607,288 @@ function splashDraw(t,dt){const cv=$('splashCv'),dpr=Math.min(SPL.lite?1:1.5,win
   // motes
   g.save();g.globalCompositeOperation='lighter';for(const m of SPL.motes){if(!SPL.rm){m.y-=m.v*dt;m.x+=Math.sin(t*.4+m.w)*.0009*dt*60/60;}if(m.y<-.05)Object.assign(m,splashMote(false));
     const tw=.55+.45*Math.sin(t*1.7+m.w*3),a=m.a*tw*Math.min(1,t/2.5);g.fillStyle=`rgba(${m.h},${a})`;g.beginPath();g.arc(m.x*W,m.y*H,m.r*(W/1600+.4),0,7);g.fill();}g.restore();}
-// ===== v58: vines over the title screen. They grow in from every edge (5 s), dark undergrowth closes the gaps behind them until nothing
-// of the title shows, hold a moment, then part from the middle onto the main menu (7 s in all). Drawn on their own canvas above the title;
-// each frame adds only the new length of each vine to a kept layer. Reduced motion skips them and fades as before.
-const VN={OPEN:5.6,END:7,COLS:['#1c2a1d','#223321','#28243a','#1d2c2f','#2b3a24'],MAX:240};
+// ===== v59: continuing from the title. Broad dark tendrils grow in from the left, right and lower edges along curves, translucent
+// membranes bloom between them until nothing of the title shows, the menu is put underneath, and the membranes tear open from the middle
+// while the tendrils peel back to the edges: about two seconds in all, on the wall clock, so a slow computer is never kept longer. Drawn
+// fresh each frame on its own canvas above the title, at three quarters of the screen's resolution (soft shapes need no more). Another key goes straight to the menu; reduced motion is a short crossfade instead.
+const VN={ACK:.15,COVER:.85,SWAP:.9,PEEL:1.05,GONE:1.85,END:2.05};
 function vineStart(){const el=$('splash'),c=document.createElement('canvas');c.id='splashVn';c.setAttribute('aria-hidden','true');el.appendChild(c);el.classList.add('vines');
-  const dpr=Math.min(SPL.lite?1:1.25,window.devicePixelRatio||1),W=c.clientWidth||innerWidth,H=c.clientHeight||innerHeight,L=document.createElement('canvas');
-  c.width=L.width=Math.round(W*dpr);c.height=L.height=Math.round(H*dpr);const lg=L.getContext('2d');lg.setTransform(dpr,0,0,dpr,0,0);lg.lineCap='butt';lg.lineJoin='round';
-  const V=SPL.vine={t:0,last:performance.now(),c,g:c.getContext('2d'),L,lg,dpr,W,H,D:Math.hypot(W,H),tips:[],acc:0,snd:null,skip:false};
-  for(let i=0;i<10;i++)vineEdge(V);vineSound(V);SPL.why='continued';}
-// a new vine from a random point on an edge, heading into the screen
-function vineEdge(V){const W=V.W,H=V.H,side=Math.random()*(2*W+2*H);let x,y;
-  if(side<W){x=side;y=H+8;}else if(side<2*W){x=side-W;y=-8;}else if(side<2*W+H){x=-8;y=side-2*W;}else{x=W+8;y=side-2*W-H;}
-  const tx=W*(.15+.7*Math.random()),ty=H*(.15+.7*Math.random());vineTip(V,x,y,Math.atan2(ty-y,tx-x)+(Math.random()-.5)*.6,V.D*.012*(.7+.6*Math.random())*(1+.4*V.t),0,tx,ty);}
-function vineTip(V,x,y,a,w,gen,tx,ty){if(V.tips.length>=VN.MAX)return;V.tips.push({x,y,a,w,gen,len:0,max:V.D*(.35+.6*Math.random())/(1+gen*.4),curl:(Math.random()-.5)*1.4,ph:Math.random()*6.3,
-  sp:V.D*(.15+.1*Math.random()),col:VN.COLS[(Math.random()*VN.COLS.length)|0],tx:tx==null?V.W*Math.random():tx,ty:ty==null?V.H*Math.random():ty});}
-// on the clock on the wall (at most half a second a frame), so a slow computer still reaches the menu on time
-function vineTick(){const V=SPL.vine;if(!V)return;const now=performance.now(),dt=Math.min(.5,(now-V.last)/1000);V.last=now;V.t+=dt;const t=V.t,g=V.g,W=V.W,H=V.H,dpr=V.dpr;vineSound(V);
-  if(t<VN.OPEN){if(t<4.4){V.acc+=dt*(5+6*t);while(V.acc>=1){V.acc--;vineEdge(V);}}
-    // grow: each vine steers toward its point, curls and wanders, branches now and then, and thins as it goes
-    const segs=[],deco=[];
-    for(const p of V.tips){const dist=p.sp*(1+.35*t)*dt,n=Math.max(1,Math.ceil(dist/5)),st=dist/n,pts=[[p.x-Math.cos(p.a)*1.5,p.y-Math.sin(p.a)*1.5]];
-      for(let k=0;k<n;k++){let da=Math.atan2(p.ty-p.y,p.tx-p.x)-p.a;da=Math.atan2(Math.sin(da),Math.cos(da));p.a+=(da*1.1+p.curl+Math.sin(p.len*.018+p.ph)*1.2)*st/p.sp;
-        p.x+=Math.cos(p.a)*st;p.y+=Math.sin(p.a)*st;p.len+=st;p.w*=Math.pow(.9993,st);pts.push([p.x,p.y]);
-        const r=Math.random();if(r<st*.004)deco.push(['thorn',p.x,p.y,p.a,p.w]);else if(r<st*.0065)deco.push(['leaf',p.x,p.y,p.a,p.w]);else if(r<st*.0078)deco.push(['bud',p.x,p.y,p.a,p.w]);}
-      segs.push([pts,p.w,p.col,p.a]);
-      if(p.gen<3&&Math.random()<dt*1.1){const s=Math.random()<.5?-1:1;vineTip(V,p.x,p.y,p.a+s*(.45+Math.random()*.55),p.w*(.62+Math.random()*.16),p.gen+1);}}
-    const live=p=>p.w>1&&p.len<p.max&&p.x>-V.D*.15&&p.x<W+V.D*.15&&p.y>-V.D*.15&&p.y<H+V.D*.15,ends=V.tips.filter(p=>!live(p));V.tips=V.tips.filter(live);
-    // each vine's new length this frame is one path, started a little back over the last, so no seams show
-    const lg=V.lg,line=(s,w,col,ox,oy)=>{lg.strokeStyle=col;lg.lineWidth=w;lg.beginPath();s[0].forEach(([x,y],i)=>i?lg.lineTo(x+ox,y+oy):lg.moveTo(x+ox,y+oy));lg.stroke();};
-    // butt ends, so each new piece of a vine meets the last without covering it; a dark rim sets it off from what it crosses
-    for(const s of segs)line(s,s[1]+4,'rgba(2,3,2,.55)',0,0);
-    for(const s of segs)line(s,s[1],s[2],0,0);
-    for(const s of segs){const o=s[1]*.24;line(s,Math.max(1,s[1]*.22),'rgba(175,215,165,.2)',Math.sin(s[3])*o,-Math.cos(s[3])*o);}
-    // a vine that stops ends in a rounded tip
-    for(const p of ends){lg.fillStyle=p.col;lg.beginPath();lg.ellipse(p.x,p.y,p.w*.75,p.w*.5,p.a,-Math.PI/2,Math.PI/2);lg.fill();}
-    for(const [k,x,y,a,w] of deco){lg.save();lg.translate(x,y);lg.rotate(a+(Math.random()<.5?1:-1)*Math.PI/2);
-      if(k==='thorn'){lg.fillStyle='#14100f';lg.beginPath();lg.moveTo(-w*.18,w*.3);lg.lineTo(0,w*.95);lg.lineTo(w*.18,w*.3);lg.fill();}
-      else if(k==='leaf'){lg.fillStyle='#1a3a32';lg.beginPath();lg.ellipse(0,w*1.1,w*.42,w*.95,0,0,7);lg.fill();lg.strokeStyle='rgba(150,230,200,.18)';lg.lineWidth=1;lg.beginPath();lg.moveTo(0,w*.3);lg.lineTo(0,w*1.9);lg.stroke();}
-      else{const r=Math.min(14,w*(.4+Math.random()*.4)),gr=lg.createRadialGradient(0,0,0,0,0,r*2.4),c=Math.random()<.6?'130,240,210':'195,145,245';gr.addColorStop(0,`rgba(${c},.9)`);gr.addColorStop(.3,`rgba(${c},.35)`);gr.addColorStop(1,`rgba(${c},0)`);lg.fillStyle=gr;lg.fillRect(-r*2.4,-r*2.4,r*4.8,r*4.8);}
-      lg.restore();}}
-  else if(!SPL.ending){SPL.ending=true;$('splash').classList.add('vopen');splashSound(false,.8);}
-  // draw: the undergrowth closing in from the edges, the vines over it, and when they part a hole opening from the middle
-  g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,V.c.width,V.c.height);g.setTransform(dpr,0,0,dpr,0,0);
-  const cov=Math.min(1,Math.max(0,(t-.6)/4.2)),cv=cov*cov*(3-2*cov),Rin=V.D*.62*(1-cv);
-  const u=t<VN.OPEN?0:Math.min(1,(t-VN.OPEN)/(VN.END-VN.OPEN)),e=u*u*(3-2*u),sc=1+.12*e;
-  g.save();g.translate(W/2,H/2);g.scale(sc,sc);g.translate(-W/2,-H/2);
-  if(Rin<=0)g.fillStyle='rgba(5,8,6,.97)';else{const m=g.createRadialGradient(W/2,H/2,Rin,W/2,H/2,Rin+V.D*.28);m.addColorStop(0,'rgba(5,8,6,0)');m.addColorStop(1,'rgba(5,8,6,.97)');g.fillStyle=m;}
-  g.fillRect(-W,-H,W*3,H*3);g.drawImage(V.L,0,0,W,H);g.restore();
-  if(e>0){const R=V.D*.78*e,h=g.createRadialGradient(W/2,H/2,0,W/2,H/2,R);h.addColorStop(0,'rgba(0,0,0,1)');h.addColorStop(.72,'rgba(0,0,0,1)');h.addColorStop(1,'rgba(0,0,0,0)');
-    g.save();g.globalCompositeOperation='destination-out';g.fillStyle=h;g.fillRect(0,0,W,H);g.restore();}
-  if(u>=1)vineDone();}
-// the vine sound starts as soon as it has loaded (the first key also starts the sound in a browser), from where the vines have got to
-function vineSound(V){if(V.snd||V.skip||V.t>1.5||!SND.on||!SND.ctx||SND.ctx.state!=='running'||sndEff().s<=0||!SND.buf.title_vines)return;
-  const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();s.buffer=SND.buf.title_vines;g.gain.value=.9;s.connect(g);g.connect(SND.bus.s);s.start(0,V.t);V.snd={s,g};}
-function vineSkip(){const V=SPL.vine;if(!V)return;if(V.t<VN.OPEN){V.t=VN.OPEN;V.skip=true;if(V.snd)try{const t=SND.ctx.currentTime;V.snd.g.gain.setTargetAtTime(0,t,.12);V.snd.s.stop(t+.6);}catch(_){}snd('ui','ui_open');}else vineDone();}
-function vineClear(){const V=SPL.vine;SPL.vine=null;if(!V)return;V.c.remove();$('splash').classList.remove('vines','vopen');if(V.snd&&V.t<VN.OPEN)try{V.snd.s.stop();}catch(_){}}
-function vineDone(){const el=$('splash');SPL.on=false;cancelAnimationFrame(SPL.raf);vineClear();el.hidden=true;el.classList.remove('out','on','ready');el.style.removeProperty('--hb');
+  const dpr=Math.min(SPL.lite?.6:.75,window.devicePixelRatio||1),W=c.clientWidth||innerWidth,H=c.clientHeight||innerHeight,R=Math.random;
+  c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);
+  const V=SPL.vine={t:0,t0:performance.now(),c,g:c.getContext('2d'),dpr,W,H,D:Math.hypot(W,H),T:[],snd:null,skip:false,ph:[R()*6.3,R()*6.3,R()*6.3]};
+  // seven tendrils (five on a narrow screen): three from below, two from each side, each aimed past the middle so they cross
+  const B=W<700?[[.25,1],[.75,1],[0,.45],[1,.35],[.5,1]]:[[.18,1],[.5,1],[.82,1],[0,.28],[0,.74],[1,.24],[1,.7]];
+  B.forEach(([fx,fy],k)=>{const sx=fx===0?-W*.03:fx===1?W*1.03:fx*W+(R()-.5)*W*.06,sy=fy===1?H*1.03:fy*H+(R()-.5)*H*.08,cx=W/2+(R()-.5)*W*.16,cy=H*.48+(R()-.5)*H*.14;
+    const tx=cx+(cx-sx)*(.28+R()*.16),ty=cy+(cy-sy)*(.28+R()*.16),L=Math.hypot(tx-sx,ty-sy),dx=(tx-sx)/L,dy=(ty-sy)/L,bend=(R()<.5?-1:1)*L*(.12+R()*.14);
+    V.T.push({p:[[sx,sy],[sx+dx*L*.35-dy*bend,sy+dy*L*.35+dx*bend],[tx-dx*L*.3+dy*bend*.6,ty-dy*L*.3-dx*bend*.6],[tx,ty]],w:V.D*(.075+R()*.035),ph:R()*6.3,
+      s:.1+k*.03+R()*.03,a:Math.atan2(sy-H/2,sx-W/2),g:0});});
+  V.T.sort((a,b)=>a.a-b.a);SPL.vfr=[];vineSound(V);SPL.why='continued';}
+// a point and direction on a tendril's curve
+function vnAt(p,u){const v=1-u,a=v*v*v,b=3*v*v*u,c=3*v*u*u,d=u*u*u,x=a*p[0][0]+b*p[1][0]+c*p[2][0]+d*p[3][0],y=a*p[0][1]+b*p[1][1]+c*p[2][1]+d*p[3][1];
+  const ex=3*v*v*(p[1][0]-p[0][0])+6*v*u*(p[2][0]-p[1][0])+3*u*u*(p[3][0]-p[2][0]),ey=3*v*v*(p[1][1]-p[0][1])+6*v*u*(p[2][1]-p[1][1])+3*u*u*(p[3][1]-p[2][1]),l=Math.hypot(ex,ey)||1;
+  return [x,y,-ey/l,ex/l];}
+const vnS=x=>x<=0?0:x>=1?1:x*x*(3-2*x),vnOut=x=>x<=0?0:x>=1?1:1-Math.pow(1-x,3);
+function vineTick(){const V=SPL.vine;if(!V)return;const t=V.t=(performance.now()-V.t0)/1000,g=V.g,W=V.W,H=V.H,D=V.D;vineSound(V);SPL.vfr.push(+t.toFixed(3));
+  if(t>=VN.SWAP&&!SPL.ending){SPL.ending=true;SPL.swapT=t;$('splash').classList.add('vopen');splashSound(false,.6);}
+  // how far each tendril reaches: out from its edge as it grows, back to it as it peels
+  for(const [k,T] of V.T.entries())T.g=t<VN.PEEL?vnOut((t-T.s)/.5):1-vnS((t-VN.PEEL-k*.025)/.62);
+  g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,V.c.width,V.c.height);g.setTransform(V.dpr,0,0,V.dpr,0,0);
+  const fade=1-vnS((t-VN.GONE)/(VN.END-VN.GONE));g.globalAlpha=fade;
+  // the edges darken at once (the key was heard), then a deep flesh-dark ground closes in behind the membranes
+  const rim=vnS(t/VN.ACK)*(1-vnS((t-VN.PEEL)/.3)),base=vnS((t-.5)/(VN.COVER-.5));
+  if(rim>0&&base<1){const m=g.createRadialGradient(W/2,H/2,D*.25,W/2,H/2,D*.6);m.addColorStop(0,'rgba(12,3,12,0)');m.addColorStop(1,`rgba(12,3,12,${.6*rim})`);g.fillStyle=m;g.fillRect(0,0,W,H);}
+  if(base>0){const m=g.createRadialGradient(W/2,H*.48,0,W/2,H*.48,D*.6);m.addColorStop(0,`rgba(27,7,26,${base})`);m.addColorStop(1,`rgba(9,2,9,${base})`);g.fillStyle=m;g.fillRect(0,0,W,H);}
+  // membranes between neighbouring tendrils: translucent, veined, thickening as the tendrils reach in
+  const n=V.T.length,line=(u,T)=>vnAt(T.p,u*T.g);
+  for(let i=0;i<n;i++){const A=V.T[i],Bt=V.T[(i+1)%n],a=Math.min(A.g,Bt.g)*(t<VN.PEEL?.9:1);if(a<=.01)continue;
+    g.beginPath();const pa=A.p[0],pb=Bt.p[0];g.moveTo(pa[0]+(pa[0]-W/2)*.25,pa[1]+(pa[1]-H/2)*.25);
+    for(let j=0;j<=12;j++){const [x,y]=line(j/12,A);g.lineTo(x,y);}for(let j=12;j>=0;j--){const [x,y]=line(j/12,Bt);g.lineTo(x,y);}
+    g.lineTo(pb[0]+(pb[0]-W/2)*.25,pb[1]+(pb[1]-H/2)*.25);g.closePath();
+    const m=g.createRadialGradient(W/2,H/2,0,W/2,H/2,D*.55);m.addColorStop(0,`rgba(58,17,54,${.6*a})`);m.addColorStop(1,`rgba(24,6,24,${.82*a})`);g.fillStyle=m;g.fill();
+    if(!SPL.lite){g.strokeStyle=`rgba(140,50,120,${.2*a})`;g.lineWidth=1.2;g.beginPath();
+      for(let j=1;j<6;j++){const [x1,y1]=line(j/6,A),[x2,y2]=line(j/6+.04,Bt),mx=(x1+x2)/2+(W/2-(x1+x2)/2)*.18,my=(y1+y2)/2+(H/2-(y1+y2)/2)*.18;g.moveTo(x1,y1);g.quadraticCurveTo(mx,my,x2,y2);}g.stroke();}}
+  // the tear: from the middle outward, a ragged hole through the ground and the membranes, its wet edge catching the light
+  const e=vnS((t-VN.PEEL)/(VN.GONE-VN.PEEL-.1));
+  if(e>0){const R0=D*.86*e,hole=[];for(let j=0;j<=48;j++){const th=j/48*Math.PI*2,r=R0*(1+.16*Math.sin(3*th+V.ph[0])+.09*Math.sin(5*th+V.ph[1])+.05*Math.sin(11*th+V.ph[2]));hole.push([W/2+Math.cos(th)*r,H*.48+Math.sin(th)*r*.9]);}
+    const path=()=>{g.beginPath();hole.forEach(([x,y],j)=>j?g.lineTo(x,y):g.moveTo(x,y));g.closePath();};
+    g.save();g.globalCompositeOperation='destination-out';g.globalAlpha=1;g.fillStyle='#000';path();g.fill();g.restore();
+    path();g.lineJoin='round';g.strokeStyle=`rgba(70,18,64,${.85*fade})`;g.lineWidth=10;g.stroke();g.strokeStyle=`rgba(225,160,235,${.3*fade})`;g.lineWidth=2;g.stroke();}
+  // the tendrils, over everything: tapered bodies with a dark rim, vessels along them and a wet sheen down one side
+  for(const T of V.T){if(T.g<=.005)continue;const m=SPL.lite?18:30,L=[],Rt=[],C=[];
+    for(let j=0;j<=m;j++){const u=j/m*T.g,[x,y,nx,ny]=vnAt(T.p,u),tip=Math.sqrt(Math.min(1,(T.g-u)/.1)),w=T.w*Math.pow(1-u*.8,.8)*tip*.5,wob=Math.sin(u*9+t*4.5+T.ph)*T.w*.05;
+      const cx=x+nx*wob,cy=y+ny*wob;C.push([cx,cy,nx,ny,w]);L.push([cx+nx*w,cy+ny*w]);Rt.push([cx-nx*w,cy-ny*w]);}
+    g.beginPath();L.forEach(([x,y],j)=>j?g.lineTo(x,y):g.moveTo(x,y));for(let j=Rt.length-1;j>=0;j--)g.lineTo(Rt[j][0],Rt[j][1]);g.closePath();
+    const [ax,ay]=T.p[0],[bx,by]=C[C.length-1],gr=g.createLinearGradient(ax,ay,bx,by);gr.addColorStop(0,'#12060f');gr.addColorStop(.55,'#2a0e28');gr.addColorStop(1,'#361333');
+    g.fillStyle=gr;g.fill();g.strokeStyle='rgba(8,2,8,.85)';g.lineWidth=2.5;g.stroke();
+    const along=(off,col,lw,k0)=>{g.strokeStyle=col;g.lineWidth=lw;g.beginPath();C.forEach(([x,y,nx,ny,w],j)=>{if(j<k0)return;const o=w*(off+.06*Math.sin(j*.9+T.ph+off*7));j===k0?g.moveTo(x+nx*o,y+ny*o):g.lineTo(x+nx*o,y+ny*o);});g.stroke();};
+    along(.5,'rgba(4,0,5,.4)',Math.max(2,T.w*.16),0);for(const o of SPL.lite?[-.2,.3]:[-.42,-.12,.22,.48])along(o,'rgba(98,24,80,.55)',Math.max(1,T.w*.022),0);
+    if(!SPL.lite)along(.05,'rgba(200,90,170,.18)',1,2);
+    along(-.6,'rgba(214,160,228,.16)',Math.max(1.5,T.w*.04),1);}
+  g.globalAlpha=1;
+  if(t>=VN.END)vineDone();}
+// the sound starts with the growth (the key that continues also starts sound in a browser); one that loads late joins from where it has got to
+function vineSound(V){if(V.snd||V.skip||V.t>.6||!SND.on||!SND.ctx||SND.ctx.state!=='running'||sndEff().s<=0||!SND.buf.title_open)return;
+  const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();s.buffer=SND.buf.title_open;g.gain.value=.85;s.connect(g);g.connect(SND.bus.s);s.start(0,V.t);V.snd={s,g};}
+// another key: straight to the menu
+function vineSkip(){const V=SPL.vine;if(!V)return;V.skip=true;if(V.snd)try{const t=SND.ctx.currentTime;V.snd.g.gain.setTargetAtTime(0,t,.05);V.snd.s.stop(t+.3);}catch(_){}vineDone();}
+function vineClear(){const V=SPL.vine;SPL.vine=null;if(!V)return;V.c.remove();$('splash').classList.remove('vines','vopen');}
+function vineDone(){const el=$('splash');SPL.on=false;cancelAnimationFrame(SPL.raf);vineClear();el.hidden=true;el.classList.remove('out','on','ready');
   const b=document.querySelector('#ovcard .mode');if(b&&!$('overlay').hidden&&b.focus)b.focus({preventScroll:true});}
+// ===== v59: the heartbeat. Every 5 to 8 seconds the Bloom, and only the Bloom, contracts twice like a heart: a lub that tightens it by 3
+// to 4% over about 120 ms and lets go over about 200 ms, then a dub 180 to 260 ms after it, quicker and a little stronger, a slight give
+// past rest as it recovers, and a wave of light along the conduits after each beat. Each beat is a little different. The rest of the
+// picture, the title and its brightness never move. The Bloom is redrawn in rings, each drawn smaller toward its centre by the amount
+// the beat gives at that distance, so it squeezes in like a membrane. Reduced motion keeps only a faint glow of the heart and the sound.
+const HB={R:440};
+function hbNew(){const R=Math.random,p={t:0,c1:.1+R()*.04,r1:.17+R()*.06,d:.18+R()*.08,c2:.07+R()*.025,r2:.12+R()*.04,a1:.03+R()*.01,rec:.45+R()*.3};p.a2=Math.min(.05,p.a1*(1.15+R()*.15));return p;}
+function hbEnv(p,t){const P=(x,c,r)=>x<=0?0:x<c?Math.sin(x/c*Math.PI/2)**2:x<c+r?Math.cos((x-c)/r*Math.PI/2)**2:0,x=t-(p.c1+p.d+p.r2);
+  return Math.max(p.a1*P(t,p.c1,p.r1),p.a2*P(t-(p.c1+p.d-p.c2),p.c2,p.r2))-(x>0&&x<p.rec?.14*p.a2*Math.sin(x/p.rec*Math.PI):0);}
+function hbLen(p){return p.c1+p.d+p.r2+p.rec;}
+function hbWarp(g,ox,oy,k,A){const [bx,by]=SPL_PIC.bloom,Rw=HB.R,cx=ox+bx*k,cy=oy+by*k,n=SPL.lite?7:14;
+  for(let i=n;i>=1;i--){const rm=(i-.5)/n,f=(1-rm*rm)**2,s=1-A*f;g.save();g.beginPath();g.arc(cx,cy,i/n*Rw*k,0,7);g.clip();
+    g.translate(cx,cy);g.scale(s,1-A*f*.85);g.translate(-cx,-cy);g.drawImage(SPL.bg,bx-Rw,by-Rw,Rw*2,Rw*2,cx-Rw*k,cy-Rw*k,Rw*2*k,Rw*2*k);g.restore();}}
+// the lub and the dub are timed to land on the two tightest moments
+function hbSound(p){if(!SND.ctx||!SND.bus||!SND.on||SND.ctx.state!=='running'||sndEff().a<=0)return;const c=SND.ctx,t=c.currentTime;
+  for(const [nm,at,v] of [['title_lub',p.c1-.012,.55],['title_dub',p.c1+p.d-.01,.66]]){const b=sndBuf(nm);if(!b)continue;const s=c.createBufferSource(),gn=c.createGain();s.buffer=b;gn.gain.value=v;s.connect(gn);gn.connect(SND.bus.a);s.start(t+Math.max(0,at));}}
 const SPLM={c:null,g:null};function splashMask(w,h){if(!SPLM.c){SPLM.c=document.createElement('canvas');SPLM.g=SPLM.c.getContext('2d');}if(SPLM.c.width!==w||SPLM.c.height!==h){SPLM.c.width=w;SPLM.c.height=h;}return SPLM;}
 // sound: the menu's own ambience (wind, the deep air) plays as usual; the title adds the deep bed under the ground and a soft pulse with
 // each wave of light. Both go through the ambience volume.
 function splashSound(what,fade){if(!SND.ctx||!SND.bus)return;const c=SND.ctx;
   if(what===false){const a=SPL.amb;SPL.amb=null;if(a)try{const t=c.currentTime;a.g.gain.cancelScheduledValues(t);a.g.gain.setTargetAtTime(0,t,fade/3);a.src.stop(t+fade*1.8+.1);}catch(_){}return;}
-  if(what==='pulse'){if(!SND.on||c.state!=='running'||sndEff().a<=0)return;const hb=sndBuf('title_heart'),buf=hb||sndBuf('intro_pulse');if(!buf)return;const s=c.createBufferSource(),g=c.createGain();s.buffer=buf;g.gain.value=hb?.62:.32;s.connect(g);g.connect(SND.bus.a);s.start();}}
+}
 function splashSoundTick(dt){if(SPL.ending||SPL.amb||!sndReady('a')||!SND.buf.intro_under)return;const c=SND.ctx,s=c.createBufferSource(),g=c.createGain();
   s.buffer=SND.buf.intro_under;s.loop=true;g.gain.value=0;s.connect(g);g.connect(SND.bus.a);s.start();g.gain.setTargetAtTime(.42,c.currentTime,1.2);SPL.amb={src:s,g};}
-// ===== v56: the main menu's background. Clips recorded from the game (art/source/rec_menu.js) play behind the menu (with their sound since v58), one at a
-// time, changing every 30 seconds with a crossfade and moving on one scene at each visit. Three calm scenes to one battle, and the
-// battle never next to itself. Nothing of a game runs behind the menu. Still pictures stand in when video cannot play, when the
-// player turns the moving background off, and for reduced motion; a dark backdrop when even those are missing.
-const MMS=[{id:'factory',name:'Living Factory'},{id:'frontier',name:'Quiet Frontier'},{id:'skirmish',name:'Fortress Skirmish',battle:1},{id:'human',name:'Human Frontier'}];
-const MMB={i:-1,el:null,next:null,on:false,hold:false,t:0,pre:0,secs:30,moving:true,noVideo:false,fails:0,why:'',shown:[]};
+// ===== v59: the main menu's live scenes. Each is a tiny world of its own (36×22 tiles, built by hand from a fixed seed) run by the
+// game's own simulation and drawn by its own renderer, so new art, animation and behaviour show up here by themselves. Only one world
+// exists at a time. It is kept out of the global game state: G is set to it only while it is stepped and drawn, inside mdFrame, so the
+// menu, input, saves, autosave, story, radio and HUD never see it. It steps at 30 a second, draws at most 30 frames a second (or the
+// player's lower limit), stops for a hidden window, and is thrown away completely when a game starts, the menu closes, or the scene
+// changes. Settings > Moving menu background off, reduced motion, or a computer that cannot keep up show still pictures instead.
+const MMS=[{id:'factory',name:'Living Factory'},{id:'frontier',name:'First Contact'},{id:'assault',name:'Fortress Assault',battle:1},{id:'human',name:'Human Frontier'}];
+const MMB={i:-1,el:null,on:false,t:0,secs:45,moving:true,noVideo:false,fails:0,why:'',shown:[]};
 try{MMB.moving=localStorage.getItem('lc_menubg')!=='0';}catch(_){}
+const MD={res:.6,G:null,sc:null,i:-1,t:0,acc:0,last:0,rlast:0,vol:0,fps:30,steps:0,frames:0,work:0,workN:0,slow:0,why:'',rnd:null,fade:0,builds:0,disposed:0};
+const MD_W=36,MD_H=22,MD_LOOP=120,MD_CAP={units:10,enemies:6,bullets:70,fx:90,decals:40};
 function mmMoving(){return MMB.moving&&!ART_RM&&!MMB.noVideo;}
 function mmState(){const o=$('overlay');if(!o||o.hidden||!o.classList.contains('mm'))return 'off';if(document.hidden)return 'hidden';if(SPL.on&&!SPL.ending)return 'hold';return 'play';}
 function mmSrc(sc,ext){return 'art/menu/'+sc.id+'.'+ext;}
-function mmVideo(sc){const v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.playsInline=true;v.loop=true;v.preload='auto';v.disablePictureInPicture=true;
-  v.setAttribute('muted','');v.setAttribute('playsinline','');v.setAttribute('aria-hidden','true');v.tabIndex=-1;v.poster=mmSrc(sc,'jpg');v.dataset.id=sc.id;
-  for(const [ext,type] of [['webm','video/webm; codecs="vp9"'],['mp4','video/mp4; codecs="avc1.640028"']]){const so=document.createElement('source');so.src=mmSrc(sc,ext);so.type=type;v.appendChild(so);}
-  // the last source failing means neither format would load
-  v.lastChild.addEventListener('error',()=>mmFail(v,'no playable file'));v.addEventListener('error',()=>mmFail(v,'video error'));return v;}
 function mmStill(sc){const im=new Image();im.alt='';im.decoding='async';im.dataset.id=sc.id;im.onerror=()=>{console.warn('Menu background missing: '+mmSrc(sc,'jpg'));im.remove();};im.src=mmSrc(sc,'jpg');return im;}
-function mmFree(el){if(!el)return;if(el.tagName==='VIDEO'){try{el.pause();}catch(_){}while(el.firstChild)el.removeChild(el.firstChild);el.removeAttribute('src');try{el.load();}catch(_){}}el.remove();}
-// a clip that cannot play is replaced by its still; after two, the menu keeps to stills for this visit to the game
-function mmFail(v,why){if(v.dataset.dead)return;v.dataset.dead=1;MMB.fails++;MMB.why=why;console.warn('Menu background clip '+v.dataset.id+' did not play ('+why+'); showing a still picture');
-  if(MMB.fails>=2)MMB.noVideo=true;if(v===MMB.next){MMB.next=null;mmFree(v);return;}if(v===MMB.el){const sc=MMS.find(s=>s.id===v.dataset.id);mmPut(mmStill(sc),true);}}
-// puts a new layer on top and fades it in over the old one, which is then freed
-function mmPut(el,now){const bg=$('mmBg'),old=MMB.el;bg.insertBefore(el,bg.querySelector('.mmvig'));MMB.el=el;
-  const show=()=>{if(MMB.el!==el)return;el.classList.add('on');if(old&&old!==el){old.classList.remove('on');setTimeout(()=>mmFree(old),1500);}};
-  if(el.tagName==='VIDEO'){let done=false;const go=()=>{if(done)return;done=true;show();};if(!old)el.classList.add('on');el.addEventListener('playing',go,{once:true});
-    if(mmState()==='play')mmPlay(el);}
-  else if(now||el.complete)show();else el.addEventListener('load',show,{once:true});}
-// plays a clip; one that has not started six seconds after being asked counts as failed (autoplay refused, or the file too slow)
-// sound can play once the player has pressed or clicked something (the title screen's key), or at once in the desktop app
-function mmAudioOK(){return SND.on&&!!SND.ctx&&(DESK||!navigator.userActivation||navigator.userActivation.hasBeenActive);}
-function mmHeard(){const v=MMB.el;return !!(MMB.on&&v&&v.tagName==='VIDEO'&&!v.muted&&!v.paused&&v.volume>.02);}
-function mmPlay(v){if(v.dataset.dead)return;if(v.muted&&mmAudioOK()){v.muted=false;v.volume=0;v.mmA=0;}
-  v.play().catch(e=>{if(!v.muted&&e&&e.name==='NotAllowedError'){v.muted=true;v.play().catch(e2=>mmFail(v,'autoplay refused: '+(e2&&e2.name)));}else mmFail(v,'autoplay refused: '+(e&&e.name));});clearTimeout(v.mmT);
-  v.mmT=setTimeout(()=>{if(MMB.el===v&&mmState()==='play'&&v.readyState<3&&!v.currentTime)mmFail(v,'did not start');},6000);}
+function mmFree(el){if(el)el.remove();}
+// a still picture over the live scene's place, fading in over the last one
+function mmPut(el){const bg=$('mmBg'),old=MMB.el;bg.insertBefore(el,bg.querySelector('.mmvig'));MMB.el=el;
+  const show=()=>{if(MMB.el!==el)return;el.classList.add('on');if(old&&old!==el){old.classList.remove('on');setTimeout(()=>mmFree(old),1500);}};if(el.complete)show();else el.addEventListener('load',show,{once:true});}
 function mmShow(i){i=((i%MMS.length)+MMS.length)%MMS.length;const sc=MMS[i];MMB.i=i;MMB.t=0;MMB.shown.push(sc.id);if(MMB.shown.length>40)MMB.shown.shift();
   try{localStorage.setItem('lc_menuScene',String(i));}catch(_){}
   $('mmScene').textContent='Background scene: '+sc.name;$('mmNext').hidden=false;
-  if(MMB.next&&MMB.next.dataset.id!==sc.id){mmFree(MMB.next);MMB.next=null;}
-  const el=mmMoving()?(MMB.next||mmVideo(sc)):mmStill(sc);MMB.next=null;mmPut(el,false);}
-// the next scene's clip starts loading a few seconds before it is needed, and only that one
-function mmPreload(){if(MMB.next||!mmMoving())return;const sc=MMS[(MMB.i+1)%MMS.length];MMB.next=mmVideo(sc);MMB.next.load();}
+  if(mmMoving()){if(MMB.el){const o=MMB.el;MMB.el=null;o.classList.remove('on');setTimeout(()=>mmFree(o),1500);}mdShow(i);}else{mdStop();mmPut(mmStill(sc));}}
 let mmLast=0;
 function mmTick(now){if(!MMB.on)return;const dt=Math.min(.25,(now-(mmLast||now))/1000);mmLast=now;
-  const st=mmState(),lv=Math.min(1,.8*sndEff().a/.48);
-  for(const v of $('mmBg').querySelectorAll('video')){if(v.muted&&st==='play'&&v===MMB.el&&!v.paused&&mmAudioOK()){v.volume=0;v.mmA=0;v.muted=false;}
-    const to=v===MMB.el&&st==='play'?1:0;v.mmA=(v.mmA||0)+(to-(v.mmA||0))*Math.min(1,dt*2.2);v.volume=Math.max(0,Math.min(1,v.mmA*lv));}
-  if(mmMoving()&&st==='play'&&$('settings').hidden&&$('saves').hidden){MMB.t+=dt;if(MMB.t>MMB.secs-4)mmPreload();if(MMB.t>=MMB.secs)mmShow(MMB.i+1);}
+  if(mmMoving()&&mmState()==='play'&&$('settings').hidden&&$('saves').hidden&&MD.fade<=0){MMB.t+=dt;if(MMB.t>=MMB.secs)mmShow(MMB.i+1);}
   requestAnimationFrame(mmTick);}
-// follows the menu: starts when it shows, waits under the title screen, pauses in a hidden tab, and lets go of everything in a game
-function mmSync(){const st=mmState(),el=MMB.el,card=$('ovcard');
+// follows the menu: starts when it shows, waits under the title screen, rests in a hidden window, and lets go of everything in a game
+function mmSync(){const st=mmState(),card=$('ovcard');
   if($('overlay').classList.contains('mm')){card.setAttribute('role','region');card.setAttribute('aria-label','Main menu');}else{card.removeAttribute('role');card.removeAttribute('aria-label');}
-  if(st==='off'){if(MMB.on){MMB.on=false;mmFree(MMB.el);mmFree(MMB.next);MMB.el=MMB.next=null;}return;}
-  if(!MMB.on){MMB.on=true;let i=-1;try{const v=localStorage.getItem('lc_menuScene');if(v!==null)i=+v;}catch(_){}mmShow(isNaN(i)?0:i+1);mmLast=0;requestAnimationFrame(mmTick);return;}
-  if(el&&el.tagName==='VIDEO'){if(st==='play'){if(el.paused)mmPlay(el);}else{el.pause();clearTimeout(el.mmT);}}}
-function mmSetMoving(on){MMB.moving=!!on;MMB.noVideo=false;MMB.fails=0;try{localStorage.setItem('lc_menubg',on?'1':'0');}catch(_){}if(MMB.on&&MMB.i>=0){mmFree(MMB.next);MMB.next=null;mmShow(MMB.i);}}
+  document.body.classList.toggle('mdlive',st!=='off'&&!!MD.G);
+  if(st==='off'){if(MMB.on){MMB.on=false;mdStop();mmFree(MMB.el);MMB.el=null;}return;}
+  if(!MMB.on){MMB.on=true;let i=-1;try{const v=localStorage.getItem('lc_menuScene');if(v!==null)i=+v;}catch(_){}mmShow(isNaN(i)?0:i+1);mmLast=0;requestAnimationFrame(mmTick);}}
+function mmSetMoving(on){MMB.moving=!!on;MMB.noVideo=false;MMB.fails=0;MD.slow=0;try{localStorage.setItem('lc_menubg',on?'1':'0');}catch(_){}if(MMB.on&&MMB.i>=0)mmShow(MMB.i);}
+function mmHeard(){return !!(MD.G&&MD.vol>.02&&mmState()==='play');}
+
+// ---- the world's life cycle
+// a scene change: the view fades to dark, the old world goes, the new one is built while dark, and it fades in
+function mdShow(i){MD.want=i;if(MD.G&&MD.fade<=0){MD.fade=1;$('mdFade').classList.add('on');clearTimeout(MD.ft);MD.ft=setTimeout(mdSwap,700);}else if(MD.fade<=0)mdSwap();}
+function mdSwap(){MD.fade=0;if(!MMB.on){mdStop();return;}const ok=mdBuild(MD.want);$('mdFade').classList.remove('on');
+  if(!ok){const sc=MMS[MD.want];MMB.fails++;if(MMB.fails>=2)MMB.noVideo=true;mmPut(mmStill(sc));}}
+function mdBuild(i){mdStop();const sc=MMS[i],keepR=rnd,t0=performance.now();
+  try{MD.rnd=seeded(9001+i*77);rnd=MD.rnd;MD.sc=MDS[sc.id]();MD.G=G;MD.i=i;MD.t=0;MD.acc=0;MD.last=0;MD.rlast=0;MD.vol=0;MD.work=0;MD.workN=0;MD.warm=0;MD.builds++;
+    if(MDRES!==MD.res){MDRES=MD.res;resize();}
+    // drawn once now, while it cannot be seen, so the renderer's first-time work (painting the Rootweb, its caches) never stalls a frame later
+    const z=cam.z,x=cam.x,y=cam.y;mdCam(0);render();cam.z=z;cam.x=x;cam.y=y;MD.buildMs=Math.round(performance.now()-t0);return true;}
+  catch(e){console.warn('Menu scene '+sc.id+' could not be built ('+(e&&e.message)+'); showing a still picture');MD.why='build: '+(e&&e.message);G=null;mdStop();return false;}
+  finally{G=null;rnd=keepR;loop.idle=0;mmSync();}}
+// throws the world away: its sounds, its leftovers in the renderer's own lists, and every reference to it
+function mdStop(){clearTimeout(MD.ft);MD.fade=0;const f=$('mdFade');if(f)f.classList.remove('on');
+  if(MD.G){const keep=G;G=MD.G;try{sndReset();}catch(_){}G=keep;MD.disposed++;}
+  if(MDRES!==1){MDRES=1;resize();}MD.G=null;MD.sc=null;VEHW.length=0;ANTDIE.length=0;PODFX.length=0;PINGS.length=0;WFX.length=0;webClearAll();loop.idle=0;
+  if(document.body)document.body.classList.remove('mdlive');}
+function mdFail(e){console.warn('Menu scene stopped ('+(e&&e.message)+'); showing a still picture');MD.why='run: '+(e&&e.message);const i=MD.i;G=null;mdStop();MMB.fails++;if(MMB.fails>=2)MMB.noVideo=true;if(MMS[i])mmPut(mmStill(MMS[i]));}
+// one menu frame: called by the game loop when no game is running. Steps the world on its fixed clock and draws it, at most MD.fps a second
+function mdFrame(now){if(!MD.G)return false;const st=mmState();
+  // under the title screen it is drawn a few times out of sight once the art has loaded, so the first frames shown after the title are quick
+  if(st!=='play'){MD.last=0;if(st==='hold'&&MD.warm<3&&SPL.got>=2&&now-(MD.wt||0)>1200){MD.wt=now;MD.warm++;const keepR=rnd;G=MD.G;rnd=MD.rnd;try{mdCam(0);render();}catch(_){}finally{G=null;rnd=keepR;}}return true;}
+  if(MD.rlast&&now-MD.rlast<1000/MD.fps-2)return true;MD.rlast=now;
+  const dt=MD.last?Math.min(.25,(now-MD.last)/1000):1/30;MD.last=now;const w0=performance.now(),keepR=rnd;
+  G=MD.G;rnd=MD.rnd;
+  try{MD.vol+=((MD.fade>0?0:1)-MD.vol)*Math.min(1,dt*1.6);MD.t+=dt;
+    // while the title's membranes peel back the world is drawn but not stepped: new growth repaints the Rootweb, which is the one thing
+    // that can stall a frame on a computer drawing in software, and the peel should never stutter
+    if(SPL.on)MD.acc=0;else MD.acc+=dt;let n=0;while(MD.acc>=STEP&&n<8){if(MD.sc.tick)MD.sc.tick(STEP,MD.t);step(STEP);MD.acc-=STEP;n++;MD.steps++;}if(n>=8)MD.acc=0;
+    mdCaps();mdCam(MD.t);sndTick(dt);render();MD.frames++;if(MD.t>=MD_LOOP&&MD.fade<=0)mdShow(MD.i);}
+  catch(e){G=null;rnd=keepR;mdFail(e);return true;}
+  finally{if(G===MD.G)G=null;rnd=keepR;}
+  // a computer that cannot draw the scene at a steady pace gets still pictures for the rest of the session
+  // (the script's own time, and the frames actually shown: a canvas drawn in software can cost far more than the script that draws it)
+  const w=performance.now()-w0;MD.work=MD.work?MD.work*.95+w*.05:w;MD.workN++;
+  if(!MD.win||now-MD.win[0]>12000||MD.win[2]!==MD.G)MD.win=[now,MD.frames,MD.G];else if(now-MD.win[0]>10000){MD.fpsSeen=(MD.frames-MD.win[1])*1000/(now-MD.win[0]);MD.win=[now,MD.frames,MD.G];if(MD.fpsSeen<18){MD.workN=999;MD.work=Math.max(MD.work,46);}}
+  if(MD.workN>240&&MD.work>45){MD.slow++;MD.workN=0;if(MD.slow>=2){MD.why='slow: '+MD.work.toFixed(0)+' ms a frame';console.warn('Menu scenes are too slow here ('+MD.why+'); showing still pictures');MMB.noVideo=true;mmShow(MMB.i);}}
+  return true;}
+// hard caps, so a scene can never pile up machines, ants, shots or marks
+function mdCaps(){const C=MD_CAP;if(G.bullets.length>C.bullets)G.bullets.splice(0,G.bullets.length-C.bullets);if(G.fx.length>C.fx)G.fx.splice(0,G.fx.length-C.fx);
+  if(G.decals.length>C.decals)G.decals.splice(0,G.decals.length-C.decals);if(VEHW.length>6)VEHW.splice(0,VEHW.length-6);if(ANTDIE.length>12)ANTDIE.splice(0,ANTDIE.length-12);
+  if(G.units.length>C.units)for(const u of G.units.slice(0,G.units.length-C.units))u.dead=true;}
+// the camera fills the screen from inside the world (never showing its edge), with the scene's subject right of centre where the menu
+// rail covers the left; the scene gives the subject and a slow drift
+function mdCam(t){const [fx,fy,zm]=MD.sc.cam(t),m=1,z=Math.max(VW/((MW-2*m)*T),VH/((MH-2*m)*T))*(zm||1),vw=VW/z,vh=VH/z,k=VW>900?.6:.5;
+  cam.z=z;cam.x=clamp(fx*T-vw*k,m*T,(MW-m)*T-vw);cam.y=clamp(fy*T-vh*.5,m*T,(MH-m)*T-vh);}
+
+// ---- building a world
+// a new tiny world: the same state a game has, but small, never waiting on waves, and marked as a demonstration
+function mdWorld(mode,seed){setMapSize(MD_W,MD_H);webClearAll();sndReset();cineReset();
+  G={mode,mission:null,diff:1,winWave:1e9,ezone:0,demo:{ucap:8},income:new Float64Array(7),incLast:new Float64Array(7),incRate:new Float64Array(7),incT:0,seed,time:0,
+     terrain:new Uint8Array(N),ore:new Int8Array(N).fill(-1),bgrid:new Int32Array(N),blocks:new Map(),nextId:1,enemies:[],units:[],bullets:[],fx:[],decals:[],
+     items:[30000,30000,30000,30000,30000,30000,30000],cap:1e6,unlocked:new Set(TECH.map(t=>t[0])),powGen:0,powUse:0,powSat:1,
+     flow:new Float64Array(N),flowNext:new Int32Array(N),pflow:new Float64Array(N),pflowNext:new Int32Array(N),dirty:true,
+     wave:0,countdown:1e9,spawnQ:[],over:false,kills:0,core:null,ecores:[],spawn:{x:MD_W-2.5,y:MD_H/2},held:true,webFree:true,
+     sel:0,tool:null,rot:0,speed:1,paused:false,tick:0,command:'defend',tab:'turret',seen:new Uint8Array(N).fill(1),vis:null,
+     eitems:[30000,30000,30000,30000,30000,30000,30000],ecap:1e6,epow:1,edemand:0,eplan:[],evein:[],ebuild:4,eexpand:1e9,story:null};
+  // the ground: open meadow with a few patches of sand and rock from the seed, rock round the very edge (never in view)
+  const t=G.terrain;for(let y=0;y<MD_H;y++)for(let x=0;x<MD_W;x++){let v=FLOOR;const r=fbm(x/7,y/7,seed+50),s=fbm(x/9+30,y/9,seed+200);if(s>.66)v=SANDF;if(r>.7)v=ROCK;if(x<1||y<1||x>=MD_W-1||y>=MD_H-1)v=ROCK;t[y*MD_W+x]=v;}
+  return G;}
+const mdClear=(x0,y0,x1,y1)=>{for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)if(inMap(x,y)&&!blockAt(x,y)){G.terrain[y*MW+x]=FLOOR;G.ore[y*MW+x]=-1;}};
+const mdOre=(x,y,it,s)=>{s=s||2;for(let yy=y;yy<y+s;yy++)for(let xx=x;xx<x+s;xx++){const i=yy*MW+xx;G.terrain[i]=it===SAND?SANDF:FLOOR;if(it!==SAND)G.ore[i]=it;}};
+const mdPut=(t,x,y,r,team)=>{if(!freeArea(x,y,B[t].size))return null;const b=addBlock(t,x,y,r||0,team||0);b.built=1;b.hp=b.max;return b;};
+// an organic patch of Rootweb around (cx,cy)
+const mdWeb=(cx,cy,R,k)=>{for(let y=Math.floor(cy-R*1.4);y<cy+R*1.4;y++)for(let x=Math.floor(cx-R*1.4);x<cx+R*1.4;x++){if(!inMap(x,y))continue;
+  const a=Math.atan2(y-cy,x-cx),r=Math.hypot(x-cx,y-cy),edge=R*(.82+.36*fbm(Math.cos(a)*1.7+9,Math.sin(a)*1.7+(k||3),k||5));if(r<edge&&!blockedT(y*MW+x)){if(!G.web)G.web=new Uint8Array(N);G.web[y*MW+x]=1;}}};
+// finishes a world: the Rootweb and paths worked out, the ground drawn, and a little time run so belts and vines are already full
+function mdFinish(warm,tick){initWebKeep();recompute();drawTerrainAll();repaintAllWeb();for(let k=0;k<warm*30;k++){if(tick)tick(STEP,k/30);step(STEP);}VEHW.length=0;ANTDIE.length=0;G.decals.length=0;}
+function initWebKeep(){const w=G.web;if(G.core)initWeb();
+  else{webSupReset();G.web=new Uint8Array(N);G.webCount=0;G.webCov=null;G.webSig='';G.recede=[];webClearAll();mwctx.clearRect(0,0,MW,MH);webBorn.clear();webNod.clear();WFX.length=0;webQ.clear();webChan=[];}
+  if(w)for(let i=0;i<N;i++)if(w[i])setWeb(i,1);}
+// a scripted machine on a route (the movement the campaign's patrols use; guns ignore it and it fires at nothing)
+function mdPatrol(t,route,wait,out){const e=testSpawnEnemy(t,route[0][0],route[0][1]);e.script=1;e.route=route;e.wp=1;e.goal=route[1];e.wait=wait||0;e.out=!!out;e.id=G.nextId++;
+  e.ang=Math.atan2(route[1][1]-route[0][1],route[1][0]-route[0][0]);return e;}
+// the slow drift of each scene's camera: a closed loop, so a long stay never runs out of view
+const mdDrift=(cx,cy,ax,ay,per,dz)=>t=>{const a=t/per*Math.PI*2;return [cx+Math.sin(a)*ax,cy+Math.sin(a*2)*ay,1+(dz||0)*(.5-.5*Math.cos(a))];};
+
+const MDS={};
+// A. Living Factory: a small hive at work. Root Taps on copper, lead, coal and sand; Vines into the Bloom, a Chitin Vat and a Resin
+// Gland; Sunleaves and a Sap Burner for vigor; a Spawning Pod hatching a few ants; a Rootweb Node and Spore Bellows at the edge.
+MDS.factory=()=>{mdWorld('survival',11);const cx=21,cy=9;mdClear(cx-12,cy-8,cx+13,cy+11);
+  G.coreX=cx;G.coreY=cy;G.core=mdPut('core',cx,cy);
+  const P=(t,x,y,r)=>mdPut(t,cx+x,cy+y,r),O=(x,y,it,s)=>mdOre(cx+x,cy+y,it,s);
+  O(-1,-7,CU);P('drill',-1,-7);for(let y=-5;y<0;y++)P('conveyor',0,y,1);
+  O(6,-6,PB);P('drill',6,-6);P('conveyor',5,-5,2);P('conveyor',4,-5,2);P('conveyor',3,-5,2);P('conveyor',2,-5,1);P('conveyor',2,-4,1);P('conveyor',2,-3,1);P('conveyor',2,-2,1);P('conveyor',2,-1,1);
+  O(8,1,TI);P('pdrill',8,1);for(let x=7;x>2;x--)P('tconveyor',x,1,2);
+  O(-8,-2,COAL);P('drill',-8,-2);P('smelter',-5,0);O(-9,2,SAND);P('drill',-9,2);P('conveyor',-7,2,0);P('conveyor',-6,2,3);P('conveyor',-6,-1,1);P('conveyor',-6,0,0);
+  for(let x=-3;x<0;x++)P('conveyor',x,1,0);
+  O(5,6,COAL);P('drill',5,6);P('press',3,6);P('conveyor',4,5,3);P('conveyor',3,5,2);for(let y=4;y>2;y--)P('conveyor',2,y,3);P('conveyor',2,3,3);
+  for(let x=-8;x<-3;x++)P('solar',x,5);P('combustion',-3,-4);O(-5,-5,COAL);P('drill',-5,-5);P('conveyor',-3,-5,0);
+  P('nest',-1,5);O(-4,7,CU);P('drill',-4,7);P('conveyor',-2,7,0);P('conveyor',-1,7,3);
+  P('node',11,-3);P('bellows',10,4);P('mender',-2,-2);
+  mdWeb(cx+1.5,cy+1.5,11,4);
+  mdFinish(16);for(let k=0;k<3;k++)spawnUnit(k?'mite':'tank',cx+1.5+(k-1)*1.6,cy+4.2);
+  return {cam:mdDrift(cx+1.5,cy+1.5,1.6,.6,60,.06)};};
+
+// B. First Contact (illustrative, not the campaign's scene): a young Bloom quietly growing on open meadow, a Rootweb Node just planted,
+// new growths rising, while an HDF scout patrol crosses the ridge, stops to look, and drives on. No shots, no words, no story.
+MDS.frontier=()=>{mdWorld('survival',7);const cx=17,cy=10;mdClear(cx-9,cy-7,cx+12,cy+9);
+  G.coreX=cx;G.coreY=cy;G.core=mdPut('core',cx,cy);
+  const P=(t,x,y,r)=>mdPut(t,cx+x,cy+y,r),O=(x,y,it,s)=>mdOre(cx+x,cy+y,it,s);
+  O(-4,-3,CU);P('drill',-4,-3);P('conveyor',-2,-2,0);P('conveyor',-1,-2,1);P('conveyor',-1,-1,0);
+  P('solar',-3,3);P('solar',-2,4);P('solar',-4,4);mdWeb(cx+1.5,cy+1.5,6,6);
+  mdFinish(3);
+  // growths rising while the scene plays: a tap and its vine, two Sunleaves, and a Rootweb Node whose Rootweb spreads east
+  O(4,2,PB);const grow=[['drill',4,2],['conveyor',3,2,2],['solar',-5,3],['solar',-6,4],['node',9,0]];
+  grow.forEach(([t,x,y,r],k)=>{const b=addBlock(t,cx+x,cy+y,r||0,0);if(b)startSite(b,1.5+k*2.2);});G.dirty=true;recompute();
+  // the scouts: from beyond the east ridge to a rise above the colony, a long look, then on south and out of sight
+  const route=[[MD_W-1.5,4.5],[29,4.5],[26,5.5],[27.5,14],[30,19],[MD_W-1.5,19.5]];
+  // they come round again every half minute or so, every other time with a heavier machine behind
+  let ph=0,lead=null,n=0,next=1;const send=()=>{lead=mdPatrol('dagger',route,1.2);mdPatrol(n%2?'mace':'dagger',route,2.4);ph=0;n++;};
+  return {cam:mdDrift(cx+5,cy-.5,1.2,.5,70,.05),tick(dt,t){
+    if(!G.enemies.length&&t>=next){send();next=t+28;}
+    if(lead&&!ph&&lead.wp>=3){ph=1;for(const e of G.enemies)if(e.script)e.wait=Math.max(e.wait||0,4.5);}
+    for(const e of G.enemies)if(e.script&&e.wp>=4)e.out=true;}};};   // the stop on the rise
+
+// C. Fortress Assault: an HDF gun post on the east side, fed by its own drill and belts, rebuilt by its crews when hit; small groups
+// of ants come at it from the west and its guns answer. Never more than eight ants at once.
+MDS.assault=()=>{mdWorld('siege',13);G.command='attack';const hx=26,hy=9;mdClear(hx-16,hy-8,hx+9,hy+11);
+  G.coreX=1;G.coreY=MD_H-4;   // the hive's own Bloom is far to the west, beyond this world
+  const P=(t,x,y,r)=>mdPut(t,hx+x,hy+y,r,1);
+  const core=P('core',0,0);G.ecores.push(core);G.spawn={x:hx+1.5,y:hy+1.5};
+  for(let dy=-3;dy<=4;dy++)P('router',-3,dy);for(const dy of [-3,-1,1,3])P('duo',-4,dy);P('duo',-4,4);
+  mdOre(hx+4,hy-5,CU);P('drill',4,-5);P('conveyor',3,-4,2);P('conveyor',2,-4,2);P('conveyor',1,-4,2);P('conveyor',0,-4,2);P('conveyor',-1,-4,2);P('conveyor',-2,-4,2);
+  mdOre(hx+4,hy+5,COAL);P('drill',4,5);P('combustion',2,6);P('conveyor',3,5,2);P('lancer',-2,-1);P('hail',-2,2);P('hail',1,-2);
+  for(let y=hy-6;y<=hy+7;y++){if(y===hy||y===hy+1)continue;mdPut(y%3?'wall':'twall',hx-8,y,0,1);}
+  for(const b of G.blocks.values())if(b.team===1)G.eplan.push({t:b.t,x:b.x,y:b.y,rot:b.rot});
+  mdFinish(4);
+  let next=1.5,wave=0;const send=()=>{const alive=G.units.filter(u=>!u.dead).length;if(alive>4)return;const n=Math.min(4,8-alive);
+    for(let k=0;k<n;k++){const ty=k===0&&wave%2?'htank':k<2?'tank':'mite',u=spawnUnit(ty,10.5+rnd()*1.5,hy-2+k*1.6+(wave%3-1)*2);u.go=1;}wave++;};
+  return {cam:mdDrift(hx-7,hy+1,1,.6,50,.04),tick(dt){next-=dt;if(next<=0){send();next=7;}
+    // the crews patch the guns and the post itself, so the fight never ends with the post gone
+    if(G.tick%15===0)for(const b of G.blocks.values())if(b.team===1&&b.hp<b.max)b.hp=Math.min(b.max,b.hp+b.max*.04);}};};
+
+// D. Human Frontier: an HDF mining post at work. Drills on copper, lead and coal, belts into the post, a smelter and generators, a
+// pair of guns, and patrols on the road round it. No hive in sight.
+MDS.human=()=>{mdWorld('siege',17);const hx=20,hy=9;mdClear(hx-12,hy-8,hx+14,hy+11);
+  G.coreX=1;G.coreY=MD_H-4;
+  const P=(t,x,y,r)=>mdPut(t,hx+x,hy+y,r,1);
+  const core=P('core',0,0);G.ecores.push(core);G.spawn={x:hx+1.5,y:hy+1.5};
+  mdOre(hx-6,hy-5,CU);P('drill',-6,-5);P('conveyor',-4,-4,0);P('conveyor',-3,-4,0);P('conveyor',-2,-4,0);P('conveyor',-1,-4,0);P('conveyor',0,-4,1);P('conveyor',0,-3,1);P('conveyor',0,-2,1);P('conveyor',0,-1,1);
+  mdOre(hx+7,hy-4,PB);P('drill',7,-4);P('conveyor',6,-3,2);P('conveyor',5,-3,2);P('conveyor',4,-3,2);P('conveyor',3,-3,2);P('conveyor',2,-3,1);P('conveyor',2,-2,1);P('conveyor',2,-1,1);
+  mdOre(hx+7,hy+4,COAL);P('drill',7,4);P('conveyor',6,5,2);P('router',5,5);P('combustion',5,6);P('combustion',5,3);P('conveyor',4,5,2);P('smelter',2,4);P('conveyor',3,3,1);
+  mdOre(hx-6,hy+5,SAND);P('drill',-6,5);P('conveyor',-4,5,0);P('conveyor',-3,5,0);P('conveyor',-2,5,0);P('conveyor',-1,5,0);P('conveyor',0,5,0);P('conveyor',1,5,0);
+  P('conveyor',3,3,3);P('conveyor',3,2,2);P('conveyor',2,2,3);
+  P('duo',-3,-1);P('duo',-3,1);P('router',-2,0);P('hail',4,0);
+  for(const b of G.blocks.values())if(b.team===1)G.eplan.push({t:b.t,x:b.x,y:b.y,rot:b.rot});
+  const road=[[hx-9,hy-7],[hx+11,hy-7],[hx+11,hy+9],[hx-9,hy+9]],loop=[...road,road[0]];
+  mdFinish(10);
+  const p1=mdPatrol('dagger',loop,0),p2=mdPatrol('fortress',[road[2],road[3],road[0],road[1],road[2]],6);
+  return {cam:mdDrift(hx+1.5,hy+1,1.4,.6,60,.05),tick(){for(const e of [p1,p2])if(e.wp>=e.route.length-1&&Math.hypot(e.goal[0]-e.x,e.goal[1]-e.y)<.8){e.wp=0;e.goal=e.route[0];}}};};
 (function(){const o=$('overlay'),mo=new MutationObserver(()=>{mmSync();o.hasAttribute('aria-label');});
   mo.observe(o,{attributes:true,attributeFilter:['hidden','class']});new MutationObserver(mmSync).observe($('splash'),{attributes:true,attributeFilter:['hidden','class']});
   document.addEventListener('visibilitychange',mmSync);
-  $('mmNext').onclick=()=>{if(MMB.on){mmFree(MMB.next);MMB.next=null;mmShow(MMB.i+1);}snd('ui','ui_select');};
+  $('mmNext').onclick=()=>{if(MMB.on)mmShow(MMB.i+1);snd('ui','ui_select');};
   try{const v=DESK&&lcDesktop.version;if(v){$('mmVer').textContent='v'+v;$('mmVer').hidden=false;}}catch(_){}
   const mb=$('optMenuBg');mb.checked=MMB.moving;mb.onchange=e=>mmSetMoving(e.target.checked);
   // up and down move between the menu's buttons
