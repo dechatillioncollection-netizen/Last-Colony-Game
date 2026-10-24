@@ -1,6 +1,6 @@
 // Paints the Bloom layers. Runs in a headless browser; each layer comes back as a PNG data URL.
 // Box layers are 896x896 and cover the Bloom's 3x3 footprint plus 2 tiles of margin on every side (7x7 tiles, 128 px per tile).
-// The footprint is the centre 384x384. Petals, the core and the pulse are separate small sprites that the game places and animates.
+// The footprint is the centre 384x384. Petals, the Bloom Heart and the pulse are separate small sprites that the game places and animates.
 (()=>{
 const N=896,C=448,DR=132; // chamber centre and radius
 let sd=4242;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
@@ -95,21 +95,57 @@ out.petal_inner=petal(146,262,'#2c0f36','#7a3a86','#d09ade','255,214,246','255,2
   const v=c.createRadialGradient(C,C,DR*.6,C,C,DR);v.addColorStop(0,'rgba(0,30,20,0)');v.addColorStop(1,'rgba(0,30,20,.45)');c.fillStyle=v;c.fillRect(0,0,N,N);
   c.restore();out.fluid=cv.toDataURL('image/png');}
 
-// ---------- core: the suspended seed, with a translucent sac and trailing filaments ----------
-{const W=200,[cv,c]=mk(W,W),x=W/2,y=W/2;sd=31;
-  c.strokeStyle='rgba(220,240,200,.28)';c.lineWidth=1.2;for(let k=0;k<6;k++){const a=Math.PI/2+(k-2.5)*.28;c.beginPath();c.moveTo(x+Math.cos(a)*50,y+Math.sin(a)*60);
-    c.bezierCurveTo(x+Math.cos(a)*70+(rnd()-.5)*30,y+Math.sin(a)*80,x+Math.cos(a)*80+(rnd()-.5)*40,y+88,x+Math.cos(a)*86+(rnd()-.5)*30,y+96);c.stroke();}
-  const sac=c.createRadialGradient(x,y,40,x,y,80);sac.addColorStop(0,'rgba(230,255,220,0)');sac.addColorStop(.85,'rgba(230,255,220,.16)');sac.addColorStop(1,'rgba(230,255,220,0)');c.fillStyle=sac;c.beginPath();c.ellipse(x,y,74,84,0,0,7);c.fill();
-  glow(c,x,y,70,'190,255,170',.35);
-  c.fillStyle='rgba(20,40,20,.35)';c.beginPath();c.ellipse(x+5,y+7,46,58,0,0,7);c.fill();
-  const g=c.createRadialGradient(x-14,y-20,4,x,y,58);g.addColorStop(0,'#fbf6dc');g.addColorStop(.5,'#cdd39a');g.addColorStop(1,'#66733f');c.fillStyle=g;c.beginPath();c.ellipse(x,y,44,56,0,0,7);c.fill();
-  c.save();c.beginPath();c.ellipse(x,y,44,56,0,0,7);c.clip();
-  c.strokeStyle='rgba(70,80,40,.45)';c.lineWidth=2;for(let k=0;k<7;k++){c.beginPath();c.moveTo(x-40,y-40+k*13);c.bezierCurveTo(x-15,y-48+k*14+rnd()*8,x+15,y-30+k*12-rnd()*8,x+42,y-38+k*13);c.stroke();}
+// ---------- heart: the Bloom Heart, a living violet heart suspended in the fluid and fed by turquoise vessels ----------
+{const W=256,[cv,c]=mk(W,W),x=W/2+2,y=W/2+8;sd=31;
+  const P=(f)=>{c.beginPath();f();};
+  // the outline: a broad left ventricle and a narrower right one meeting in a blunt apex turned down and right
+  const body=()=>{c.moveTo(x-4,y-46);c.bezierCurveTo(x-40,y-60,x-74,y-34,x-68,y+2);c.bezierCurveTo(x-62,y+34,x-28,y+58,x+14,y+68);
+    c.bezierCurveTo(x+40,y+52,x+62,y+20,x+60,y-14);c.bezierCurveTo(x+58,y-46,x+26,y-58,x-4,y-46);c.closePath();};
+  const sac=c.createRadialGradient(x,y,52,x,y,114);sac.addColorStop(0,'rgba(230,255,240,0)');sac.addColorStop(.82,'rgba(200,255,236,.13)');sac.addColorStop(1,'rgba(200,255,236,0)');c.fillStyle=sac;c.beginPath();c.ellipse(x-2,y-8,106,114,0,0,7);c.fill();
+  glow(c,x,y,98,'120,250,226',.2);glow(c,x-6,y,72,'230,120,200',.16);
+  // a tapering, slightly wavering tube
+  const tube=(pts,w0,w1,layers)=>{const n=40,q2=t=>{const u=1-t;return [u*u*pts[0]+2*u*t*pts[2]+t*t*pts[4],u*u*pts[1]+2*u*t*pts[3]+t*t*pts[5]];};
+    for(const [k,col,f] of layers)for(let i=0;i<=n;i++){const t=i/n,[px,py]=q2(t),w=(w0+(w1-w0)*t)*k*(1+.06*Math.sin(t*19)),a=f(t);if(a<=0)continue;c.fillStyle=col.replace('A',a.toFixed(3));c.beginPath();c.arc(px,py,w/2,0,7);c.fill();}};
+  const fade=t=>t<.55?1:Math.max(0,1-(t-.55)/.45);
+  // the great trunks rising from the top, joining the heart to the Bloom's roots and fading into the fluid
+  const V=[[x-32,y-48,x-50,y-86,x-40,y-118,17,9],[x-4,y-54,x+4,y-92,x-8,y-124,20,10],[x+24,y-50,x+50,y-80,x+60,y-110,15,8],[x+48,y-30,x+82,y-46,x+104,y-60,12,6],[x-58,y-24,x-88,y-40,x-108,y-48,11,6]];
+  for(const v of V){const L=[[1.3,'rgba(16,6,22,A)',t=>.8*fade(t)],[1,'rgba(80,30,92,A)',fade],[.82,'rgba(124,52,132,A)',t=>.7*fade(t)],[.38,'rgba(70,214,196,A)',t=>.85*fade(t)],[.12,'rgba(190,255,244,A)',t=>.5*fade(t)]];tube(v.slice(0,6),v[6],v[7],L);}
+  // shadow under the body
+  c.save();c.translate(6,9);c.fillStyle='rgba(8,18,14,.4)';P(body);c.fill();c.restore();
+  // the atria: two softer chambers behind the top of the heart
+  for(const [ax,ay,rx,ry] of [[x-36,y-40,26,20],[x+28,y-44,22,17]]){const g=c.createRadialGradient(ax-8,ay-8,2,ax,ay,rx);g.addColorStop(0,'#cf84bc');g.addColorStop(.55,'#7e3478');g.addColorStop(1,'#2e0c34');c.fillStyle=g;c.beginPath();c.ellipse(ax,ay,rx,ry,-.2,0,7);c.fill();
+    c.strokeStyle='rgba(26,8,30,.65)';c.lineWidth=2;c.stroke();}
+  // the body: violet flesh lit from the upper left, darker at the rim
+  const g=c.createRadialGradient(x-28,y-20,6,x,y+6,86);g.addColorStop(0,'#e89ad0');g.addColorStop(.25,'#b2449c');g.addColorStop(.6,'#6c1c66');g.addColorStop(1,'#240824');
+  c.fillStyle=g;P(body);c.fill();
+  c.save();P(body);c.clip();
+  // flesh: soft mottling and fine muscle fibres that wrap round the ventricles towards the apex
+  for(let k=0;k<70;k++){const px=x-70+rnd()*134,py=y-50+rnd()*120,r=4+rnd()*12;c.fillStyle=rnd()<.5?`rgba(255,200,240,${.04+rnd()*.05})`:`rgba(40,6,40,${.05+rnd()*.06})`;c.beginPath();c.ellipse(px,py,r,r*.7,rnd()*3,0,7);c.fill();}
+  c.lineWidth=1.1;for(let k=0;k<26;k++){const t=k/25,s=(rnd()-.5)*8;c.strokeStyle=`rgba(50,10,48,${.1+.08*rnd()})`;c.beginPath();
+    c.moveTo(x-72+t*30,y-30+t*20+s);c.bezierCurveTo(x-40+t*26,y+10+t*30,x-6+t*14,y+40+t*14,x+14,y+66);c.stroke();}
+  for(let k=0;k<14;k++){const t=k/13;c.strokeStyle=`rgba(50,10,48,${.1+.08*rnd()})`;c.beginPath();c.moveTo(x+62-t*26,y-24+t*10);c.bezierCurveTo(x+50-t*20,y+12+t*16,x+30-t*8,y+44,x+14,y+66);c.stroke();}
+  // the groove between the ventricles
+  const groove=()=>{c.moveTo(x+4,y-50);c.bezierCurveTo(x-8,y-16,x+20,y+24,x+12,y+68);};
+  c.strokeStyle='rgba(30,6,30,.55)';c.lineWidth=10;P(groove);c.stroke();c.strokeStyle='rgba(250,190,235,.18)';c.lineWidth=2;c.translate(-5,0);P(groove);c.stroke();c.translate(5,0);
+  // rim shadow so it reads round, and a cool rim light on the far side from the fluid
+  const rim=c.createRadialGradient(x-14,y-10,38,x,y,92);rim.addColorStop(0,'rgba(20,0,20,0)');rim.addColorStop(1,'rgba(20,0,20,.6)');c.fillStyle=rim;c.fillRect(0,0,W,W);
+  c.strokeStyle='rgba(150,255,230,.28)';c.lineWidth=5;c.save();c.translate(-3,-2);c.beginPath();c.moveTo(x+60,y-14);c.bezierCurveTo(x+62,y+20,x+40,y+52,x+14,y+68);c.stroke();c.restore();
+  // turquoise vessels across the surface, glowing with the colony's nutrient light
+  const vein=(px,py,a,l,w,d)=>{if(d>4||l<5)return;const ex=px+Math.cos(a)*l,ey=py+Math.sin(a)*l,mx=px+Math.cos(a+(rnd()-.5)*.9)*l*.5,my=py+Math.sin(a+(rnd()-.5)*.9)*l*.5;
+    for(const [lw,col] of [[w+2,'rgba(24,6,30,.45)'],[w,'rgba(96,214,200,.72)'],[w*.38,'rgba(220,255,248,.6)']]){c.strokeStyle=col;c.lineWidth=lw;c.lineCap='round';c.beginPath();c.moveTo(px,py);c.quadraticCurveTo(mx,my,ex,ey);c.stroke();}
+    vein(ex,ey,a+(rnd()-.5)*.35,l*.78,w*.78,d+1);if(rnd()<.7)vein(mx,my,a+(rnd()<.5?-1:1)*(.7+rnd()*.4),l*.55,w*.6,d+2);};
+  glow(c,x+6,y+10,44,'120,250,226',.1);
+  vein(x+4,y-50,1.72,22,3.6,0);vein(x-24,y-46,2.15,22,2.8,0);vein(x+22,y-50,1.0,20,2.8,0);vein(x-50,y-26,1.75,18,2.2,1);vein(x+46,y-30,1.6,18,2.2,1);
   c.restore();
-  // the germ: a dark slit that glows faintly green
-  glow(c,x,y-30,20,'170,255,120',.45);c.fillStyle='#1d2a12';c.beginPath();c.ellipse(x,y-30,6,13,0,0,7);c.fill();c.fillStyle='rgba(200,255,150,.8)';c.beginPath();c.ellipse(x,y-31,1.6,8,0,0,7);c.fill();
-  c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.ellipse(x-18,y-28,9,5,-.6,0,7);c.fill();
-  out.core=cv.toDataURL('image/png');}
+  c.strokeStyle='rgba(26,6,28,.75)';c.lineWidth=2.4;P(body);c.stroke();
+  // stumps where the trunks meet the heart, open and glowing
+  for(const v of V){const w=v[6];c.fillStyle='#5a2462';c.beginPath();c.ellipse(v[0],v[1],w*.6,w*.44,0,0,7);c.fill();c.strokeStyle='rgba(20,4,24,.7)';c.lineWidth=1.5;c.stroke();glow(c,v[0],v[1],w*.7,'120,250,226',.55);c.fillStyle='rgba(200,255,244,.9)';c.beginPath();c.ellipse(v[0],v[1],w*.22,w*.15,0,0,7);c.fill();}
+  // wet highlights
+  c.fillStyle='rgba(255,240,252,.5)';c.beginPath();c.ellipse(x-38,y-14,13,6,-1,0,7);c.fill();
+  c.fillStyle='rgba(255,240,252,.28)';c.beginPath();c.ellipse(x-30,y+16,7,3,-.8,0,7);c.fill();
+  c.fillStyle='rgba(255,240,252,.35)';c.beginPath();c.ellipse(x+32,y-28,6,3,-.3,0,7);c.fill();
+  drop(c,x-44,y-46,7);
+  out.heart=cv.toDataURL('image/png');}
 
 // ---------- membrane: veins across the chamber and a soft inner glow (pulses) ----------
 {const [cv,c]=mk();sd=12;c.save();c.beginPath();c.arc(C,C,DR,0,7);c.clip();
