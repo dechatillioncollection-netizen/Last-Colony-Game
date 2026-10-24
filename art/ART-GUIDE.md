@@ -727,3 +727,14 @@ The floating seed in the Bloom's chamber is now the **Bloom Heart**: a violet he
 - **Title and menu:** the title background (`art/title/bg.jpg`) and the two menu pictures that show the Bloom (`art/menu/factory.jpg`, `frontier.jpg`) were rendered again so they show the heart. Only the Bloom changed in the title.
 - **Without painted art:** the drawn Bloom already used a heart sprite and is unchanged.
 
+
+## Connected veins and the vein material (v63)
+
+One material, `veinBody`, draws every vein: the links between the Bloom and its Rootweb Nodes (the same lines as the Rootweb painter's channels), the temporary branch into a growth being grown, and the title transition's tendrils and membrane veins. All of it is drawn by the game (no image files) and is for looks only.
+
+- **Anatomy, outside in:** a dark furrow in the membrane, rootlets anchoring it, a translucent wet violet skin, the body, a darker core seen through it, the turquoise nutrient channel (glow, thread, bright core) slightly below the middle, a pale wet lumen line, a broken highlight and a few small nodules. Its width swells and narrows along its length.
+- **Colours:** body `rgb(108,46,124)`, core `rgb(52,16,64)`, lumen `rgb(190,138,212)`, channel `rgb(64,200,190)` with glow `rgb(80,236,214)`. A finished growth's branch dulls towards `rgb(88,38,102)` before fading.
+- **Drawn large (`big`, the title's tendrils):** shading round the limb is built from thin layers (a darker underside, a lit upper flank, light through the skin at both edges), and the channel, lumen and highlight follow the limb's own width. The Rootweb's cell picture (`art/plant/rootweb`) is laid into the skin at 42%, with a soft tiling mottle. Each tendril is painted once into its own picture and uncovered as it grows.
+- **Construction routes:** a growth's vein runs from the Bloom's chamber along the network's links (Bloom → Node → Node…), then as a new branch over fed Rootweb to an intake inside the growth, where it ends in a soft mouth that brightens as lights arrive. Growths share the links upstream. No route is drawn where the Rootweb is broken: a cut-off growth shows only a dull stub with no channel.
+- **Lights:** the same cached 32 px turquoise sprite. Each beat sends a small packet from the Bloom along real routes, at least 60% of it to growths being grown.
+- **Without painted art:** the same procedural material, without the cell picture.

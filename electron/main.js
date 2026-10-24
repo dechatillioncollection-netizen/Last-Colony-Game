@@ -78,6 +78,15 @@ function create() {
     if (input.key === 'F11' || (input.alt && input.key === 'Enter')) { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); }
   });
   // links in the game open nothing inside the window
+  // the game's warnings and errors (slow title frames among them) go to <user data>/lc-log.txt, with what the graphics card offers, so
+  // a slow or broken machine we cannot test on can send us the file; it starts afresh each launch
+  try {
+    const logF = path.join(app.getPath('userData'), 'lc-log.txt');
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(logF, `Last Colony ${app.getVersion()} on ${process.platform} ${process.arch}, Electron ${process.versions.electron}, ${new Date().toISOString()}\nframe limit off: ${uncapped}\ngraphics: ${JSON.stringify(app.getGPUFeatureStatus())}\n`);
+    let n = 0;
+    win.webContents.on('console-message', (_e, level, message) => { if (level < 2 || n > 2000) return; n++; fs.appendFile(logF, `${new Date().toISOString().slice(11, 23)} ${level > 2 ? 'error' : 'warn'} ${message}\n`, () => {}); });
+  } catch (e) {}
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.on('close', () => saveWin(win));
