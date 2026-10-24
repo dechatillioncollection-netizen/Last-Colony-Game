@@ -22,3 +22,5 @@ wbtest_result*.json
 /shots59/
 /tests/shots*/
 /tests/*.png
+/shots64/
+/_v63.html
