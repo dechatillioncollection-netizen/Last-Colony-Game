@@ -1093,7 +1093,7 @@ function webArtFx(c,time,tx0,ty0,tx1,ty1){
     if(f.k==='b'){c.globalCompositeOperation='source-over';c.globalAlpha=.9*fade;const s=S*(1+.35*Math.sin(Math.PI*u));c.drawImage(A.img[3],f.x*T-s/2,f.y*T-s/2,s,s);continue;}
     c.globalCompositeOperation=f.k==='s'?'screen':'lighter';c.globalAlpha=(f.k==='s'?.16:f.k==='g'?.22:.75)*fade;c.drawImage(A.img[f.k==='s'?2:1],f.x*T-r,f.y*T-r,S,S);}
   c.restore();}
-let artHB=0;
+let artHB=0,artHA=0;
 // ===== v61: the colony's circulation (looks only). The Bloom beats twice every 7 to 10 seconds: its chamber tightens and brightens, the
 // petals follow a moment later and less, the veins in its membrane flare, then it rests. Each beat pumps a few turquoise nutrient lights
 // out of the Bloom; they travel through the real Rootweb that the Bloom feeds (the same flood the supply uses), never over bare ground or
@@ -3235,7 +3235,7 @@ function hashS(n){return (Math.sin(n*12.9898)*43758.5453)%1;}
 // Layer fields: f file, g:'dome' to move with the breathing dome, blend ('lighter','screen'...), alpha, pass:'under' to draw beneath
 //   neighbouring buildings (petals, roots), lite:false hides it in the cheap mode, far:false hides it when zoomed far out.
 //   anim: 'pulse' (alpha min..max over period s), 'shimmer' (drifts amp*box), 'float' (n copies of a small sprite drifting inside the dome),
-//   'bob' (one small sprite floating near the dome centre), 'petals' (n petal sprites around the centre, each swaying on its own),
+//   'bob' (one small sprite floating near the dome centre; beat:k squeezes it k times the Bloom's heartbeat), 'petals' (n petal sprites around the centre, each swaying on its own),
 //   'rootpulse' (a glow sprite travelling out along the entry's roots), 'spin', 'aim' (turns to the turret angle), 'blink'.
 // Entry fields: dir, pad, dome [cx,cy,r] as fractions of the box, breathe {amp,period}, priority (always full animation),
 //   hurtShrink (petals shrink by this much at zero health), roots (quadratic curves for 'rootpulse'), over (code-drawn game feedback),
@@ -3312,7 +3312,7 @@ const ART={plant:{
       {f:'petal_outer.png',pass:'under',anim:'petals',n:10,off:0,len:.38,wid:.196,sway:.03,grow:.03,period:6.5},
       {f:'petal_inner.png',pass:'under',anim:'petals',n:10,off:.5,len:.292,wid:.163,sway:.04,grow:.035,period:5.3},
       {f:'collar.png',rect:[.245,.245,.51,.51]},{f:'fluid.png',g:'dome',rect:CH},
-      {f:'core.png',anim:'bob',size:.24,amp:.012,period:9,g:'dome'},
+      {f:'heart.png',anim:'bob',size:.27,amp:.012,period:9,g:'dome',beat:2.4},
       {f:'membrane.png',anim:'pulse',min:.2,max:.42,period:7.5,blend:'lighter',g:'dome',rect:CH},
       {f:'glass.png',g:'dome',rect:CH},{f:'highlight.png',anim:'shimmer',amp:.01,period:8,blend:'screen',g:'dome',far:false,rect:CH},
       {f:'stinger.png',anim:'aim',rect:[.635,.478,.095,.044]}]},
@@ -3409,7 +3409,8 @@ function artLayer(c,a,L,im,bx,by,BS,tt,ph,br,b,hk){
       const px=ox+Math.sin(w*1.3+k)*R*Math.cos(k*1.7),py=oy+Math.sin(w*.9+k*2.3)*R*.8+Math.sin(tt*1.1+k)*s*.15;
       c.save();c.translate(px,py);c.rotate(Math.sin(w*.8+k)*.6+k);c.globalAlpha*=.65+.35*Math.sin(w*2+k);c.drawImage(im,-s/2,-s/2,s,s);c.restore();}}
   else if(L.anim==='bob'){const s=L.size*BS,w=tt*W/L.period+ph;
-    c.translate(ox+Math.sin(w)*L.amp*BS,oy+Math.sin(w*.77+1)*L.amp*BS*1.3);c.rotate(Math.sin(w*.6)*.07);c.drawImage(im,-s/2,-s/2,s,s);}
+    const z=L.beat?s*(1-artHA*L.beat):s;   // the Bloom Heart squeezes harder than its chamber on each beat
+    c.translate(ox+Math.sin(w)*L.amp*BS,oy+Math.sin(w*.77+1)*L.amp*BS*1.3);c.rotate(Math.sin(w*.6)*.07);c.drawImage(im,-z/2,-z/2,z,z);}
   else if(L.anim==='petals'){const n=L.n,w=L.wid*BS,len=L.len*BS*hk,bp=a.breathe?tt*W/a.breathe.period+ph:0;
     for(let k=0;k<n;k++){const p=ph+k*2.399,sw=tt?L.sway*Math.sin(tt*W/L.period+p):0,
         g=tt?1+L.grow*(.55*Math.sin(bp-k*.15)+.45*Math.sin(tt*W/(L.period*1.37)+p*1.7)):1;
@@ -3449,7 +3450,7 @@ function artDraw(c,a,x,y,S,rot,b,time,under){
   const tt=live?(time||0):0,ph=b?(b.id*1.618)%6.283:0;
   let br=a.breathe&&live?1+a.breathe.amp*Math.sin(tt*6.283/a.breathe.period+ph):1;
   let hk=a.hurtShrink&&b?1-a.hurtShrink*(1-Math.max(0,b.hp/b.max)):1;
-  if(b&&live&&b===G.core&&!b.team&&CIRC.G===G){br*=1-CIRC.A*1.15;hk*=1-CIRC.Ap*.6;artHB=CIRC.V;}else artHB=0;
+  if(b&&live&&b===G.core&&!b.team&&CIRC.G===G){br*=1-CIRC.A*1.15;hk*=1-CIRC.Ap*.6;artHB=CIRC.V;artHA=CIRC.A;}else artHB=artHA=0;
   if(a.weapon&&b&&!under){const W=a.weapon;artWeapon(a,b,tt,live);const F=artFire;
     br*=(1-W.squeeze*F.fp)*(1-W.deflate*(1-Math.max(0,b.hp/b.max)));                       // squeezes on each shot, sags as it is hurt
     hk*=1-W.tight*(b._tg||0)-W.flinch*(b.hit>0?Math.min(1,b.hit/.12):0)-W.fireTight*F.fp;}  // petals tighten when engaged, hit or firing
@@ -3471,7 +3472,7 @@ function artDraw(c,a,x,y,S,rot,b,time,under){
     if(L.ammo!=null&&L.ammo!==artFire.ammo)return;
     c.save();if(L.blend)c.globalCompositeOperation=L.blend;c.globalAlpha*=L.alpha??1;
     artLayer(c,a,L,a.img[i],bx,by,BS,tt,ph,br,b,hk);c.restore();});
-  c.restore();c.imageSmoothingEnabled=sm;artHB=0;}
+  c.restore();c.imageSmoothingEnabled=sm;artHB=artHA=0;}
 function drawArt(c,t,x,y,rot,b,time,team){
   const a=artFor(t,team);if(!a)return false;const S=B[t].size*T;
   if(a.custom){const sm=c.imageSmoothingEnabled;c.imageSmoothingEnabled=true;a.custom(c,a,x,y,b,time||0,!b||organLite(t)?'lite':'full');c.imageSmoothingEnabled=sm;artDrawn++;return true;}

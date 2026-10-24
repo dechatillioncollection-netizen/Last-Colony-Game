@@ -90,7 +90,7 @@ nest:{name:'Seed Pod',dir:'plant/seed-pod/',dome:[.5,.484,.242],breathe:{amp:.01
 
 - **Footprint:** 3×3 tiles. The box is 7×7 tiles (896×896) with the footprint in the centre 384×384.
 - **Under-pass layers:** roots, root pulses, outer petals and inner petals.
-- **Building-pass layers:** collar, fluid, the floating core, membrane, glass, highlight, and the stinger, which aims where the Bloom spits.
+- **Building-pass layers:** collar, fluid, the Bloom Heart (`heart.png`, v62; it replaced the floating seed `core.png`), membrane, glass, highlight, and the stinger, which aims where the Bloom spits.
 - **Priority:** it always keeps full animation. Only the root pulses and the liquid sheen are dropped when zoomed out past 0.75×.
 - **Damage:** petals shrink with damage, as the old Bloom's did.
 - **Painter script:** `game/art-source/paint_bloom.js`. It also outputs the root curves the pulses follow.
@@ -716,3 +716,14 @@ All of it is drawn by the game (no image files) and is for looks only. It lives 
 - **Finishing:** the steady stream eases off over about 1.2 s. The feeder dulls to the Rootweb's own violet and fades over 1.6 s. The Rootweb itself is never changed.
 - **Not connected:** a growth the fed Rootweb does not reach (a Root Tap on ore beyond it, or one cut off) gets no lights and no feeder. If unfed Rootweb lies beside it, it gets a short, dull grey-violet stub with no channel instead. Its own growing roots (the construction outline) are unchanged.
 - **Detail:** the full sculpting needs the painted art, zoom 0.75 or closer, Medium quality or above and at most six growths at once; otherwise the feeder keeps its body, core and channel. Light caps are 24, 48, 72 and 90 (Low to Epic), 60% of that zoomed far out. Reduced motion keeps the feeders and drops the beat and the lights.
+
+## The Bloom Heart (v62)
+
+The floating seed in the Bloom's chamber is now the **Bloom Heart**: a violet heart with two ventricles, two atria behind them and five vessel trunks rising from its top that fade into the fluid. Turquoise vessels in the Rootweb's own nutrient colour branch across it, so it reads as the source of the lights that the beat pumps out.
+
+- **File:** `art/plant/bloom/heart.png`, 256×256, painted by the `heart` section of `art/source/paint_bloom.js` (seeded, so it repaints the same). The other Bloom layers are unchanged.
+- **Placement:** the `bob` layer in `ART.plant.core`, now 0.27 of the box (it was 0.24), so the heart's body fills about half the chamber and the trunks reach towards its glass.
+- **Beat:** `beat:2.4` on the layer makes the heart squeeze 2.4 times as much as the chamber on each beat (about 7 to 8% against the chamber's 3 to 4%), on top of the chamber's own tightening. Reduced motion holds it still.
+- **Title and menu:** the title background (`art/title/bg.jpg`) and the two menu pictures that show the Bloom (`art/menu/factory.jpg`, `frontier.jpg`) were rendered again so they show the heart. Only the Bloom changed in the title.
+- **Without painted art:** the drawn Bloom already used a heart sprite and is unchanged.
+
