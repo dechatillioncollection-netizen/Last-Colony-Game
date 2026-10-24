@@ -502,12 +502,10 @@ Heap.prototype.pop=function(){const I=this.i,P=this.p;const v=I[0];this.top=P[0]
 
 // ---------- state ----------
 let G=null;
-const terrCanvas=document.createElement('canvas');terrCanvas.width=MW*T;terrCanvas.height=MH*T;
-const tctx=terrCanvas.getContext('2d');
 const miniBase=document.createElement('canvas');miniBase.width=MW;miniBase.height=MH;
 
 function setMapSize(w,h=w){if(w===MW&&h===MH)return;MW=w;MH=h;N=w*h;
-  terrCanvas.width=w*T;terrCanvas.height=h*T;miniBase.width=w;miniBase.height=h;webClearAll();miniWeb.width=w;miniWeb.height=h;hdCanvas.width=w*HDR;hdCanvas.height=h*HDR;webImg=null;
+  miniBase.width=w;miniBase.height=h;webClearAll();miniWeb.width=w;miniWeb.height=h;webImg=null;
   webArtImg=null;webPat=null;if(webArtOn())webPat=webSel(0,0).x.createPattern(ART.plant.rootweb.img[0],'repeat');}
 function newGame(mode,mis){mdStop();splashEnd(true);
   RADIO.length=0;PINGS.length=0;sndReset();cineReset();
@@ -834,7 +832,7 @@ const SET={hd:true,hq:true,fog:true,art:true,gl:true,q:'high',dpr:1.5};try{SET.a
   else SET.q=!SET.hd?'low':!SET.art||!SET.gl?'medium':SET.hq?'epic':'high';
   SET.dpr=QUALITY[SET.q].dpr;}catch(e){}
 if(APP){SET.gl=true;try{if(localStorage.getItem('lc_gl')==='0')localStorage.setItem('lc_gl','1');}catch(e){}}
-const HDR=16;const hdCanvas=document.createElement('canvas');hdCanvas.width=MW*HDR;hdCanvas.height=MH*HDR;const hctx=hdCanvas.getContext('2d');
+// v64: the HD ground picture is now the painted ground (PG), baked in chunks; see "Painted ground" below
 const NL=new Float32Array(256*256);{let sd=1234567;for(let i=0;i<NL.length;i++){sd=(Math.imul(sd,1103515245)+12345)>>>0;NL[i]=sd/4294967296;}}
 function vn(x,y){const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
   const x0=xi&255,y0=yi&255,x1=(xi+1)&255,y1=(yi+1)&255;
@@ -842,51 +840,9 @@ function vn(x,y){const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,ux=fx*f
 function blurMask(m){const o=new Float32Array(N);for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){let s=0,n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=MW||yy>=MH)continue;s+=m[yy*MW+xx]*(dx||dy?1:2);n+=dx||dy?1:2;}o[y*MW+x]=s/n;}return o;}
 function bil(m,u,v){u-=.5;v-=.5;if(u<0)u=0;if(v<0)v=0;if(u>MW-1.001)u=MW-1.001;if(v>MH-1.001)v=MH-1.001;const x=u|0,y=v|0,fx=u-x,fy=v-y,i=y*MW+x;
   return m[i]*(1-fx)*(1-fy)+m[i+1]*fx*(1-fy)+m[i+MW]*(1-fx)*fy+m[i+MW+1]*fx*fy;}
-function buildHDTerrain(){
-  const rk=new Float32Array(N),wt=new Float32Array(N),sd=new Float32Array(N);
-  for(let i=0;i<N;i++){const t=G.terrain[i];rk[i]=t===ROCK?1:0;wt[i]=t===WATER?1:0;sd[i]=t===SANDF?1:0;}
-  const R=blurMask(rk),W=blurMask(blurMask(wt)),S=blurMask(sd);
-  const w=hdCanvas.width,h=hdCanvas.height,img=hctx.createImageData(w,h),D=img.data;const so=(G.seed%997)*.37;
-  const BI=biome(),PF=BI.h.floor,PR=BI.h.rock,PS=BI.h.sand,PW=BI.h.water,PI=BI.ice?.35:1;
-  for(let py=0;py<h;py++){const v=py/HDR;
-    for(let px=0;px<w;px++){const u=px/HDR;
-      const n1=vn(u*.8+so,v*.8),n2=vn(u*.8+40,v*.8+so),det=vn(u*3+so,v*3)*.6+vn(u*7,v*7+so)*.4,fine=vn(u*16,v*16);
-      const wu=u+(n1-.5)*.45,wv=v+(n2-.5)*.45;
-      const r=bil(R,wu,wv),wa=bil(W,wu,wv),sa=bil(S,wu,wv);
-      let cr,cg,cb;
-      if(wa>.5){const dep=Math.min(1,(wa-.5)*2.6),rip=(vn(u*5+v*2,v*5)-.5)*14;
-        cr=PW[0]-34*dep*PI+rip*.4;cg=PW[1]-62*dep*PI+rip;cb=PW[2]-50*dep*PI+rip;
-        if(vn(u*2.2+so,v*6)>.83){cr+=30;cg+=40;cb+=45;}
-        const sh=Math.max(0,.62-wa)*5;cr+=sh*40;cg+=sh*36;cb+=sh*26;}
-      else if(r>.5){const gx=bil(R,wu+.3,wv)-bil(R,wu-.3,wv),gy=bil(R,wu,wv+.3)-bil(R,wu,wv-.3);
-        let sh=1+(gx+gy)*1.6-(r>.85?0:.0);sh=Math.max(.42,Math.min(1.55,sh));
-        const strata=Math.sin(v*5+det*5+u*.6)*.07,top=r>.9?1.06:1;
-        const base=.78+det*.38+strata;cr=PR[0]*base*sh*top;cg=PR[1]*base*sh*top;cb=PR[2]*base*sh*top;
-        if(fine>.8){cr*=1.12;cg*=1.12;cb*=1.12;}if(r<.58){cr*=.7;cg*=.7;cb*=.72;}}
-      else{const sm=Math.max(0,Math.min(1,(sa-.35)*3.3));
-        const soil=.8+det*.4,peb=fine>.83?1.25:fine<.12?.8:1;
-        const fr=PF[0]*soil*peb,fg=PF[1]*soil*peb,fb=PF[2]*soil*peb;
-        const rip=Math.sin((u*.8+v*.5)*8+det*4)*.08,sb=.88+det*.24+rip;
-        const sr=PS[0]*sb,sg=PS[1]*sb,sbb=PS[2]*sb;
-        cr=fr+(sr-fr)*sm;cg=fg+(sg-fg)*sm;cb=fb+(sbb-fb)*sm;
-        const ao=1-Math.min(.55,r*1.25)-Math.min(.35,wa*.7);cr*=ao;cg*=ao;cb*=ao;
-        if(vn(u*1.3+70,v*1.3)>.78){cr*=.9;cg*=.92;cb*=.9;}}
-      const k=(py*w+px)*4;D[k]=cr;D[k+1]=cg;D[k+2]=cb;D[k+3]=255;}}
-  hctx.putImageData(img,0,0);drawDecor(hctx,HDR);
-  // ore: faceted crystal clusters (coal as glossy lumps)
-  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const o=G.ore[y*MW+x];if(o<0)continue;
-    const n=5+(hash(x,y,G.seed+5)*4|0);hctx.fillStyle='rgba(0,0,0,.28)';hctx.beginPath();hctx.ellipse((x+.5)*HDR,(y+.55)*HDR,HDR*.48,HDR*.38,0,0,7);hctx.fill();
-    for(let k=0;k<n;k++){const cx=(x+.15+hash(x*7+k,y,G.seed+o)*.7)*HDR,cy=(y+.2+hash(x,y*7+k,G.seed+o)*.65)*HDR,s=HDR*(.14+hash(k,x+y,9)*.12),a=hash(k,x*y,3)*.8-.4;
-      hdCrystal(hctx,cx,cy,s,a,IT[o].c,o===COAL);}}
-  GLR.terrDirty=true;
-}
+// v64: the per-pixel HD ground is replaced by the painted ground; kept as a name for older tools and tests
+function buildHDTerrain(){pgBake();}
 function shade(hex,f){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgb(${Math.min(255,r*f)|0},${Math.min(255,g*f)|0},${Math.min(255,b*f)|0})`;}
-function hdCrystal(c,x,y,s,a,col,coal){c.save();c.translate(x,y);c.rotate(a);
-  if(coal){c.fillStyle='#16161a';c.beginPath();c.ellipse(0,0,s*1.1,s*.8,0,0,7);c.fill();c.fillStyle='rgba(200,210,230,.35)';c.beginPath();c.ellipse(-s*.3,-s*.3,s*.35,s*.18,-.5,0,7);c.fill();c.restore();return;}
-  c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.moveTo(-s*.6,s*.4);c.lineTo(s*.9,s*.5);c.lineTo(s*.3,s*.9);c.closePath();c.fill();
-  c.fillStyle=shade(col,.62);c.beginPath();c.moveTo(0,-s*1.6);c.lineTo(s*.55,-s*.4);c.lineTo(s*.4,s*.5);c.lineTo(0,s*.3);c.closePath();c.fill();
-  c.fillStyle=shade(col,1.15);c.beginPath();c.moveTo(0,-s*1.6);c.lineTo(-s*.55,-s*.4);c.lineTo(-s*.4,s*.5);c.lineTo(0,s*.3);c.closePath();c.fill();
-  c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.moveTo(0,-s*1.5);c.lineTo(-s*.3,-s*.5);c.lineTo(-s*.08,-s*.4);c.closePath();c.fill();c.restore();}
 // a soft blurred shadow sprite reused under every growth and unit
 const sheenSprite=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,64,64);g.addColorStop(0,'rgba(255,255,255,.16)');g.addColorStop(.45,'rgba(255,255,255,0)');g.addColorStop(1,'rgba(0,0,0,.28)');x.fillStyle=g;x.fillRect(0,0,64,64);return c;})();
 const shadowSprite=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');const g=x.createRadialGradient(32,32,6,32,32,31);g.addColorStop(0,'rgba(0,0,0,.6)');g.addColorStop(.6,'rgba(0,0,0,.35)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return c;})();
@@ -1379,8 +1335,9 @@ const GLSL_COMMON=`
 uniform vec4 uCam;uniform vec2 uView;uniform vec2 uMap;
 vec2 worldTile(){vec2 sp=vec2(gl_FragCoord.x,uView.y-gl_FragCoord.y);return (sp/uCam.z+uCam.xy)/24.;}
 `;
-const GLSL_TERR=GLSL_HEAD+GLSL_COMMON+`uniform sampler2D uTer;out vec4 o;
-void main(){vec2 w=worldTile();if(w.x<0.||w.y<0.||w.x>=uMap.x||w.y>=uMap.y){o=vec4(11./255.,12./255.,15./255.,1.);return;}o=vec4(texture(uTer,w/uMap).rgb,1.);}`;
+// v64: the painted ground comes in chunks, each drawn inside its own scissor box; uCh is the chunk canvas's corner (tiles) and 1/size
+const GLSL_TERR=GLSL_HEAD+GLSL_COMMON+`uniform sampler2D uTer;uniform vec4 uCh;out vec4 o;
+void main(){vec2 w=worldTile();o=vec4(texture(uTer,(w-uCh.xy)*uCh.zw).rgb,1.);}`;
 // feeder spokes (kind 0) and channel segments (kind 1), max-blended into the vein buffer: r feeder vein, g near a growth, b channel, a channel furrow
 const GLSL_VEIN=GLSL_HEAD+`in vec2 vW;flat in vec4 vA;flat in vec4 vB;flat in vec4 vC;flat in vec4 vD;out vec4 o;
 void main(){vec2 p=vW;o=vec4(0.);
@@ -1481,7 +1438,7 @@ function glInit(){GLR.tried=true;
     const tex=(filt,wrap)=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filt);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filt===gl.LINEAR_MIPMAP_LINEAR?gl.LINEAR:filt);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrap||gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wrap||gl.CLAMP_TO_EDGE);return t;};
     GLR.tex=tex;
-    GLR.tWO=tex(gl.NEAREST);GLR.tBorn=tex(gl.NEAREST);GLR.tDorm=tex(gl.LINEAR);GLR.tTF=tex(gl.NEAREST);GLR.tTer=tex(gl.LINEAR);GLR.tFX=tex(gl.NEAREST);
+    GLR.tWO=tex(gl.NEAREST);GLR.tBorn=tex(gl.NEAREST);GLR.tDorm=tex(gl.LINEAR);GLR.tTF=tex(gl.NEAREST);GLR.tFX=tex(gl.NEAREST);
     GLR.tNL=tex(gl.LINEAR,gl.REPEAT);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
     {const h=new Uint16Array(256*256),f32=new Float32Array(1),u32=new Uint32Array(f32.buffer);
       // 32-bit float to half float, for the noise table (half floats can be filtered on every WebGL 2 device)
@@ -1507,12 +1464,10 @@ function glUpload(){const gl=GLR.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER,null);GLR.webDirty=false;}
   if(WSUP.gpu||GLR.dormW!==MW){const d=WSUP.d8&&WSUP.d8.length===N?WSUP.d8:new Uint8Array(N);gl.bindTexture(gl.TEXTURE_2D,GLR.tDorm);gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,MW,MH,0,gl.RED,gl.UNSIGNED_BYTE,d);GLR.dormW=MW;WSUP.gpu=false;}
   if(GLR.bornDirty){gl.bindTexture(gl.TEXTURE_2D,GLR.tBorn);gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,MW,MH,0,gl.RED,gl.FLOAT,GLR.born);GLR.bornDirty=false;}
-  const src=SET.hd?hdCanvas:terrCanvas;
-  if(GLR.terrDirty||GLR.terrSrc!==src){gl.bindTexture(gl.TEXTURE_2D,GLR.tTer);gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
-    // HD ground is smoothed (with mipmaps, so it does not shimmer zoomed out); the classic ground keeps its crisp pixels
-    if(SET.hd){gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);}
-    else{gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);}
-    GLR.terrSrc=src;GLR.terrDirty=false;}}
+  // the painted ground's chunks, uploaded once after each bake, smoothed with mipmaps so they never shimmer zoomed out
+  if(GLR.terrDirty||GLR.pgN!==PG.n){for(const t of GLR.pgTex||[])gl.deleteTexture(t);GLR.pgTex=[];gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+    for(const q of PG.ch){const t=GLR.tex(gl.LINEAR_MIPMAP_LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,q.cv);gl.generateMipmap(gl.TEXTURE_2D);GLR.pgTex.push(t);}
+    GLR.pgN=PG.n;GLR.terrDirty=false;}}
 function glTri(){const gl=GLR.gl;gl.bindBuffer(gl.ARRAY_BUFFER,GLR.tri);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);for(let k=1;k<5;k++){gl.disableVertexAttribArray(k);gl.vertexAttrib4f(k,0,0,0,0);}gl.drawArrays(gl.TRIANGLES,0,3);}
 // feeder spokes of the growths in view, and the channel segments, as quads in world tile units
 function glVeins(tx0,ty0,tx1,ty1){let V=GLR.vdata,n=0;const quad=(x0,y0,x1,y1,A,Bv,Cv,Dv)=>{if((n+6)*18>V.length){const nv=new Float32Array(V.length*2);nv.set(V);V=GLR.vdata=nv;}
@@ -1539,7 +1494,10 @@ function glDraw(w,h,cx,cy,sc,peek){const gl=GLR.gl;if(gl.isContextLost()){GLR.lo
     for(let k=0;k<5;k++){gl.enableVertexAttribArray(k);gl.vertexAttribPointer(k,k?4:2,gl.FLOAT,false,72,k?8+(k-1)*16:0);}
     gl.drawArrays(gl.TRIANGLES,0,nv);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);}
   gl.bindFramebuffer(gl.FRAMEBUFFER,peek?GLR.fbPeek:null);gl.viewport(0,0,w,h);
-  if(!peek){const P=GLR.pTerr;gl.useProgram(P.p);glCamU(P,w,h,cx,cy,sc);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,GLR.tTer);gl.uniform1i(P.U.uTer,0);glTri();}
+  if(!peek){gl.clearColor(11/255,12/255,15/255,1);gl.clear(gl.COLOR_BUFFER_BIT);const P=GLR.pTerr,R=PG.R;gl.useProgram(P.p);glCamU(P,w,h,cx,cy,sc);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(P.U.uTer,0);gl.enable(gl.SCISSOR_TEST);
+    PG.ch.forEach((q,n)=>{const a=Math.max(0,Math.floor((q.x0*T/R-cx)*sc)),b=Math.max(0,Math.floor((q.y0*T/R-cy)*sc)),e=Math.min(w,Math.ceil((q.x1*T/R-cx)*sc)),f=Math.min(h,Math.ceil((q.y1*T/R-cy)*sc));
+      if(e<=a||f<=b||!GLR.pgTex[n])return;gl.scissor(a,h-f,e-a,f-b);gl.bindTexture(gl.TEXTURE_2D,GLR.pgTex[n]);gl.uniform4f(P.U.uCh,q.ox/R,q.oy/R,R/q.w,R/q.h);glTri();});
+    gl.disable(gl.SCISSOR_TEST);}
   else{gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);}
   const P=GLR.pWeb;gl.useProgram(P.p);glCamU(P,w,h,cx,cy,sc);
   const tx=[[GLR.tWO,'uWO'],[GLR.tTF,'uTF'],[GLR.tBorn,'uBorn'],[GLR.tNL,'uNL'],[GLR.tFX,'uFX'],[GLR.patTex,'uPat'],[GLR.tDorm,'uDorm']];
@@ -1556,40 +1514,19 @@ function glPeek(px,py,w,h){const gl=GLR.gl;if(!GLR.fbPeek){GLR.fbPeek=gl.createF
   GLR.fxW=-1;glDraw(w,h,px,py,1,true);const buf=new Uint8Array(w*h*4);gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,buf);gl.bindFramebuffer(gl.FRAMEBUFFER,null);GLR.fxW=-1;
   const img=new ImageData(w,h);for(let y=0;y<h;y++)img.data.set(buf.subarray((h-1-y)*w*4,(h-y)*w*4),y*w*4);return img;}
 function setHD(on){SET.hd=on;try{localStorage.setItem('lc_hd',on?'1':'0');}catch(e){}
-  if(G){if(on)buildHDTerrain();repaintAllWeb();try{buildMenu();}catch(e){}}
+  if(G){repaintAllWeb();try{buildMenu();}catch(e){}}
   const cb=document.getElementById('optHD');if(cb)cb.checked=on;const hq=document.getElementById('optHQ');if(hq)hq.disabled=!on;}
 
 // ---------- terrain drawing ----------
-function drawTile(c,x,y){
-  const i=y*MW+x,t=G.terrain[i],px=x*T,py=y*T,h=hash(x,y,G.seed),h2=hash(y,x,G.seed+9),P=biome().c;
-  if(t===WATER){c.fillStyle=`hsl(${P.water[0]},${P.water[1]}%,${P.water[2]+h*3}%)`;c.fillRect(px,py,T,T);
-    c.fillStyle='rgba(120,170,220,.08)';c.fillRect(px+2+h*12,py+6+h2*10,8,1.5);return;}
-  if(t===ROCK){c.fillStyle=`hsl(${P.rock[0]},${P.rock[1]}%,${P.rock[2]+h*5}%)`;c.fillRect(px,py,T,T);
-    c.fillStyle='rgba(255,255,255,.06)';c.fillRect(px,py,T,3);c.fillStyle='rgba(0,0,0,.25)';c.fillRect(px,py+T-3,T,3);
-    c.fillStyle='rgba(0,0,0,.18)';c.fillRect(px+4+h*10,py+6+h2*8,5,4);return;}
-  if(t===SANDF){c.fillStyle=`hsl(${P.sand[0]},${P.sand[1]+h*6}%,${P.sand[2]+h*4}%)`;c.fillRect(px,py,T,T);
-    c.fillStyle='rgba(255,230,190,.12)';for(let k=0;k<4;k++)c.fillRect(px+hash(x*5+k,y,1)*22,py+hash(x,y*5+k,2)*22,2,2);}
-  else{c.fillStyle=`hsl(${P.floor[0]},${P.floor[1]}%,${P.floor[2]+h*3}%)`;c.fillRect(px,py,T,T);
-    c.strokeStyle='rgba(0,0,0,.18)';c.lineWidth=1;c.strokeRect(px+.5,py+.5,T-1,T-1);
-    c.fillStyle='rgba(255,255,255,.035)';c.fillRect(px+h*18,py+h2*18,4,3);}
-  const o=G.ore[i];
-  if(o>=0){
-    c.globalAlpha=o===COAL?.5:.22;c.fillStyle=o===COAL?'#000':IT[o].c;c.fillRect(px,py,T,T);c.globalAlpha=1;
-    for(let k=0;k<8;k++){const ox=1+hash(x*7+k,y,G.seed+o)*(T-8),oy=1+hash(x,y*7+k,G.seed+o)*(T-8),sz=4+hash(k,x+y,3)*3;
-      c.fillStyle='rgba(0,0,0,.45)';c.fillRect(px+ox+1,py+oy+1,sz,sz);c.fillStyle=IT[o].c;c.fillRect(px+ox,py+oy,sz,sz);
-      if(o===COAL){c.fillStyle='rgba(200,205,220,.35)';c.fillRect(px+ox,py+oy,sz,1);}}}
-}
+// the minimap's ground (one pixel a tile, in the palette's colours), then the painted ground, baked once for the whole map
 function drawTerrainAll(){
-  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)drawTile(tctx,x,y);
-  drawDecor(tctx,T);
   const m=miniBase.getContext('2d'),img=m.createImageData(MW,MH);
-  const col=biome().mini;
+  const col=(PGP[pgPal()]||PGP.base).mini;
   const hex=s=>[parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)];
   for(let i=0;i<N;i++){let c=col[G.terrain[i]];if(G.ore[i]>=0){const oc=hex(IT[G.ore[i]].c);c=[(c[0]+oc[0])/2,(c[1]+oc[1])/2,(c[2]+oc[2])/2];}
     img.data[i*4]=c[0];img.data[i*4+1]=c[1];img.data[i*4+2]=c[2];img.data[i*4+3]=255;}
   m.putImageData(img,0,0);drawDecorMini(m);
-  if(SET.hd)buildHDTerrain();
-  GLR.terrDirty=true;
+  pgBake();
 }
 
 // ---------- blocks ----------
@@ -4652,12 +4589,12 @@ function render(){
   const vx0=Math.max(0,cam.x),vy0=Math.max(0,cam.y),vx1=Math.min(MW*T,cam.x+VW/z),vy1=Math.min(MH*T,cam.y+VH/z);
   if(vx1>vx0&&vy1>vy0&&glOn()!==webGPU)repaintAllWeb();
   if(vx1>vx0&&vy1>vy0&&webGPU&&glDraw(cv.width,cv.height,cam.x,cam.y,DPR*z)){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(GLR.cv,0,0);ctx.restore();}
-  else if(vx1>vx0&&vy1>vy0){if(SET.hd){ctx.imageSmoothingEnabled=true;const k=HDR/T;ctx.drawImage(hdCanvas,vx0*k,vy0*k,(vx1-vx0)*k,(vy1-vy0)*k,vx0,vy0,vx1-vx0,vy1-vy0);ctx.imageSmoothingEnabled=false;}else ctx.drawImage(terrCanvas,vx0,vy0,vx1-vx0,vy1-vy0,vx0,vy0,vx1-vx0,vy1-vy0);ctx.imageSmoothingEnabled=SET.hd;if(webArtOn())webArtTick();webBlit(ctx,vx0,vy0,vx1-vx0,vy1-vy0,vx0,vy0,vx1-vx0,vy1-vy0);ctx.imageSmoothingEnabled=false;}
+  else if(vx1>vx0&&vy1>vy0){pgBlit(ctx,vx0,vy0,vx1-vx0,vy1-vy0,vx0,vy0,vx1-vx0,vy1-vy0);ctx.imageSmoothingEnabled=SET.hd;if(webArtOn())webArtTick();webBlit(ctx,vx0,vy0,vx1-vx0,vy1-vy0,vx0,vy0,vx1-vx0,vy1-vy0);ctx.imageSmoothingEnabled=false;}
   const tx0=Math.floor(cam.x/T),ty0=Math.floor(cam.y/T),tx1=Math.floor(vx1/T),ty1=Math.floor(vy1/T);
   const inView=(x,y,m)=>x>=tx0-m&&x<=tx1+1+m&&y>=ty0-m&&y<=ty1+1+m;
   if(webArtOn())webArtFx(ctx,time,tx0,ty0,tx1,ty1);
   circFrame(ctx,time,tx0,ty0,tx1,ty1);
-  for(const d of G.decals){if(!inView(d.x,d.y,1))continue;ctx.fillStyle=d.scorch?'rgba(0,0,0,.35)':'rgba(20,20,24,.55)';ctx.fillRect((d.x-d.r)*T,(d.y-d.r)*T,d.r*2*T,d.r*2*T);}
+  for(const d of G.decals){if(!inView(d.x,d.y,1))continue;const s=decalSpr(d.scorch?0:1,((d.x*7+d.y*13)*10|0)&3),r=d.r*T*1.5;ctx.drawImage(s,d.x*T-r,d.y*T-r,r*2,r*2);}
   if(!G.held&&!G.test){const sp=spawnPoint(),pulse=.5+.5*Math.sin(performance.now()/300),R=G.ezone;
     ctx.strokeStyle=`rgba(238,90,68,${.3+.25*pulse})`;ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.beginPath();ctx.arc(G.spawn.x*T,G.spawn.y*T,R*T,0,7);ctx.stroke();ctx.setLineDash([]);
     if(G.mode!=='siege'){ctx.fillStyle='rgba(238,90,68,.10)';ctx.beginPath();ctx.arc(sp.x*T,sp.y*T,3*T,0,7);ctx.fill();}}
@@ -4944,6 +4881,10 @@ const MISSIONS=[
    desc:'A quiet meadow where the hive first takes root, in a hollow sheltered by rocks. A survey track runs in from the east. Nothing on this ground knows the hive exists yet. Learn to grow, then hold the Bloom for 10 waves.',
    tip:'The Bloom spreads Rootweb about 11 tiles around itself here. Plant Rootweb Nodes to reach the copper, lead and coal further out.',
    core:[12,40],spawn:[66,32],
+   // painted ground under the play (v64): ['blob',material,x,y,rx,ry,alpha] or ['path',material,points,half width,alpha]
+   paint:[['blob','moss2',14,40,8,7,.6],['blob','drygrass',56,40,9,6,.5],['blob','drygrass',46,14,8,4,.45],['blob','dirt',31,39,4.5,3.2,.5],['blob','packed',30,40,2.6,2,.7],
+    ['blob','packed',58,34,4,2.6,.7],['blob','mud',42,52,8.5,5,.5],['blob','mud',30,59,6,3.8,.45],
+    ['blob','gravel',22,52,4.5,3.4,.5],['blob','gravel',64,9,5.5,4.2,.45],['blob','gravel',8,63,5,4,.45],['blob','gravel',8,25,6,3,.4]],
    // HDF Patrol 7 walks this survey track in from the east edge and stops where it can see the growth
    patrol:[[69,32],[62,32],[55,29],[47,31],[40,35],[33,37],[29,38]],
    ops:[
@@ -4962,6 +4903,10 @@ const MISSIONS=[
    desc:'Scorched coal plains below the HDF Ember Depot. Clearance crews have already burned this ground once. Their columns come down the haul road from the depot in the north east, with flame tanks and bombers late on. Digest coal into resin for stronger thorns and survive 15 waves.',
    tip:'The coal fields lie just past the Bloom\'s reach: push Rootweb Nodes toward them and digest coal into resin, which doubles a Thorn Spitter\'s damage.',
    core:[13,71],spawn:[74,13],
+   paint:[['path','dust',[[76,1],[76,9],[72,16],[64,24],[57,33],[51,41],[44,50],[39,56],[35,60]],3.4,.45],
+    ['blob','scorch',24,57,6.5,4.6,.6],['blob','scorch',31,68,4.6,4,.55],['blob','scorch',41,52,5,4,.55],['blob','scorch',53,38,5,4,.5],['blob','scorch',38,64,4,3.4,.5],
+    ['blob','cinder',30,61,5,4,.5],['blob','cinder',46,46,5,4,.45],['blob','cinder',64,62,4.5,4,.45],['blob','dust',14,70,9,7,.4],['blob','dust',58,20,8,6,.35],
+    ['blob','concrete',69,4,7,4,.8],['blob','packed',70,9,10,4.5,.55],['blob','packed',36,58,3.5,3,.65],['blob','mud',43,42,3.6,3,.55],['blob','mud',70,42,5,7,.45]],
    ops:[
     ['ridge',[[40,14],[48,22],[52,30]],1.6],['ridge',[[58,40],[62,48],[60,56]],1.6],['ridge',[[20,40],[30,46],[35,53]],1.6],['ridge',[[46,64],[50,72],[48,80]],1.6],
     ['rock',12,14,6,5],['rock',30,30,5,4],['rock',72,66,5,6],['rock',58,76,4,4],
@@ -4978,6 +4923,10 @@ const MISSIONS=[
    desc:'The Kilo ridge splits these mountains, and an HDF mining outpost sits behind its only pass. Its drills feed its turrets and pay for its patrols, and a containment laboratory stands behind its core. Cut its belts, outrange its guns and destroy its core.',
    tip:'Seed Mortars outrange colony Duo turrets. Its drills and belts sit outside the walls. Raise a pack of Mite Ants and send them through the pass (C) once its guns are down.',
    core:[14,48],spawn:[80,48],
+   paint:[['blob','packed',80,48,12,15,.55],['blob','concrete',86,43,5,4,.8],['blob','gravel',88,52,3.5,3.5,.65],['blob','gravel',47,49,4,7,.55],
+    ['blob','drygrass',16,48,10,15,.45],['blob','soil',24,36,6,5,.4],['blob','soil',24,62,6,5,.4],
+    ['blob','gravel',30,15,12,4,.4],['blob','gravel',66,15,13,4,.4],['blob','gravel',30,81,12,4,.4],['blob','gravel',66,81,13,4,.4],
+    ['blob','mud',20,30,6,4.6,.5],['blob','mud',20,66,6,4.6,.5]],
    ops:[
     ['rock',30,8,11,6],['rock',66,8,12,6],['rock',30,88,11,6],['rock',66,88,12,6],
     ['ridge',[[47,3],[46,22],[47,41]],3],['ridge',[[47,57],[46,74],[47,93]],3],
@@ -4992,6 +4941,8 @@ const MISSIONS=[
    desc:'A frozen canyon with titanium in its cliffs and a frozen lake on its floor. The HDF holds barricades across the canyon road and stages artillery in the north. Its heaviest war machines come down the road with bomber wings overhead. Burn sap for vigor, grow chitin and hold for 18 waves.',
    tip:'Spore Flak shreds bomber wings. Titanium lies at the foot of the cliffs: Deep Roots break it down for Ironbark.',
    core:[48,86],spawn:[48,7],
+   paint:[['blob','ice',48,46,12,6.4,.6],['blob','ice',30,20,6,4.6,.5],['blob','ice',68,24,6,4.6,.5],['blob','frozen',48,80,13,9,.5],
+    ['blob','frozen',24,44,5,25,.55],['blob','frozen',72,44,5,25,.55],['blob','dirt',47,10,15,6,.3],['blob','dirt',33,30,5.5,2.2,.35],['blob','dirt',61,30,5.5,2.2,.35]],
    ops:[
     ['rock',12,40,11,30],['rock',84,44,11,28],['rock',20,88,5,5],['rock',78,86,5,6],
     ['water',48,46,9,4],['water',30,20,4,3],['water',68,24,4,3],
@@ -5008,6 +4959,10 @@ const MISSIONS=[
    desc:'The last human colony on Nereth, where the Supreme General makes a final stand. Behind its walls, blast doors, lancers and working factories are streets of homes, a command centre and the shelters its people will run to. It sits across the valley from your Bloom. Starve it and overrun its core.',
    tip:'Hold your line first, then hatch a mixed swarm: Bulwark Ants (chitin, resin, titanium) soak the colony guns while Thornbacks follow. Healing Pods keep your front alive.',
    core:[26,72],spawn:[117,72],
+   // mirrored with the valley; paintPost lies on the human side only
+   paint:[['blob','gravel',46,72,7,12,.5],['blob','mud',36,40,8,6,.5],['blob','drygrass',26,72,10,13,.45],['blob','soil',40,58,8,6,.4],['blob','gravel',16,20,10,8,.4],
+    ['path','dirt',[[30,72],[40,68],[52,64],[64,68],[72,72]],1.4,.45]],
+   paintPost:[['blob','packed',124,72,15,30,.55],['blob','concrete',133,72,9,27,.7],['blob','gravel',108,72,7,4,.55],['blob','packed',138,56,3,3,.7],['blob','concrete',138,88,3,3,.8]],
    ops:[
     ['ridge',[[52,8],[56,26],[54,40]],3],['ridge',[[54,104],[56,118],[52,136]],3],['rock',46,72,4,9],
     ['rock',16,20,8,7],['rock',16,124,8,7],['water',36,40,6,4],['water',36,104,6,4],['rock',66,52,4,5],['rock',66,92,4,5],
@@ -5048,23 +5003,12 @@ const PROP_SOLID={truck:1,mast:1,tripod:1,crates:1,excavator:1,rig:1,depot:1,tan
 // landmark props of a kind in the current sector, as tile rectangles [x,y,w,h]
 function propsOf(kind){const L=mapDecor()||[];return L.filter(o=>o[0]==='prop'&&o[1]===kind).map(o=>[o[2],o[3],o[4]||1,o[5]||1]);}
 function drawDecor(c,s){const L=mapDecor();if(!L)return;const bio=G.biome;c.save();
-  decSpeck(c,s,bio);
   for(const o of L)if(o[0]==='burn')decBurn(c,s,o[1],o[2],o[3],o[4]);
   for(const o of L)if(o[0]==='track')decPath(c,s,o[1],o[2],0);
   for(const o of L)if(o[0]==='road')decPath(c,s,o[1],o[2],1);
-  for(const o of L)if(o[0]==='boulder')decBoulder(c,s,o[1],o[2],o[3]);
   for(const o of L)if(o[0]==='prop'){c.save();c.translate(o[2]*s,o[3]*s);c.scale(s/24,s/24);try{PROP_DRAW[o[1]](c,(o[4]||1)*24,(o[5]||1)*24,hash(o[2],o[3],7));}catch(e){}c.restore();}
   c.restore();}
 // small ground detail that sets each biome apart: grass and flowers, ash and embers, frost glints, pebbles
-function decSpeck(c,s,bio){const k=s/24;
-  for(let y=2;y<MH-2;y++)for(let x=2;x<MW-2;x++){const i=y*MW+x;if(G.terrain[i]!==FLOOR||G.ore[i]>=0)continue;const h=hash(x,y,G.seed+71);if(h>.42)continue;
-    const px=x*s,py=y*s;
-    if(bio==='meadow'){const n=2+(h*9|0)%3;for(let q=0;q<n;q++){const gx=px+hash(x*5+q,y,3)*s,gy=py+hash(x,y*5+q,4)*s;c.strokeStyle=q%2?'rgba(120,160,80,.55)':'rgba(84,124,60,.6)';c.lineWidth=1.2*k;
-        c.beginPath();c.moveTo(gx,gy);c.lineTo(gx-1.5*k,gy-4*k);c.moveTo(gx,gy);c.lineTo(gx+1.5*k,gy-3.5*k);c.stroke();}
-      if(h<.05){c.fillStyle=h<.025?'rgba(236,226,150,.8)':'rgba(214,186,230,.75)';c.beginPath();c.arc(px+s*.5,py+s*.5,1.6*k,0,7);c.fill();}}
-    else if(bio==='ash'){c.fillStyle='rgba(150,140,130,.18)';c.fillRect(px+hash(x,y,5)*s,py+hash(y,x,6)*s,3*k,2*k);if(h<.03){c.fillStyle='rgba(255,120,50,.55)';c.fillRect(px+s*.4,py+s*.6,2*k,2*k);}}
-    else if(bio==='frost'){c.fillStyle='rgba(255,255,255,.35)';c.fillRect(px+hash(x,y,5)*s,py+hash(y,x,6)*s,2*k,2*k);if(h<.08){c.strokeStyle='rgba(120,150,180,.25)';c.lineWidth=1*k;c.beginPath();c.moveTo(px+s*.2,py+s*.7);c.lineTo(px+s*.8,py+s*.6);c.stroke();}}
-    else if(bio==='pass'){c.fillStyle='rgba(40,30,20,.3)';c.beginPath();c.arc(px+hash(x,y,5)*s,py+hash(y,x,6)*s,1.6*k,0,7);c.fill();}}}
 function decBurn(c,s,x,y,rx,ry){c.save();c.translate((x+.5)*s,(y+.5)*s);
   const g=c.createRadialGradient(0,0,0,0,0,Math.max(rx,ry)*s);g.addColorStop(0,'rgba(10,8,8,.7)');g.addColorStop(.7,'rgba(20,14,12,.45)');g.addColorStop(1,'rgba(20,14,12,0)');
   c.scale(1,ry/rx);c.fillStyle=g;c.beginPath();c.arc(0,0,rx*s,0,7);c.fill();c.restore();
@@ -5076,19 +5020,11 @@ function decBurn(c,s,x,y,rx,ry){c.save();c.translate((x+.5)*s,(y+.5)*s);
 function decPath(c,s,pts,w,type){const P=pts.map(([x,y])=>[(x+.5)*s,(y+.5)*s]),wid=(w*2+1)*s*(type?.92:.7),line=(lw,col,dash)=>{c.strokeStyle=col;c.lineWidth=lw;c.setLineDash(dash||[]);c.beginPath();P.forEach(([x,y],k)=>k?c.lineTo(x,y):c.moveTo(x,y));c.stroke();};
   c.lineJoin='round';c.lineCap='round';
   if(type){line(wid+s*.3,'rgba(0,0,0,.35)');line(wid,'#585c63');line(wid*.86,'#34373c');line(s*.08,'rgba(230,190,80,.75)',[s*.6,s*.5]);}
-  else{line(wid,'rgba(92,72,50,.75)');line(wid*.7,'rgba(120,96,66,.6)');const o=wid*.22;
-    for(const sgn of [-1,1]){c.strokeStyle='rgba(64,48,34,.55)';c.lineWidth=s*.09;c.setLineDash([s*.35,s*.18]);c.beginPath();
+  // v64: the track's dirt is painted into the ground beneath (pgPlan); only the wheel ruts are drawn here
+  else{const o=wid*.22;
+    for(const sgn of [-1,1]){c.strokeStyle='rgba(52,38,26,.4)';c.lineWidth=s*.1;c.setLineDash([s*.5,s*.12]);c.beginPath();
       P.forEach(([x,y],k)=>{const [ax,ay]=P[Math.max(0,k-1)],[bx,by]=P[Math.min(P.length-1,k+1)],dx=bx-ax,dy=by-ay,L=Math.hypot(dx,dy)||1;const qx=x-dy/L*o*sgn,qy=y+dx/L*o*sgn;k?c.lineTo(qx,qy):c.moveTo(qx,qy);});c.stroke();}}
   c.setLineDash([]);}
-function decBoulder(c,s,x,y,r){const cx=(x+.5)*s,cy=(y+.5)*s,R=r*s;c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(cx+R*.15,cy+R*.25,R*1.05,R*.85,0,0,7);c.fill();
-  const g=c.createRadialGradient(cx-R*.35,cy-R*.4,R*.1,cx,cy,R*1.1);const sh=G.biome==='frost'?[200,210,222]:G.biome==='ash'?[96,88,84]:[150,146,134];
-  g.addColorStop(0,`rgb(${sh[0]},${sh[1]},${sh[2]})`);g.addColorStop(.6,`rgb(${sh[0]*.7|0},${sh[1]*.7|0},${sh[2]*.7|0})`);g.addColorStop(1,`rgb(${sh[0]*.4|0},${sh[1]*.4|0},${sh[2]*.4|0})`);
-  c.fillStyle=g;c.beginPath();for(let k=0;k<9;k++){const a=k/9*6.283,rr=R*(.86+hash(x+k,y,5)*.2);c.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*.9);}c.closePath();c.fill();
-  c.strokeStyle='rgba(0,0,0,.3)';c.lineWidth=s*.05;c.beginPath();c.moveTo(cx-R*.3,cy-R*.1);c.lineTo(cx+R*.1,cy+R*.3);c.stroke();
-  if(G.biome==='meadow'){c.fillStyle='rgba(110,150,80,.45)';c.beginPath();c.ellipse(cx-R*.2,cy+R*.5,R*.4,R*.18,0,0,7);c.fill();}
-  if(G.biome==='frost'){c.fillStyle='rgba(255,255,255,.7)';c.beginPath();c.ellipse(cx-R*.15,cy-R*.45,R*.5,R*.25,0,0,7);c.fill();}}
-// props are drawn in a 24-pixels-per-tile space; w and h are their size in that space, v a stable random value
-const PCOL={steel:'#5b6470',dark:'#2c3138',olive:'#4d5a3c',hdf:'#c9a14a',red:'#d2493a',white:'#d9dde2',glass:'rgba(150,220,200,.55)'};
 function pShadow(c,w,h){c.fillStyle='rgba(0,0,0,.38)';c.fillRect(3,4,w,h);}
 function pBox(c,x,y,w,h,top,side){c.fillStyle=side||'#23272d';c.fillRect(x,y+h*.78,w,h*.22);c.fillStyle=top;c.fillRect(x,y,w,h*.8);c.fillStyle='rgba(255,255,255,.12)';c.fillRect(x,y,w,1.5);}
 function pStripe(c,x,y,w,h){c.save();c.beginPath();c.rect(x,y,w,h);c.clip();for(let k=-h;k<w;k+=6){c.fillStyle='#e0b23c';c.beginPath();c.moveTo(x+k,y+h);c.lineTo(x+k+3,y+h);c.lineTo(x+k+3+h,y);c.lineTo(x+k+h,y);c.fill();}c.restore();}
@@ -5128,6 +5064,378 @@ const PROP_DRAW={
   pad:(c,w,h)=>{c.fillStyle='rgba(60,64,70,.9)';c.beginPath();c.arc(w/2,h/2,w*.45,0,7);c.fill();c.strokeStyle='#e0b23c';c.lineWidth=2;c.beginPath();c.arc(w/2,h/2,w*.38,0,7);c.stroke();pLabel(c,'H',w/2,h/2+1,w*.36,'#e6e8ec');},
   lamp:(c,w,h)=>{c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(13,20,3,1.4,0,0,7);c.fill();c.fillStyle='#5b6470';c.fillRect(11,6,2,15);c.fillStyle='rgba(255,220,140,.9)';c.beginPath();c.arc(12,6,2.4,0,7);c.fill();c.fillStyle='rgba(255,220,140,.18)';c.beginPath();c.arc(12,8,7,0,7);c.fill();},
 };
+// ---------- Painted ground (v64): the ground and ore are painted once, with brushes, before play ----------
+// The simulation keeps its tile grid; only the picture changes. Whenever a map is made (a campaign sector, a random map, a loaded
+// save, a menu scene) the whole ground is painted once into chunk canvases, layer by layer:
+//  regions   every terrain kind and every patch is a brush shape traced from a smooth field (the blurred tiles plus noise,
+//            a noise field, a wobbly ellipse), so borders wander across tile edges instead of following them; tracks
+//            and roads are strokes of irregular brush stamps turned along the line
+//  materials each region is filled with a seamless painted material (moss, soil, sand, ash, snow, stone, water...)
+//  relief    rock casts a soft shadow and is lit from the top left; water has depth, a wet bank and a shore line
+//  ore       a stained, broken bed under each deposit, scattered with mineral pieces in the ore's own colours
+//  detail    stones, tufts, flowers, ash and frost scattered on a jittered lattice that ignores the tiles
+//  landmarks each campaign sector's own painted ground (MISSIONS[].paint) under its tracks, roads, scorch and props
+// After that nothing is painted again during play: each frame only copies the chunks in view (2D) or samples them (GPU).
+// The quality preset sets how many pixels each tile gets (PG_RES), within a memory limit for the largest maps (PG_SIDE).
+const PG={lite:false,R:0,cs:1024,pad:8,ch:[],n:0,ms:0,pal:'',mats:new Map(),spr:new Map(),stamps:0,prof:null};
+const PG_SIDE=4608,PG_RES={low:20,medium:28,high:36,epic:44,ultra:52};
+function pgRes(){return Math.max(12,Math.min(PG_RES[SET.q]||36,Math.floor(PG_SIDE/Math.max(MW,MH))));}
+// ---- brushes: closed outlines of about unit radius, six variants of each kind, made once.
+// [outline wobble, ragged edge, points]: hard for rock and water, blob for soft ground, rag for grass and broken ground
+const PGB_KIND={hard:[.2,.12,22],blob:[.16,.06,16],rag:[.18,.22,24],dab:[.08,.06,14]};
+const PGB={};
+function pgBrushes(){if(PGB.hard)return;
+  for(const k in PGB_KIND){const [amp,rag,n]=PGB_KIND[k],L=PGB[k]=[];
+    for(let v=0;v<6;v++){const sd=v*31+k.length*7+3,P=new Float32Array(n*2),hm=[];for(let q=2;q<=6;q++)hm.push([q,(hash(v,q,sd)*2-1)*amp/(q*.45),hash(q,v,sd+1)*6.283]);
+      let sum=0;const r=[];for(let i=0;i<n;i++){const a=i/n*6.283;let e=1;for(const h of hm)e+=h[1]*Math.sin(h[0]*a+h[2]);e+=(hash(i,v,sd+2)-.5)*rag*(i%2?1.4:.6);r.push(e);sum+=e;}
+      for(let i=0;i<n;i++){const a=i/n*6.283,e=r[i]*n/sum;P[i*2]=Math.cos(a)*e;P[i*2+1]=Math.sin(a)*e;}L.push(P);}}}
+// adds one stamp's outline to a path, in the chunk's pixels: centre x,y and radii rx,ry in tiles, turned by rot, grown by g
+function pgPoly(p,k,v,R,ox,oy,x,y,rx,ry,rot,g){const P=PGB[k][v%6],cs=Math.cos(rot),sn=Math.sin(rot),kx=rx*R*g,ky=ry*R*g,cx=x*R-ox,cy=y*R-oy;
+  for(let i=0;i<P.length;i+=2){const u=P[i]*kx,w=P[i+1]*ky,px=cx+u*cs-w*sn,py=cy+u*sn+w*cs;i?p.lineTo(px,py):p.moveTo(px,py);}p.closePath();}
+// ---- layers: a brush, its stamps (x,y,rx,ry,rot,alpha,variant) and whole tiles filled outright, with a bounding box in tiles.
+// How a layer is laid: mat (a material) or col (a colour), with a feathered edge (fe), or soft (blurred, for stains and tints)
+function pgL(brush,mat,o){return Object.assign({brush,mat,st:[],fill:[],x0:1e9,y0:1e9,x1:-1e9,y1:-1e9,a:1,fe:.4},o||{});}
+function pgPut(L,x,y,rx,ry,rot,a,v){L.st.push(x,y,rx,ry,rot,a,v);const r=Math.max(rx,ry)*1.35;if(x-r<L.x0)L.x0=x-r;if(y-r<L.y0)L.y0=y-r;if(x+r>L.x1)L.x1=x+r;if(y+r>L.y1)L.y1=y+r;}
+function pgFill(L,x,y){L.fill.push(x,y);if(x<L.x0)L.x0=x;if(y<L.y0)L.y0=y;if(x+1>L.x1)L.x1=x+1;if(y+1>L.y1)L.y1=y+1;}
+// a jittered lattice: about one point per sp x sp tiles, never lined up in rows or columns
+function pgScatter(sp,sd,f){const nx=Math.ceil(MW/sp),ny=Math.ceil(MH/sp);for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)f((i+hash(i,j,sd))*sp,(j+hash(j,i,sd+1))*sp,hash(i+7,j+3,sd+2));}
+// ---- outlines from a field: the field is sampled on a lattice of st tiles (its outer ring held below any threshold, so every
+// outline closes) and traced where it crosses the threshold. Each lattice cell adds the piece of outline through it, always with
+// the inside on the same hand, and the pieces are chained into closed loops: outlines run clockwise and holes the other way,
+// so a plain fill gives the region. Items: [n,x0,y0,x1,y1, x,y ... n points], in tiles
+function pgField(f,x0,y0,x1,y1,st){x0=Math.floor(x0/st)*st-st;y0=Math.floor(y0/st)*st-st;const nx=Math.ceil((x1-x0)/st)+2,ny=Math.ceil((y1-y0)/st)+2,V=new Float32Array(nx*ny);
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++)V[j*nx+i]=i&&j&&i<nx-1&&j<ny-1?f(x0+i*st,y0+j*st):-9;return {V,nx,ny,x0,y0,st};}
+function pgMarch(Fd,thr,out){const {V,nx,ny,x0,y0,st}=Fd,nxt=new Map(),pt=new Map();
+  // where the outline crosses lattice edge e (horizontal from sample i, or vertical from it)
+  const cross=e=>{let p=pt.get(e);if(p)return p;const i=e>>1,a=V[i],b=V[i+(e&1?nx:1)],t=(thr-a)/(b-a),x=i%nx,y=(i/nx)|0;
+    p=e&1?[x0+x*st,y0+(y+t)*st]:[x0+(x+t)*st,y0+y*st];pt.set(e,p);return p;};
+  for(let j=0;j<ny-1;j++)for(let i=0;i<nx-1;i++){const c=j*nx+i,v0=V[c]>=thr,v1=V[c+1]>=thr,v2=V[c+nx+1]>=thr,v3=V[c+nx]>=thr;
+    if(v0===v1&&v1===v2&&v2===v3)continue;
+    // the cell's sides clockwise: top, right, bottom, left, each as [lattice edge, inside at its start, inside at its end]
+    const sd=[[c*2,v0,v1],[(c+1)*2+1,v1,v2],[(c+nx)*2,v3,v2],[c*2+1,v0,v3]],ev=[];
+    for(let k=0;k<4;k++){const [e,a,b]=sd[k];const ia=k<2?a:b,ib=k<2?b:a;if(ia!==ib)ev.push([e,ia?1:0]);}
+    // leaving the inside, the outline runs to the next side where the walk comes back in
+    for(let k=0;k<ev.length;k++)if(ev[k][1]){const n=ev[(k+1)%ev.length];nxt.set(ev[k][0],n[0]);}}
+  for(const [s] of nxt){if(!nxt.has(s))continue;const P=[];let e=s,x0b=1e9,y0b=1e9,x1b=-1e9,y1b=-1e9;
+    while(nxt.has(e)){const [x,y]=cross(e);P.push(x,y);if(x<x0b)x0b=x;if(y<y0b)y0b=y;if(x>x1b)x1b=x;if(y>y1b)y1b=y;const n=nxt.get(e);nxt.delete(e);e=n;}
+    if(P.length>=6)out.push(P.length/2,x0b,y0b,x1b,y1b,...P);}
+  return out;}
+// lays a field's outline into a layer: the region at thr and (for a feathered layer) a wider rim at thr-fd
+function pgCont(L,f,x0,y0,x1,y1,st,thr,fd){const Fd=pgField(f,x0,y0,x1,y1,st);L.ct=pgMarch(Fd,thr,L.ct||[]);if(fd)L.cf=pgMarch(Fd,thr-fd,L.cf||[]);L.cst=st;
+  // a layer laid in levels (lv) gets one outline per level, from thr-fd up to thr, each laid at a fraction of its alpha: a soft edge
+  if(L.lv&&fd){L.cl=L.cl||[];for(let k=0;k<L.lv-1;k++)L.cl[k]=pgMarch(Fd,thr-fd*(1-k/(L.lv-1)),L.cl[k]||[]);}
+  if(x0<L.x0)L.x0=x0;if(y0<L.y0)L.y0=y0;if(x1>L.x1)L.x1=x1;if(y1>L.y1)L.y1=y1;}
+// a patch wherever a slow, warped noise field rises over a threshold
+function pgPatch(L,f,thr,sd){pgCont(L,(x,y)=>{const wx=(vnoise(x/f*1.6,y/f*1.6,sd+3)-.5)*.8;return fbm(x/f+wx,y/f-wx*.6,sd)+(vn(x*.9+sd%89,y*.9)-.5)*.05;},0,0,MW,MH,.4,thr,.11);}
+// the tiles of one terrain kind, outlined from the smoothed tile field plus a little noise. Inside tiles are held over the
+// threshold and outside ones under it, so the outline always runs between their centres: a lone tile still shows,
+// and the edge strays from the true tile edge by no more than about a fifth of a tile
+// the tile field between tile centres, eased so that lone tiles come out round rather than diamond shaped
+function pgSm(m,u,v){u-=.5;v-=.5;if(u<0)u=0;if(v<0)v=0;if(u>MW-1.001)u=MW-1.001;if(v>MH-1.001)v=MH-1.001;const x=u|0,y=v|0,i=y*MW+x;let fx=u-x,fy=v-y;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);
+  return (m[i]*(1-fx)+m[i+1]*fx)*(1-fy)+(m[i+MW]*(1-fx)+m[i+MW+1]*fx)*fy;}
+function pgTiles(L,inSet,o){const F=new Float32Array(N);let any=0,x0=MW,y0=MH,x1=0,y1=0;
+  for(let i=0;i<N;i++)if(inSet(i)){F[i]=1;any=1;const x=i%MW,y=(i/MW)|0;if(x<x0)x0=x;if(y<y0)y0=y;if(x>x1)x1=x;if(y>y1)y1=y;}if(!any)return null;
+  const B=blurMask(F),C=new Float32Array(N),sd=(G.seed|0)+o.sd,s1=sd%97,s2=sd%53,rg=o.rag||0;for(let i=0;i<N;i++)C[i]=F[i]?Math.max(B[i],.74):Math.min(B[i],.26);
+  pgCont(L,(x,y)=>pgSm(C,x,y)+(vn(x*1.25+s1,y*1.25)-.5)*o.wob+(vn(x*3.3+31,y*3.3+s2)-.5)*o.wob*.7+(rg?(vn(x*9+s2,y*9+7)-.5)*rg:0),x0-1,y0-1,x1+2,y1+2,o.st||.25,o.thr,o.fd==null?.1:o.fd);
+  return B;}
+// brush strokes along a line of points (tiles), each stamp turned along the line
+function pgPath(L,pts,w,sd){for(let k=0;k<pts.length-1;k++){const [ax,ay]=pts[k],[bx,by]=pts[k+1],len=Math.hypot(bx-ax,by-ay),ang=Math.atan2(by-ay,bx-ax);
+  for(let q=0;q<len;q+=Math.max(.2,w*.35)){const t=q/len,h=hash(k*131+(q*10|0),7,sd);
+    pgPut(L,ax+(bx-ax)*t+(h-.5)*w*.25,ay+(by-ay)*t+(hash(k,q*10|0,sd+1)-.5)*w*.25,w*(.9+h*.3),w*(.62+hash(q*10|0,k,sd+2)*.25),ang+(hash(k+3,q*9|0,sd+3)-.5)*.35,1,(h*60)|0);}}}
+// a painted region inside a wobbly ellipse
+function pgBlob(L,cx,cy,rx,ry,sd){pgCont(L,(x,y)=>1-Math.hypot((x-cx)/rx,(y-cy)/ry)-(vnoise(x/2.2,y/2.2,sd)-.5)*.55-(vn(x*2.7+sd%61,y*2.7)-.5)*.12,cx-rx*1.8-1,cy-ry*1.8-1,cx+rx*1.8+1,cy+ry*1.8+1,.25,0,.3);}
+
+// ---- materials: seamless 512-pixel paintings, sized for the current pixels-per-tile, made once and kept
+// c dark/mid/light colours; mott and mid: [feature size in tiles, strength]; grain; cells: [size, crack width, variation, crack depth, warp];
+// rip: [wavelength, strength]; hue: [colour, size, threshold, strength]; bump: how strongly the height is lit from the top left;
+// then painted marks: blade strokes, specks, cracks
+const PG_S=512;
+const PGM={
+  moss:{c:[[32,46,30],[52,72,42],[82,102,58]],mott:[3.2,.18],mid:[.7,.1],grain:.1,hue:[[84,90,46],4.5,.55,.4],bump:.6,strokes:[11,.05,.12,.02,['rgba(92,124,62,.55)','rgba(56,82,42,.6)','rgba(118,140,74,.45)','rgba(40,60,34,.5)']]},
+  moss2:{c:[[24,38,30],[38,60,46],[64,88,62]],mott:[2.6,.18],mid:[.6,.1],grain:.1,bump:.6,strokes:[9,.05,.1,.02,['rgba(68,104,72,.55)','rgba(36,64,48,.6)','rgba(92,120,80,.45)']]},
+  drygrass:{c:[[74,68,42],[104,96,58],[136,126,80]],mott:[2.4,.16],mid:[.6,.1],grain:.12,bump:.5,strokes:[10,.05,.13,.02,['rgba(150,136,86,.5)','rgba(104,94,58,.6)','rgba(124,112,68,.5)']]},
+  dirt:{c:[[54,44,35],[80,66,52],[108,92,72]],mott:[2.2,.18],mid:[.45,.12],grain:.16,bump:1,specks:[2,.025,.06,'rgba(36,28,22,.45)']},
+  mud:{c:[[28,24,21],[42,36,31],[60,52,44]],mott:[2,.2],mid:[.5,.12],grain:.1,bump:.8},
+  soil:{c:[[42,37,36],[62,55,52],[86,78,72]],mott:[3,.18],mid:[.55,.12],grain:.15,bump:1,specks:[1.6,.02,.05,'rgba(26,22,22,.45)']},
+  lichen:{c:[[46,42,56],[64,58,80],[92,86,114]],mott:[2.2,.18],mid:[.4,.14],grain:.12,bump:.6,specks:[3,.015,.04,'rgba(120,168,156,.4)']},
+  dust:{c:[[72,64,58],[96,86,76],[122,112,98]],mott:[3,.14],mid:[.5,.1],grain:.14,bump:.6},
+  gravel:{c:[[58,54,50],[80,74,68],[104,98,90]],mott:[2,.12],mid:[.3,.12],grain:.14,bump:1,stones:[26,.025,.06,['#8a847a','#6e6860','#a09888','#5a5450']]},
+  sand:{c:[[134,110,74],[160,134,94],[188,164,120]],mott:[3,.12],mid:[.5,.06],grain:.08,rip:[.5,.035],bump:1.2,specks:[.6,.012,.03,'rgba(110,86,58,.4)']},
+  ash:{c:[[30,28,28],[44,41,40],[64,60,58]],mott:[2.6,.2],mid:[.4,.14],grain:.2,bump:.8,specks:[1.5,.012,.035,'rgba(150,146,140,.35)']},
+  cinder:{c:[[62,58,56],[86,82,78],[114,108,102]],mott:[2.4,.16],mid:[.4,.1],grain:.16,bump:.8},
+  scorch:{c:[[16,13,12],[26,21,19],[40,33,29]],mott:[1.8,.22],mid:[.35,.14],grain:.16,bump:.6},
+  grit:{c:[[132,128,118],[164,160,150],[196,194,186]],mott:[3,.12],mid:[.5,.07],grain:.1,rip:[.5,.03],bump:1.2,specks:[.7,.012,.03,'rgba(84,86,92,.45)']},
+  snow:{c:[[178,190,204],[208,218,228],[238,243,248]],mott:[3.4,.14],mid:[.7,.07],grain:.03,bump:1.2,specks:[1.5,.008,.018,'rgba(255,255,255,.8)']},
+  frozen:{c:[[92,102,112],[122,134,144],[156,168,178]],mott:[2.4,.16],mid:[.45,.1],grain:.12,bump:.9,cracks:[1,'rgba(60,70,82,.4)']},
+  ice:{c:[[100,142,164],[142,184,204],[196,224,236]],mott:[4,.2],mid:[1.2,.08],grain:.02,cracks:[.6,'rgba(240,250,255,.5)']},
+  packed:{c:[[56,54,52],[76,74,70],[98,96,90]],mott:[2.4,.14],mid:[.4,.12],grain:.15,bump:1,specks:[2,.02,.05,'rgba(34,32,30,.45)']},
+  concrete:{c:[[80,82,84],[100,102,104],[122,124,126]],mott:[3,.1],mid:[.6,.06],grain:.08,cracks:[.4,'rgba(44,46,48,.35)']},
+  stone_m:{c:[[46,46,42],[94,92,84],[150,146,136]],mott:[2.4,.22],mid:[.45,.12],grain:.07,cells:[1.75,.035,.2,.85,.3],facet:1.1,bump:2.6,cracks:[.3,'rgba(24,24,22,.45)']},
+  stone_b:{c:[[44,40,38],[90,84,80],[142,136,128]],mott:[2.4,.22],mid:[.45,.12],grain:.07,cells:[1.75,.035,.2,.85,.3],facet:1.1,bump:2.6,cracks:[.3,'rgba(22,20,20,.45)']},
+  stone_a:{c:[[26,24,24],[60,56,54],[100,94,90]],mott:[2.4,.22],mid:[.45,.12],grain:.07,cells:[1.75,.035,.2,.85,.3],facet:1.1,bump:2.6,cracks:[.3,'rgba(10,8,8,.5)']},
+  stone_p:{c:[[54,44,36],[102,90,76],[156,142,122]],mott:[2.4,.22],mid:[.45,.12],grain:.07,cells:[1.75,.035,.2,.85,.3],facet:1.1,bump:2.6,cracks:[.3,'rgba(34,26,20,.45)']},
+  stone_f:{c:[[66,76,90],[114,126,142],[170,182,196]],mott:[2.4,.22],mid:[.45,.12],grain:.07,cells:[1.75,.035,.2,.85,.3],facet:1.1,bump:2.6,cracks:[.3,'rgba(36,44,56,.45)']},
+  water:{c:[[30,70,80],[46,98,108],[74,130,136]],mott:[4,.16],mid:[1,.08],grain:.02,rip:[.7,.04],bump:.6},
+  bed_cu:{c:[[46,30,22],[78,52,36],[112,76,52]],mott:[1.2,.2],mid:[.25,.16],grain:.12,bump:1.4,stones:[34,.02,.055,['#c07850','#8a5034','#e09a6a','#6a3a24']]},
+  bed_pb:{c:[[34,32,46],[56,52,74],[86,80,108]],mott:[1.2,.2],mid:[.25,.16],grain:.12,bump:1.4,stones:[34,.02,.055,['#8a80b0','#5e5680','#b0a6d6','#48405e']]},
+  bed_coal:{c:[[10,10,12],[20,20,24],[36,36,42]],mott:[1.2,.2],mid:[.25,.16],grain:.12,bump:1.4,stones:[34,.02,.055,['#2a2a30','#16161a','#40404a','#0c0c0e']]},
+  bed_ti:{c:[[56,64,80],[86,98,120],[126,140,168]],mott:[1.2,.2],mid:[.25,.16],grain:.12,bump:1.4,stones:[34,.02,.055,['#a8b8e8','#7486b8','#d0dcff','#56628a']]},
+};
+// periodic value noise on the material square: c cells across it, s seed; and octaves of it
+function pgN(x,y,c,s){const X=x*c/PG_S,Y=y*c/PG_S,xi=Math.floor(X),yi=Math.floor(Y),fx=X-xi,fy=Y-yi,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+  const x0=((xi%c)+c)%c,y0=((yi%c)+c)%c,x1=(x0+1)%c,y1=(y0+1)%c,a=hash(x0,y0,s),b=hash(x1,y0,s),d=hash(x0,y1,s),e=hash(x1,y1,s);return a+(b-a)*u+(d-a)*v+(a-b-d+e)*u*v;}
+function pgF(x,y,c,s,o){let t=0,w=1,n=0;for(let k=0;k<o;k++){t+=pgN(x,y,c<<k,s+k*13)*w;n+=w;w*=.5;}return t/n;}
+function pgMat(name,R){const key=name+'@'+R;let cv=PG.mats.get(key);if(cv)return cv;const m=PGM[name]||PGM.soil,S=PG_S,sd=name.length*97+name.charCodeAt(0)*13+name.charCodeAt(name.length-1);
+  cv=document.createElement('canvas');cv.width=cv.height=S;const x=cv.getContext('2d'),im=x.createImageData(S,S),D=im.data,Hf=new Float32Array(S*S);
+  const cells=f=>Math.max(1,Math.round(S/(f*R)));
+  const cM=m.mott?cells(m.mott[0]):0,cD=m.mid?cells(m.mid[0]):0,cH=m.hue?cells(m.hue[1]):0,cR=m.rip?cells(m.rip[0]):0,cW=cells(2.5),cV=cells(1.2);
+  let vg=0,vp=null;if(m.cells){vg=cells(m.cells[0]);vp=new Float32Array(vg*vg*2);for(let j=0;j<vg;j++)for(let i=0;i<vg;i++){vp[(j*vg+i)*2]=(i+.1+hash(i,j,sd)*.8)*S/vg;vp[(j*vg+i)*2+1]=(j+.1+hash(j,i,sd+1)*.8)*S/vg;}}
+  const cw=m.cells?m.cells[1]*R:0,cwarp=m.cells?m.cells[4]*S/vg:0;
+  for(let py=0;py<S;py++)for(let px=0;px<S;px++){let v=.5;
+    if(cM)v+=(pgF(px,py,cM,sd,3)-.5)*m.mott[1]*2.4;
+    if(cD)v+=(pgF(px,py,cD,sd+5,2)-.5)*m.mid[1]*2.4;
+    if(m.grain)v+=(hash(px,py,sd+9)-.5)*m.grain;
+    if(m.ridge){const n=pgF(px,py,cells(m.ridge[0]),sd+41,3),d=Math.abs(n-.5);if(d<m.ridge[1])v-=(1-d/m.ridge[1])*m.ridge[2];}
+    if(cR)v+=Math.sin(6.2832*(px*cR+py*Math.round(cR*.4))/S+(pgN(px,py,cW,sd+11)-.5)*7)*m.rip[1];
+    if(vg){const qx=px+(pgN(px,py,cV,sd+31)-.5)*cwarp,qy=py+(pgN(px,py,cV,sd+37)-.5)*cwarp,gi=Math.floor(qx*vg/S),gj=Math.floor(qy*vg/S);let f1=1e9,f2=1e9,id=0,id2=0,fx=0,fy=0;
+      for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){let ii=gi+di,jj=gj+dj,ox=0,oy=0;if(ii<0){ii+=vg;ox=-S;}else if(ii>=vg){ii-=vg;ox=S;}if(jj<0){jj+=vg;oy=-S;}else if(jj>=vg){jj-=vg;oy=S;}
+        const q=(jj*vg+ii)*2,d=Math.hypot(vp[q]+ox-qx,vp[q+1]+oy-qy);if(d<f1){f2=f1;id2=id;f1=d;id=jj*vg+ii;fx=vp[q]+ox;fy=vp[q+1]+oy;}else if(d<f2){f2=d;id2=jj*vg+ii;}}
+      // facets: each cell a flat plane tilted its own way, so the bump lighting shades it as one broken face
+      if(m.facet){const a=hash(id,7,sd)*6.283,t=(.4+hash(id,8,sd)*.6)*m.facet;v+=((qx-fx)*Math.cos(a)+(qy-fy)*Math.sin(a))/(S/vg)*t;}
+      // each cell a rounded lump, with a dark crack between cells
+      // a crack between two cells, deep on some borders, faint or missing on others
+      const e=(f2-f1)/2,cell=S/vg,cd=m.cells[3]*Math.pow(hash(Math.min(id,id2),Math.max(id,id2),sd+5),1.6);v+=(hash(id,3,sd)-.5)*m.cells[2]+(m.facet?0:Math.min(1,e/(cell*.35))*.18-.1);if(e<cw)v-=(1-e/cw)*cd;}
+    Hf[py*S+px]=v;}
+  const [A,Bc,C]=m.c,bump=(m.bump||0)*R/36;
+  for(let py=0;py<S;py++)for(let px=0;px<S;px++){const i=py*S+px;let v=Hf[i];
+    // lit from the top left: the slope towards the light brightens, away from it darkens
+    let sh=1;if(bump){const a=Hf[((py+S-1)%S)*S+(px+S-1)%S],b=Hf[((py+1)%S)*S+(px+1)%S];sh=1+(a-b)*bump;if(sh<.55)sh=.55;else if(sh>1.5)sh=1.5;}
+    v=v<0?0:v>1?1:v;let r,g,b;if(v<.5){const t=v*2;r=A[0]+(Bc[0]-A[0])*t;g=A[1]+(Bc[1]-A[1])*t;b=A[2]+(Bc[2]-A[2])*t;}else{const t=(v-.5)*2;r=Bc[0]+(C[0]-Bc[0])*t;g=Bc[1]+(C[1]-Bc[1])*t;b=Bc[2]+(C[2]-Bc[2])*t;}
+    if(cH){const h=pgF(px,py,cH,sd+20,2),t=Math.max(0,Math.min(1,(h-m.hue[2])/.2))*m.hue[3];r+=(m.hue[0][0]-r)*t;g+=(m.hue[0][1]-g)*t;b+=(m.hue[0][2]-b)*t;}
+    const o=i*4;D[o]=r*sh;D[o+1]=g*sh;D[o+2]=b*sh;D[o+3]=255;}
+  x.putImageData(im,0,0);
+  // painted marks, each drawn again across the edges it overlaps so the square stays seamless
+  const tiles=(S/R)*(S/R),wrap=(px,py,rr,f)=>{for(const oy of [-S,0,S])for(const ox of [-S,0,S]){if(px+ox<-rr||px+ox>S+rr||py+oy<-rr||py+oy>S+rr)continue;f(px+ox,py+oy);}};
+  let q=0;const rn=()=>hash(q++,sd,77);
+  if(m.strokes){const [d,l0,l1,w,cols]=m.strokes;x.lineCap='round';for(let k=0,n=Math.round(d*tiles);k<n;k++){const px=rn()*S,py=rn()*S,a=rn()*6.283,l=(l0+(l1-l0)*rn())*R,c=cols[k%cols.length],bend=(rn()-.5)*.8;
+    x.strokeStyle=c;x.lineWidth=Math.max(.8,w*R*(.7+rn()*.6));wrap(px,py,l,(X,Y)=>{x.beginPath();x.moveTo(X,Y);x.quadraticCurveTo(X+Math.cos(a+bend)*l*.6,Y+Math.sin(a+bend)*l*.6,X+Math.cos(a)*l,Y+Math.sin(a)*l);x.stroke();});}}
+  // little stones: a dark shadow, the stone, a lit edge
+  if(m.stones){const [d,s0,s1,cols]=m.stones;for(let k=0,n=Math.round(d*tiles);k<n;k++){const px=rn()*S,py=rn()*S,s=Math.max(.8,(s0+(s1-s0)*rn()*rn())*R),a=rn()*3,e=.55+rn()*.4,col=cols[k%cols.length];
+    wrap(px,py,s*1.5,(X,Y)=>{x.fillStyle='rgba(0,0,0,.4)';x.beginPath();x.ellipse(X+s*.25,Y+s*.3,s,s*e,a,0,7);x.fill();x.fillStyle=col;x.beginPath();x.ellipse(X,Y,s,s*e,a,0,7);x.fill();
+      x.fillStyle='rgba(255,255,255,.22)';x.beginPath();x.ellipse(X-s*.25,Y-s*.25,s*.5,s*e*.45,a,0,7);x.fill();});}}
+  if(m.specks){const [d,s0,s1,col]=m.specks;x.fillStyle=col;for(let k=0,n=Math.round(d*tiles);k<n;k++){const px=rn()*S,py=rn()*S,s=Math.max(.6,(s0+(s1-s0)*rn())*R),a=rn()*3;
+    wrap(px,py,s,(X,Y)=>{x.beginPath();x.ellipse(X,Y,s,s*(.6+rn()*.4),a,0,7);x.fill();});}}
+  if(m.cracks){const [d,col]=m.cracks;x.strokeStyle=col;x.lineWidth=Math.max(.7,.016*R);x.lineJoin='round';for(let k=0,n=Math.round(d*tiles);k<n;k++){let px=rn()*S,py=rn()*S,a=rn()*6.283;const P=[[px,py]];
+    for(let s=0,ns=3+(rn()*5|0);s<ns;s++){a+=(rn()-.5)*1.4;px+=Math.cos(a)*.1*R;py+=Math.sin(a)*.1*R;P.push([px,py]);}
+    wrap(P[0][0],P[0][1],R,(X,Y)=>{const dx=X-P[0][0],dy=Y-P[0][1];x.beginPath();P.forEach(([u,w],i)=>i?x.lineTo(u+dx,w+dy):x.moveTo(u+dx,w+dy));x.stroke();});}}
+  PG.mats.set(key,cv);return cv;}
+let pgPatCtx=null;
+function pgPat(name,R,q,k){const key='p:'+name+'@'+R;let p=PG.mats.get(key);if(!p){if(!pgPatCtx)pgPatCtx=document.createElement('canvas').getContext('2d');p=pgPatCtx.createPattern(pgMat(name,R),'repeat');PG.mats.set(key,p);}
+  if(q)p.setTransform(new DOMMatrix([1,0,0,1,-q.ox+(k||0)*173,-q.oy+(k||0)*89]));return p;}
+
+// ---- palettes: the look of each kind of land. base material; patches [material, size, threshold, brush, alpha, soft colour];
+// sand; rock [material, shadow, lit, shade]; water [material, deep colour, bank colour, frozen]; broad tints;
+// detail per 100 lattice points; minimap colours
+const PGP={
+  base:{base:'soil',patch:[['dust',6,.6,'blob',.6],['lichen',4.5,.63,'blob',.7],['gravel',3.5,.68,'blob',.75],['rgba(20,16,16,.35)',5,.66,'blob',1,1]],sand:'sand',rock:['stone_b','rgba(10,8,8,.6)','rgba(255,240,225,.55)','rgb(60,54,50)'],
+    water:['water',[16,36,48],'rgba(26,22,20,.8)'],tint:['rgba(118,104,92,.22)','rgba(20,16,18,.28)','rgba(94,84,116,.14)'],det:{pebble:6,crack:3,twig:1},mini:BIOMES.base.mini},
+  meadow:{base:'moss',patch:[['moss2',5,.57,'blob',.8],['drygrass',6,.64,'blob',.62],['dirt',4,.72,'blob',.7],['rgba(14,22,12,.35)',5,.64,'blob',1,1]],sand:'sand',rock:['stone_m','rgba(6,12,4,.55)','rgba(255,250,230,.55)','rgb(56,60,48)'],
+    water:['water',[14,40,48],'rgba(22,28,18,.8)'],tint:['rgba(150,156,84,.2)','rgba(12,24,14,.28)','rgba(74,116,96,.16)'],det:{tuft:9,pebble:3,flower:1.6,twig:.8},mini:BIOMES.meadow.mini},
+  ash:{base:'ash',patch:[['cinder',5.5,.6,'blob',.6],['scorch',4,.63,'blob',.75],['dirt',6,.7,'blob',.5],['gravel',4,.72,'blob',.55]],sand:'sand',rock:['stone_a','rgba(0,0,0,.65)','rgba(255,230,210,.42)','rgb(34,30,28)'],
+    water:['water',[12,28,36],'rgba(12,10,10,.8)'],tint:['rgba(126,116,106,.2)','rgba(6,4,4,.3)','rgba(126,64,32,.12)'],det:{pebble:5,ember:1.6,crack:5,fleck:5},mini:BIOMES.ash.mini},
+  pass:{base:'dirt',patch:[['dust',5,.58,'blob',.65],['gravel',3.5,.62,'blob',.75],['drygrass',5,.68,'blob',.6],['soil',6,.7,'blob',.55]],sand:'sand',rock:['stone_p','rgba(14,8,4,.6)','rgba(255,240,215,.55)','rgb(66,54,44)'],
+    water:['water',[16,36,46],'rgba(28,20,14,.8)'],tint:['rgba(166,136,94,.2)','rgba(22,14,8,.28)','rgba(112,102,82,.14)'],det:{pebble:8,tuft:3,crack:2.5,twig:.8},mini:BIOMES.pass.mini},
+  frost:{base:'snow',patch:[['frozen',5,.6,'blob',.85],['ice',6,.7,'blob',.7],['rgba(110,130,160,.22)',3,.62,'blob',1,1]],sand:'grit',rock:['stone_f','rgba(30,50,80,.45)','rgba(255,255,255,.85)','rgb(80,90,106)'],
+    water:['ice',[110,160,190],'rgba(140,160,182,.65)',1],tint:['rgba(255,255,255,.26)','rgba(80,100,132,.2)','rgba(150,190,220,.16)'],det:{glint:7,pebble:2,crack:1.5},mini:BIOMES.frost.mini},
+  colony:{base:'packed',patch:[['gravel',4,.58,'blob',.75],['dirt',5,.62,'blob',.65],['mud',4.5,.7,'blob',.55],['drygrass',6,.72,'blob',.5]],sand:'sand',rock:['stone_b','rgba(8,8,8,.6)','rgba(255,245,230,.5)','rgb(56,54,52)'],
+    water:['water',[14,34,46],'rgba(20,18,16,.8)'],tint:['rgba(136,132,124,.2)','rgba(14,14,16,.28)','rgba(104,94,74,.14)'],det:{pebble:6,crack:3,twig:1,tuft:1.5},mini:BIOMES.colony.mini},
+};
+// which palette this map is painted with: a campaign sector's own, the meadow for the menu scenes, and for random maps one picked
+// from the map's seed (so a loaded save looks exactly the same)
+function pgPal(){if(G.mapv>=2)return PGP[G.biome]?G.biome:'base';if(G.demo)return 'meadow';if(G.test)return 'base';
+  const h=hash(G.seed|0,77,5);return h<.36?'base':h<.62?'meadow':h<.82?'pass':'ash';}
+// each ore: its bed material, the pieces' colours [dark edge, dark, mid, light, highlight], and the stain round the deposit
+const PG_ORE={[CU]:['bed_cu',['#3a2014','#7a4428','#c9845a','#f2b88c','#ffe6cc'],'rgba(84,46,24,.5)'],[PB]:['bed_pb',['#1e1c2c','#4c4468','#8a7eb4','#c4baea','#f2eeff'],'rgba(46,40,72,.5)'],
+  [COAL]:['bed_coal',['#050506','#121216','#24242a','#40404a','#d0daf0'],'rgba(4,4,6,.6)'],[TI]:['bed_ti',['#262c40','#4c5a82','#8da1e3','#c6d4ff','#ffffff'],'rgba(60,74,112,.45)']};
+
+// ---- sprites: mineral pieces and ground detail, drawn at about the size they are used at, with their own soft shadow
+function pgSprites(R){const key='s@'+R;let S=PG.spr.get(key);if(S)return S;S={};PG.spr.set(key,S);
+  const mk=(n,px,f)=>{const L=[];for(let v=0;v<n;v++){const c=document.createElement('canvas');c.width=c.height=px;const x=c.getContext('2d');f(x,px,v);L.push(c);}return L;};
+  const sz=Math.max(24,Math.round(R*.8))&~1;
+  const poly=(x,cx,cy,r,n,j,sd)=>{x.beginPath();for(let k=0;k<n;k++){const a=k/n*6.283+hash(k,sd,1)*.5,rr=r*(1-j+hash(sd,k,2)*j*2);k?x.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr):x.moveTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);}x.closePath();};
+  const shadow=(x,s,f)=>{x.save();x.translate(s*.05,s*.07);x.filter='blur('+(s*.03).toFixed(1)+'px)';x.fillStyle='rgba(0,0,0,.6)';f();x.fill();x.restore();};
+  for(const o of [CU,PB,COAL,TI]){const P=PG_ORE[o][1];
+    S['ore'+o]=mk(8,sz,(x,s,v)=>{const sd=v*17+o*101,n=o===TI?2+(v%2):1+(v%3);
+      for(let k=0;k<n;k++){const cx=s*(.32+hash(k,v,sd)*.36),cy=s*(.34+hash(v,k,sd+1)*.32),r=s*(o===COAL?.22:.2)*(.75+hash(k,v,sd+2)*.5),a=hash(k,sd,5)*1.6-.8;
+        if(o===TI){const L=r*1.6,W=r*.55;shadow(x,s,()=>{x.beginPath();x.ellipse(cx,cy,W*1.1,L,a,0,7);});x.save();x.translate(cx,cy);x.rotate(a);
+          x.fillStyle=P[1];x.beginPath();x.moveTo(0,-L);x.lineTo(W,-L*.55);x.lineTo(W*.8,L*.7);x.lineTo(0,L*.85);x.lineTo(-W*.8,L*.7);x.lineTo(-W,-L*.55);x.closePath();x.fill();
+          x.fillStyle=P[3];x.beginPath();x.moveTo(0,-L);x.lineTo(-W,-L*.55);x.lineTo(-W*.8,L*.7);x.lineTo(0,L*.85);x.closePath();x.fill();
+          x.fillStyle=P[2];x.beginPath();x.moveTo(0,-L);x.lineTo(W*.3,-L*.6);x.lineTo(W*.2,L*.75);x.lineTo(0,L*.85);x.closePath();x.fill();
+          x.strokeStyle=P[0];x.lineWidth=Math.max(.7,s*.012);x.beginPath();x.moveTo(0,-L);x.lineTo(W,-L*.55);x.lineTo(W*.8,L*.7);x.lineTo(0,L*.85);x.lineTo(-W*.8,L*.7);x.lineTo(-W,-L*.55);x.closePath();x.stroke();
+          x.fillStyle=P[4];x.globalAlpha=.85;x.beginPath();x.moveTo(-W*.15,-L*.92);x.lineTo(-W*.7,-L*.5);x.lineTo(-W*.5,-L*.05);x.closePath();x.fill();x.restore();continue;}
+        // a faceted lump: one flat face per edge, each as bright as it faces the light (top left)
+        const nv=o===PB?5:o===COAL?6:7,j=o===PB?.12:.22,pts=[];for(let q=0;q<nv;q++){const a=q/nv*6.283+hash(q,sd+k,1)*.6,rr=r*(1-j+hash(sd+k,q,2)*j*2);pts.push([cx+Math.cos(a)*rr,cy+Math.sin(a)*rr]);}
+        shadow(x,s,()=>{x.beginPath();pts.forEach(([u,w],q)=>q?x.lineTo(u,w):x.moveTo(u,w));x.closePath();});
+        const tx=cx-r*.2,ty=cy-r*.24;x.lineJoin='round';
+        for(let q=0;q<nv;q++){const [ax,ay]=pts[q],[bx,by]=pts[(q+1)%nv],mx=(ax+bx)/2-cx,my=(ay+by)/2-cy,L=Math.hypot(mx,my)||1,lit=(-mx-my)/L*.707;
+          x.fillStyle=lit>.4?P[3]:lit>0?P[2]:lit>-.45?P[1]:P[0];x.beginPath();x.moveTo(tx,ty);x.lineTo(ax,ay);x.lineTo(bx,by);x.closePath();x.fill();
+          x.strokeStyle=lit>0?P[3]:P[1];x.lineWidth=Math.max(.5,s*.008);x.globalAlpha=.6;x.beginPath();x.moveTo(tx,ty);x.lineTo(ax,ay);x.stroke();x.globalAlpha=1;}
+        x.strokeStyle=P[0];x.lineWidth=Math.max(.6,s*.01);x.beginPath();pts.forEach(([u,w],q)=>q?x.lineTo(u,w):x.moveTo(u,w));x.closePath();x.stroke();
+        x.fillStyle=P[4];x.globalAlpha=o===COAL?.75:.55;x.beginPath();x.ellipse(tx-r*.12,ty-r*.1,r*.22,r*.1,-.7,0,7);x.fill();x.globalAlpha=1;
+        if(o===CU&&hash(k,v,sd+8)<.3){x.fillStyle='rgba(96,176,146,.7)';x.beginPath();x.arc(cx+r*.35,cy+r*.3,r*.14,0,7);x.fill();}}});}
+  // a pebble, a grass tuft, a flower, an ember, a frost glint, a dry crack, a twig, an ash fleck
+  S.pebble=mk(8,sz,(x,s,v)=>{const sd=v*13,cx=s*.45,cy=s*.45,r=s*(.08+hash(v,1,sd)*.07);shadow(x,s,()=>poly(x,cx,cy,r,7,.15,sd));
+    const t=['#8a847a','#6e6a64','#9a9284','#5e5a56'][v%4],g=x.createRadialGradient(cx-r*.4,cy-r*.45,r*.1,cx,cy,r*1.1);g.addColorStop(0,t);g.addColorStop(1,'#34302c');x.fillStyle=g;poly(x,cx,cy,r,7,.15,sd);x.fill();});
+  S.tuft=mk(8,sz,(x,s,v)=>{const sd=v*29;x.lineCap='round';for(let k=0;k<7;k++){const a=-1.57+(hash(k,v,sd)-.5)*2.4,l=s*(.12+hash(v,k,sd+1)*.14),bx=s*.5+(hash(k,3,sd)-.5)*s*.1,by=s*.58;
+      x.strokeStyle=['rgba(104,138,72,.75)','rgba(66,98,52,.8)','rgba(128,150,84,.7)','rgba(48,72,40,.8)'][k%4];x.lineWidth=Math.max(.9,s*.028);x.beginPath();x.moveTo(bx,by);x.quadraticCurveTo(bx+Math.cos(a+.4)*l*.5,by+Math.sin(a+.4)*l*.5,bx+Math.cos(a)*l,by+Math.sin(a)*l);x.stroke();}});
+  S.flower=mk(6,sz,(x,s,v)=>{const col=['#e2d690','#cdb4e2','#ece8dc','#e6a8b4','#a8cce6','#e2d690'][v];for(let k=0;k<2+(v%3);k++){const cx=s*(.3+hash(k,v,4)*.4),cy=s*(.3+hash(v,k,5)*.4),r=s*.025;
+      x.fillStyle=col;x.globalAlpha=.85;for(let p=0;p<5;p++){const a=p*1.2566;x.beginPath();x.arc(cx+Math.cos(a)*r,cy+Math.sin(a)*r,r*.8,0,7);x.fill();}x.globalAlpha=1;x.fillStyle='#c89030';x.beginPath();x.arc(cx,cy,r*.55,0,7);x.fill();}});
+  S.ember=mk(6,sz,(x,s,v)=>{const cx=s*.5,cy=s*.5,g=x.createRadialGradient(cx,cy,0,cx,cy,s*.18);g.addColorStop(0,'rgba(255,180,90,.8)');g.addColorStop(.3,'rgba(230,100,40,.45)');g.addColorStop(1,'rgba(200,60,20,0)');x.fillStyle=g;x.fillRect(0,0,s,s);
+    x.fillStyle='rgba(20,14,12,.85)';poly(x,cx+s*.03,cy+s*.02,s*.05,6,.3,v*7);x.fill();x.fillStyle='rgba(255,160,70,.9)';x.beginPath();x.arc(cx-s*.01,cy-s*.01,s*.02,0,7);x.fill();});
+  S.glint=mk(6,sz,(x,s,v)=>{const cx=s*.5,cy=s*.5;x.fillStyle='rgba(255,255,255,.4)';x.beginPath();x.ellipse(cx,cy+s*.05,s*(.07+v*.012),s*.04,0,0,7);x.fill();
+    x.strokeStyle='rgba(255,255,255,.85)';x.lineWidth=Math.max(.7,s*.012);x.beginPath();x.moveTo(cx-s*.05,cy);x.lineTo(cx+s*.05,cy);x.moveTo(cx,cy-s*.05);x.lineTo(cx,cy+s*.05);x.stroke();});
+  S.crack=mk(6,sz,(x,s,v)=>{x.strokeStyle='rgba(10,8,8,.38)';x.lineWidth=Math.max(.7,s*.016);x.lineJoin='round';let px=s*.2,py=s*.5,a=(hash(v,1,3)-.5)*1;x.beginPath();x.moveTo(px,py);
+    for(let k=0;k<6;k++){a+=(hash(v,k,4)-.5)*1.2;px+=Math.cos(a)*s*.1;py+=Math.sin(a)*s*.1;x.lineTo(px,py);if(k===2){x.moveTo(px,py);x.lineTo(px+s*.1,py-s*.12);x.moveTo(px,py);}}x.stroke();});
+  S.twig=mk(6,sz,(x,s,v)=>{x.strokeStyle='rgba(46,34,24,.75)';x.lineWidth=Math.max(.7,s*.02);x.lineCap='round';const a=hash(v,2,9)*3.14;x.beginPath();x.moveTo(s*.5-Math.cos(a)*s*.22,s*.5-Math.sin(a)*s*.22);x.lineTo(s*.5+Math.cos(a)*s*.22,s*.5+Math.sin(a)*s*.22);
+    x.moveTo(s*.5,s*.5);x.lineTo(s*.5+Math.cos(a+.7)*s*.1,s*.5+Math.sin(a+.7)*s*.1);x.stroke();});
+  S.fleck=mk(6,sz,(x,s,v)=>{x.fillStyle=v%2?'rgba(170,164,156,.5)':'rgba(120,116,110,.45)';poly(x,s*.5,s*.5,s*.05,6,.4,v*5);x.fill();});
+  // the soft round dabs the broad tints are made of, one per tint colour, made per bake
+  return S;}
+
+// ---- the plan: every layer and every sprite of this map, in tile coordinates. Pure arithmetic, made once per bake
+function pgPlan(){const pal=PGP[PG.pal],sd=G.seed|0,L=[];const ter=G.terrain,ore=G.ore;
+  const dec=mapDecor()||[],prop=new Uint8Array(N);
+  for(const o of dec)if(o[0]==='prop'&&PROP_SOLID[o[1]])for(let y=o[3];y<o[3]+(o[5]||1);y++)for(let x=o[2];x<o[2]+(o[4]||1);x++)if(inMap(x,y))prop[y*MW+x]=1;
+  const solid=(x,y)=>{const i=tileAt(x,y);return i<0||ter[i]===ROCK&&!prop[i]||ter[i]===WATER;};
+  // broad tints: large soft dabs of light and shade, so no two places look alike
+  const tint=[];pal.tint.forEach((col,k)=>pgScatter(3.4,sd+300+k*11,(x,y,h)=>{if(h<.42)return;tint.push(k,x,y,1.8+h*2.6);}));
+  // the palette's patches, then the sector's own painted ground (with a dirt bed under every track and gravel beside every road)
+  pal.patch.forEach(([mat,f,thr,br,a,soft],k)=>{const P=soft?pgL(br,null,{col:mat,soft:1}):pgL(br,mat,{a,lv:6,fe:0});pgPatch(P,f,thr,sd+400+k*37);if(P.ct&&P.ct.length)L.push(P);});
+  const mis=G.mapv>=2&&G.mission&&MIS[G.mission],paint=[];
+  if(mis&&mis.paint){for(const p of mis.paint){paint.push(p);if(mis.mirror){const q=p.slice();if(q[0]==='path')q[2]=q[2].map(([x,y])=>[MW-x,y]);else q[2]=MW-q[2];paint.push(q);}}for(const p of mis.paintPost||[])paint.push(p);}
+  for(const o of dec)if(o[0]==='track')paint.push(['path','dirt',o[1].map(([x,y])=>[x+.5,y+.5]),o[2]*.75+.4,.9]);else if(o[0]==='road')paint.push(['path','gravel',o[1].map(([x,y])=>[x+.5,y+.5]),o[2]*.95+.8,.85]);
+  // props stand on packed ground of their own
+  for(const o of dec)if(o[0]==='prop'&&PROP_SOLID[o[1]]){const w=o[4]||1,h=o[5]||1;paint.push(['blob',G.biome==='frost'?'frozen':'packed',o[2]+w/2,o[3]+h/2,w/2+.8,h/2+.8,.9]);}
+  const byMat=new Map();paint.forEach((p,k)=>{const key=p[1]+'|'+(p[0]==='path'?p[4]:p[6]);let P=byMat.get(key);
+    if(!P){const col=!PGM[p[1]];P=pgL(PGM[p[1]]&&PGM[p[1]].strokes?'rag':'blob',col?null:p[1],{a:(p[0]==='path'?p[4]:p[6])||.9,col:col?p[1]:null,soft:col?1:0,lv:col?0:6,fe:0});byMat.set(key,P);L.push(P);}
+    if(p[0]==='path')pgPath(P,p[2],p[3],sd+500+k*7);else pgBlob(P,p[2],p[3],p[4],p[5],sd+500+k*7);});
+  // terrain the game plays on: sand, then water, then ore, then rock on top
+  const sand=pgL('blob',pal.sand,{fe:.5});pgTiles(sand,i=>ter[i]===SANDF,{thr:.5,wob:.12,r0:.3,r1:.56,sd:600});
+  const wat=pgL('hard',pal.water[0]);const WB=pgTiles(wat,i=>ter[i]===WATER,{thr:.53,wob:.08,r0:.27,r1:.52,sd:700});
+  const oreL=[];let OB=null;
+  for(const o of [CU,PB,COAL,TI]){if(!ore.some(v=>v===o))continue;const [bed,,stain]=PG_ORE[o];
+    const st=pgL('blob',null,{col:stain,soft:1});const B=pgTiles(st,i=>ore[i]===o,{thr:.36,wob:.1,r0:.4,r1:.66,sd:800+o*10,fill:false});
+    const bd=pgL('rag',bed,{fe:.55});pgTiles(bd,i=>ore[i]===o,{thr:.5,wob:.14,rag:.1,sd:850+o*10});
+    // mineral pieces: a few per ore tile, allowed to sit a little over the tile's edge but never off the deposit
+    const nug=[];for(let i=0;i<N;i++){if(ore[i]!==o)continue;const x=i%MW,y=(i/MW)|0,n=3+(hash(x,y,sd+o)*2.5|0);
+      for(let k=0;k<n;k++){const px=x-.1+hash(x*5+k,y,sd+o+1)*1.2,py=y-.1+hash(x,y*5+k,sd+o+2)*1.2;if(bil(B,px,py)<.5)continue;nug.push(px,py,.5+hash(k,x+y,sd+o+3)*.35,(hash(x+k,y,sd+o+4)*8)|0);}}
+    oreL.push({o,st,bd,nug});if(!OB)OB=new Float32Array(N);for(let i=0;i<N;i++)OB[i]=Math.max(OB[i],B[i]);}
+  const rock=pgL('hard',pal.rock[0]);pgTiles(rock,i=>ter[i]===ROCK&&!prop[i],{thr:.54,wob:.08,r0:.26,r1:.52,sd:900});
+  // detail: one pick per lattice point, clustered by a slow noise, kept off rock, water, ore and props
+  const det=[],kinds=Object.entries(pal.det);let tot=0;for(const [,d] of kinds)tot+=d;
+  pgScatter(.42,sd+950,(x,y,h)=>{const i=tileAt(x,y);if(i<0||ter[i]===ROCK||ter[i]===WATER||prop[i])return;if(OB&&bil(OB,x,y)>.3)return;if(WB&&bil(WB,x,y)>.4)return;
+    const cl=vnoise(x/3.5,y/3.5,sd+960);if(h*100>tot*(.3+cl*1.4))return;let r=hash(x*13|0,y*13|0,sd+961)*tot;
+    for(const [k,d] of kinds){if((r-=d)>0)continue;if(ter[i]===SANDF&&k!=='pebble'&&k!=='crack')return;det.push(k,x,y,(k==='tuft'?.6:k==='flower'?.5:.45)*(.7+hash(x*7|0,y*7|0,sd+962)*.6),(hash(y*9|0,x*9|0,sd+963)*8)|0);break;}});
+  return {tint,L,sand,wat,oreL,rock,det,dec};}
+
+// ---- painting one chunk (canvas pixels: world bake pixel minus q.ox,q.oy)
+// helper canvases are never reused: a canvas still waiting to be copied into a chunk must not change under it (with a graphics
+// card drawing the canvases, changing one too soon wiped the chunk)
+function pgNew(w,h){const c=document.createElement('canvas');c.width=Math.max(1,Math.ceil(w));c.height=Math.max(1,Math.ceil(h));return c.getContext('2d');}
+// one layer's outline in this chunk as a path, with its pixel box; g grows every stamp (a feathered rim)
+// (md 'c': the traced outline C only; 's': the stamps and whole tiles only; p0: a path to add to)
+function pgOutline(L,q,R,g,C,md,p0){if(L.x1*R<q.ox||L.x0*R>q.ox+q.w||L.y1*R<q.oy||L.y0*R>q.oy+q.h)return null;const p=p0||new Path2D(),M=R*1.6;let n=0,x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  const F=md==='c'?[]:L.fill;for(let k=0;k<F.length;k+=2){const x=F[k]*R-q.ox,y=F[k+1]*R-q.oy;if(x+R<-M||y+R<-M||x>q.w+M||y>q.h+M)continue;p.rect(x-1,y-1,R+2,R+2);n++;if(x<x0)x0=x;if(y<y0)y0=y;if(x+R>x1)x1=x+R;if(y+R>y1)y1=y+R;}
+  if(!C)C=g>1&&L.cf?L.cf:L.ct;if(C&&md!=='s')for(let k=0;k<C.length;){const m=C[k],e=k+5+m*2,bx0=C[k+1]*R-q.ox,by0=C[k+2]*R-q.oy,bx1=C[k+3]*R-q.ox,by1=C[k+4]*R-q.oy;
+      if(bx1<-M||by1<-M||bx0>q.w+M||by0>q.h+M){k=e;continue;}
+      p.moveTo(C[k+5]*R-q.ox,C[k+6]*R-q.oy);for(let j=k+7;j<e;j+=2)p.lineTo(C[j]*R-q.ox,C[j+1]*R-q.oy);p.closePath();k=e;n++;
+      if(bx0<x0)x0=bx0;if(by0<y0)y0=by0;if(bx1>x1)x1=bx1;if(by1>y1)y1=by1;}
+  const S=md==='c'?[]:L.st;for(let k=0;k<S.length;k+=7){const x=S[k]*R-q.ox,y=S[k+1]*R-q.oy,r=Math.max(S[k+2],S[k+3])*R*1.35*g;if(x+r<-M||y+r<-M||x-r>q.w+M||y-r>q.h+M)continue;
+    pgPoly(p,L.brush,S[k+6],R,q.ox,q.oy,S[k],S[k+1],S[k+2],S[k+3],S[k+4],g);n++;if(x-r<x0)x0=x-r;if(y-r<y0)y0=y-r;if(x+r>x1)x1=x+r;if(y+r>y1)y1=y+r;}
+  if(!n)return null;PG.stamps+=n;x0=Math.max(0,Math.floor(x0));y0=Math.max(0,Math.floor(y0));x1=Math.min(q.w,Math.ceil(x1));y1=Math.min(q.h,Math.ceil(y1));if(x1<=x0||y1<=y0)return null;
+  return {p,b:[x0,y0,x1-x0,y1-y0]};}
+// a soft fill: the path drawn out of sight with only its blurred shadow landing in place
+function pgSoftFill(c,p,col,blur,w){const off=Math.max(w,(Math.max(MW,MH)+4)*PG.R*2)+blur*4+64,t=c.getTransform();c.save();c.setTransform(t.a,t.b,t.c,t.d,t.e-off,t.f);c.shadowColor=col;c.shadowBlur=blur;c.shadowOffsetX=off;c.fillStyle='#000';c.fill(p);c.restore();}
+// a layer: soft ones are blurred colour; the others a feathered rim at lower alpha, then the region itself
+function pgLay(c,L,q,R,k){if(L.soft){const o=pgOutline(L,q,R,1);if(o)pgSoftFill(c,o.p,L.col,R*.7,q.w);return o;}
+  // a soft edge in levels: each level's outline laid in turn, together building up to the layer's alpha
+  if(L.lv&&L.cl){const fill=L.mat?pgPat(L.mat,R,q,k):L.col,lev=L.cl.concat([L.ct]).filter((v,j,A)=>!PG.lite||(A.length-1-j)%2===0),n=lev.length;c.fillStyle=fill;
+    // rings between neighbouring levels, each a little stronger than the one outside it, then the region itself
+    for(let j=0;j<n-1;j++){const r=pgOutline(L,q,R,1,lev[j],'c');if(!r)continue;pgOutline(L,q,R,1,lev[j+1],'c',r.p);c.globalAlpha=L.a*(j+1)/n;c.fill(r.p,'evenodd');}
+    const o=pgOutline(L,q,R,1,L.ct,'c');if(o){c.globalAlpha=L.a;c.fill(o.p,'evenodd');}
+    if(L.st.length){const f=pgOutline(L,q,R,1.45,null,'s');if(f){c.globalAlpha=L.a*.4;c.fill(f.p);const g=pgOutline(L,q,R,1,null,'s');c.globalAlpha=L.a;c.fill(g.p);}}
+    c.globalAlpha=1;return o;}
+  const fill=L.mat?pgPat(L.mat,R,q,k):L.col;let o=null;
+  if(L.fe){const f=pgOutline(L,q,R,1.45);if(!f)return null;c.globalAlpha=L.a*L.fe;c.fillStyle=fill;c.fill(f.p);}
+  o=pgOutline(L,q,R,1);if(!o){c.globalAlpha=1;return null;}c.globalAlpha=L.a;c.fillStyle=fill;c.fill(o.p);c.globalAlpha=1;return o;}
+// light from the top left over a raised region: its outline at quarter size, blurred, minus itself moved, laid inside it
+function pgRelief(c,o,q,R,lit,dark,aL,aD,sp,bl){const b=o.b,pad=Math.ceil(R*.5),bx=Math.max(0,b[0]-pad),by=Math.max(0,b[1]-pad),bw=Math.min(q.w,b[0]+b[2]+pad)-bx,bh=Math.min(q.h,b[1]+b[3]+pad)-by;
+  const qx=Math.floor(bx/4),qy=Math.floor(by/4),qw=Math.ceil((bx+bw)/4)-qx+1,qh=Math.ceil((by+bh)/4)-qy+1,s=Math.max(1,R*sp/4);
+  const D=pgNew(qw,qh);D.setTransform(.25,0,0,.25,-qx,-qy);D.filter='blur('+Math.max(.6,R*bl/4).toFixed(1)+'px)';D.fillStyle='#fff';D.fill(o.p);D.filter='none';D.setTransform(1,0,0,1,0,0);
+  c.save();c.clip(o.p);c.imageSmoothingEnabled=true;
+  for(const [col,sg,a,op] of [[lit,-1,aL,'screen'],[dark,1,aD,'multiply']]){if(!a)continue;const E=pgNew(qw,qh);
+    E.drawImage(D.canvas,sg*s,sg*s);E.globalCompositeOperation='destination-out';E.drawImage(D.canvas,-sg*s,-sg*s);
+    E.globalCompositeOperation='source-in';E.fillStyle=col;E.fillRect(0,0,qw,qh);
+    c.globalCompositeOperation=op;c.globalAlpha=a;c.drawImage(E.canvas,0,0,qw,qh,qx*4,qy*4,qw*4,qh*4);}
+  c.restore();}
+let pgT0=0;function pgT(c,k){if(!PG.prof)return;c.getImageData(0,0,1,1);const t=performance.now();PG.prof[k]=(PG.prof[k]||0)+t-pgT0;pgT0=t;}
+function pgChunk(q,P,R){if(PG.prof)pgT0=performance.now();const pal=PGP[PG.pal],c=q.cv.getContext('2d');
+  c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.imageSmoothingEnabled=true;
+  c.fillStyle=pgPat(pal.base,R,q,0);c.fillRect(0,0,q.w,q.h);pgT(c,'base');
+  // broad tints, painted at quarter size as soft dabs and laid over in one go
+  {const T4=pgNew(q.w/4,q.h/4);const D=P.tint,cols=pal.tint;let any=0;
+    for(let k=0;k<D.length;k+=4){const x=(D[k+1]*R-q.ox)/4,y=(D[k+2]*R-q.oy)/4,r=D[k+3]*R/4;if(x+r<0||y+r<0||x-r>q.w/4||y-r>q.h/4)continue;
+      const g=T4.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,cols[D[k]]);g.addColorStop(1,cols[D[k]].replace(/[\d.]+\)$/,'0)'));T4.fillStyle=g;T4.fillRect(x-r,y-r,r*2,r*2);any=1;}
+    if(any)c.drawImage(T4.canvas,0,0,Math.ceil(q.w/4),Math.ceil(q.h/4),0,0,Math.ceil(q.w/4)*4,Math.ceil(q.h/4)*4);}
+  pgT(c,'tint');P.L.forEach((L,k)=>pgLay(c,L,q,R,k+3));pgT(c,'patch');pgLay(c,P.sand,q,R,9);pgT(c,'sand');
+  // water: a wet bank, the water, depth towards its middle, a light lip on the far shore
+  {const o=pgOutline(P.wat,q,R,1);if(o){const [wm,deep,bank,frozen]=pal.water;pgSoftFill(c,o.p,bank,R*.8,q.w);
+    c.fillStyle=pgPat(wm,R,q,11);c.fill(o.p);
+    pgRelief(c,o,q,R,frozen?'rgb(255,255,255)':'rgb(150,200,206)',`rgb(${deep})`,frozen?.5:.4,0,.09,.12);
+    const b=o.b,qx=Math.floor(b[0]/4),qy=Math.floor(b[1]/4),qw=Math.ceil(b[2]/4)+2,qh=Math.ceil(b[3]/4)+2,D=pgNew(qw,qh),E=pgNew(qw,qh);
+    D.setTransform(.25,0,0,.25,-qx,-qy);D.filter='blur('+Math.max(1,R*.9/4).toFixed(1)+'px)';D.fillStyle=`rgb(${deep})`;D.fill(o.p);D.filter='none';
+    E.drawImage(D.canvas,0,0);E.globalCompositeOperation='destination-in';E.drawImage(D.canvas,0,0);
+    c.save();c.clip(o.p);c.globalAlpha=frozen?.4:.9;c.drawImage(E.canvas,0,0,qw,qh,qx*4,qy*4,qw*4,qh*4);c.restore();}}
+  pgT(c,'water');
+  // ore: the stained ground, the broken bed, the mineral pieces
+  for(const O of P.oreL){pgLay(c,O.st,q,R,0);const o=pgLay(c,O.bd,q,R,13);if(o)pgRelief(c,o,q,R,'rgb(255,250,240)','rgb(20,16,14)',.25,.35,.1,.15);}
+  pgT(c,'orebed');const S=pgSprites(R);
+  for(const O of P.oreL){const L=O.nug,img=S['ore'+O.o];for(let k=0;k<L.length;k+=4){const s=L[k+2]*R,x=L[k]*R-q.ox,y=L[k+1]*R-q.oy;if(x+s<0||y+s<0||x-s>q.w||y-s>q.h)continue;c.drawImage(img[L[k+3]%8],x-s/2,y-s/2,s,s);}}
+  pgT(c,'nug');
+  // rock: a soft shadow cast down and right with the stone itself, then light from the top left across its body
+  {const o=pgOutline(P.rock,q,R,1);if(o){const [rm,sh,lit,dark]=pal.rock;const b=o.b,m=Math.ceil(R*1.3),bx=Math.max(0,b[0]-m),by=Math.max(0,b[1]-m),qx=Math.floor(bx/4),qy=Math.floor(by/4),qw=Math.ceil((Math.min(q.w,b[0]+b[2]+m))/4)-qx+1,qh=Math.ceil((Math.min(q.h,b[1]+b[3]+m))/4)-qy+1;
+    const D=pgNew(qw,qh);D.setTransform(.25,0,0,.25,-qx,-qy);D.filter='blur('+(R*.45/4).toFixed(1)+'px)';D.fillStyle=sh;D.fill(o.p);
+    c.drawImage(D.canvas,0,0,qw,qh,qx*4+R*.14,qy*4+R*.24,qw*4,qh*4);c.fillStyle=pgPat(rm,R,q,17);c.fill(o.p);
+    pgRelief(c,o,q,R,lit,dark,.7,.8,.12,.3);if(!PG.lite)pgRelief(c,o,q,R,lit,dark,.45,.55,.04,.08);}}
+  pgT(c,'rock');
+  // detail
+  {const D=P.det;for(let k=0;k<D.length;k+=5){const img=S[D[k]],s=D[k+3]*R*1.4,x=D[k+1]*R-q.ox,y=D[k+2]*R-q.oy;if(!img||x+s<0||y+s<0||x-s>q.w||y-s>q.h)continue;c.drawImage(img[D[k+4]%img.length],x-s/2,y-s/2,s,s);}}
+  pgT(c,'detail');
+  // the sector's tracks, roads, scorch and props
+  if(P.dec.length){c.setTransform(1,0,0,1,-q.ox,-q.oy);drawDecor(c,R);c.setTransform(1,0,0,1,0,0);}pgT(c,'decor');}
+
+// ---- the bake: plan once, paint every chunk, keep a half-size copy of each for zoomed-out 2D drawing
+function pgBake(){const t0=performance.now();pgBrushes();const R=pgRes();PG.R=R;PG.lite=SET.q==='low';PG.pal=pgPal();PG.stamps=0;
+  const P=pgPlan(),W=MW*R,H=MH*R,pad=PG.pad,cs=PG.cs-pad*2,nx=Math.ceil(W/cs),ny=Math.ceil(H/cs),old=PG.ch,ch=[];
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const x0=i*cs,y0=j*cs,cw=Math.min(cs,W-x0),chh=Math.min(cs,H-y0),w=cw+pad*2,h=chh+pad*2;
+    let q=old.find(o=>!o.used&&o.w===w&&o.h===h);if(q)q.used=1;else{const cv=document.createElement('canvas');cv.width=w;cv.height=h;q={cv,w,h,used:1};}
+    Object.assign(q,{x0,y0,x1:x0+cw,y1:y0+chh,ox:x0-pad,oy:y0-pad});ch.push(q);}
+  for(const q of ch){q.used=0;pgChunk(q,P,R);
+    if(!q.half||q.half.width!==Math.ceil(q.w/2)||q.half.height!==Math.ceil(q.h/2)){q.half=document.createElement('canvas');q.half.width=Math.ceil(q.w/2);q.half.height=Math.ceil(q.h/2);}
+    const hc=q.half.getContext('2d');hc.imageSmoothingEnabled=true;hc.imageSmoothingQuality='high';hc.drawImage(q.cv,0,0,q.half.width,q.half.height);}
+  PG.ch=ch;PG.n++;PG.ms=performance.now()-t0;GLR.terrDirty=true;}
+// copies the ground: source rectangle in world pixels (T to a tile), destination rectangle in c's current space.
+// Each chunk is drawn a little past its edge from its padding, so neighbours overlap and no seam can show
+function pgBlit(c,sx,sy,sw,sh,dx,dy,dw,dh){if(!PG.ch.length||sw<=0||sh<=0)return;const k=PG.R/T,fx=dw/sw,fy=dh/sh,half=fx*(c.getTransform?c.getTransform().a:1)<k*.55,ov=(PG.pad-2)/k;
+  const sm=c.imageSmoothingEnabled;c.imageSmoothingEnabled=true;
+  for(const q of PG.ch){const qx0=q.x0/k,qy0=q.y0/k,qx1=q.x1/k+ov,qy1=q.y1/k+ov,ix0=Math.max(sx,qx0),iy0=Math.max(sy,qy0),ix1=Math.min(sx+sw,qx1),iy1=Math.min(sy+sh,qy1);if(ix1<=ix0||iy1<=iy0)continue;
+    const u=half?.5:1,img=half?q.half:q.cv;c.drawImage(img,(ix0*k-q.ox)*u,(iy0*k-q.oy)*u,(ix1-ix0)*k*u,(iy1-iy0)*k*u,dx+(ix0-sx)*fx,dy+(iy0-sy)*fy,(ix1-ix0)*fx,(iy1-iy0)*fy);}
+  c.imageSmoothingEnabled=sm;}
+// scorch marks and wreck stains: soft, ragged dark splotches (v64), four shapes of each, made once
+const DECAL_SPR=[];function decalSpr(k,v){let a=DECAL_SPR[k*4+v];if(a)return a;a=document.createElement('canvas');a.width=a.height=64;const c=a.getContext('2d'),col=k?'20,20,24':'0,0,0',al=k?.6:.42;
+  for(let i=0;i<7;i++){const ang=hash(i,v,k+71)*6.283,d=i?10+hash(v,i,k+72)*10:0,x=32+Math.cos(ang)*d,y=32+Math.sin(ang)*d,r=(i?9:17)+hash(i+v,k,73)*7,g=c.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,`rgba(${col},${al})`);g.addColorStop(1,`rgba(${col},0)`);c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);}
+  return DECAL_SPR[k*4+v]=a;}
 // ---------- mission events (v34): one-shot triggers for each campaign sector ----------
 // Each event fires once, when its condition is met, never on a timer. Fired ids live in G.evf (saved with the game, fresh on
 // every new attempt). Radio chatter scrolls in the message strip without pausing; pings mark a place on the map and minimap.
@@ -6592,9 +6900,9 @@ function introMeadow(g,W,H,t){const C=[G.coreX+1.5,G.coreY+1.5],tk=introTruck(t)
   // a little darker as the camera sinks towards the ground
   if(dn>0){g.fillStyle=`rgba(20,14,10,${.45*dn})`;g.fillRect(0,0,W,H);}}
 // the real ground under a camera at tile (x,y), zoom z (relative to the game's own scale)
-function introGround(g,W,H,x,y,z,a){const src=SET.hd?hdCanvas:terrCanvas,k=SET.hd?HDR/T:1;g.save();g.globalAlpha=a;g.fillStyle='#1d2416';g.fillRect(0,0,W,H);g.imageSmoothingEnabled=true;
+function introGround(g,W,H,x,y,z,a){g.save();g.globalAlpha=a;g.fillStyle='#1d2416';g.fillRect(0,0,W,H);g.imageSmoothingEnabled=true;
   const vw=W/(T*z),vh=H/(T*z),x0=x-vw/2,y0=y-vh/2,cx0=Math.max(0,x0),cy0=Math.max(0,y0),cx1=Math.min(MW,x0+vw),cy1=Math.min(MH,y0+vh);
-  if(cx1>cx0&&cy1>cy0)g.drawImage(src,cx0*T*k,cy0*T*k,(cx1-cx0)*T*k,(cy1-cy0)*T*k,(cx0-x0)*T*z,(cy0-y0)*T*z,(cx1-cx0)*T*z,(cy1-cy0)*T*z);g.restore();}
+  if(cx1>cx0&&cy1>cy0)pgBlit(g,cx0*T,cy0*T,(cx1-cx0)*T,(cy1-cy0)*T,(cx0-x0)*T*z,(cy0-y0)*T*z,(cx1-cx0)*T*z,(cy1-cy0)*T*z);g.restore();}
 // scenes 3 and 4: beneath the soil. u is the scene's own unit; the cluster sits at (0,0), the surface at y=-560
 function introUnder(g,W,H,t){const u=Math.min(W,H)/760,A=introAwake(t),pu=introPulse(t),rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
   // down from the surface at the Bloom's site to the cluster; there it lingers; once awake it follows the main root back up
@@ -6737,13 +7045,13 @@ function bindModes(){$('m-survival').onclick=()=>startGame('survival');$('m-sieg
   const qb=$('m-quit');if(qb&&window.lcDesktop){qb.hidden=false;qb.onclick=()=>lcDesktop.quit();}}
 const MENU_HTML=$('ovcard').innerHTML;
 artLoad();bindModes();Store.init().then(()=>loadCamp());
-const QDESC={low:'The classic look: flat ground, the plain Rootweb and simple shapes. Fastest, for older computers.',
-  medium:'HD ground with lit cliffs, deep water and ore crystals, soft shadows and glow, and the painted artwork and living Rootweb.',
+const QDESC={low:'The same painted ground at a lower resolution, the plain Rootweb and simple shapes. Fastest, for older computers.',
+  medium:'Painted ground at a finer resolution, soft shadows and glow, and the painted artwork and living Rootweb.',
   high:'Medium, with the ground and living Rootweb drawn by your graphics card: sharper up close, smoother growth, less work for the processor.',
   epic:'High, plus shimmering, rippling water, drifting dust and full resolution on high-density screens.',
   ultra:'Epic, drawn at up to twice your screen\u2019s resolution for the sharpest edges and artwork, with denser drifting dust. Steady frame rate (below) brings the resolution down whenever your computer needs it.'};
-if(APP){QDESC.low='The classic look: flat ground and simple shapes, with the ground and living Rootweb drawn by your graphics card. Fastest.';
-  QDESC.medium='HD ground with lit cliffs, deep water and ore crystals, soft shadows and glow, and the painted artwork, all drawn with your graphics card.';
+if(APP){QDESC.low='The painted ground at a lower resolution and simple shapes, with the ground and living Rootweb drawn by your graphics card. Fastest.';
+  QDESC.medium='Painted ground at a finer resolution, soft shadows and glow, and the painted artwork, all drawn with your graphics card.';
   QDESC.high='Medium, at a sharper resolution on high-density screens.';}
 // switches to a preset and redraws everything it touches at once
 function applyQuality(q){const Q=QUALITY[q];if(!Q)return;const hd0=SET.hd,dpr0=SET.dpr;
@@ -6752,7 +7060,7 @@ function applyQuality(q){const Q=QUALITY[q];if(!Q)return;const hd0=SET.hd,dpr0=S
     if(localStorage.getItem('lc_gl')!=='2')localStorage.setItem('lc_gl',Q.gl?'1':'0');}catch(_){}
   if(SET.gl&&!GLR.ok)GLR.tried=false;
   if(DESK){DYN.cur=0;DYN.wait=8000;resize();}else if(dpr0!==SET.dpr)resize();
-  if(G){if(SET.hd&&!hd0)buildHDTerrain();GLR.terrDirty=true;repaintAllWeb();try{buildMenu();}catch(_){}}
+  if(G){if(pgRes()!==PG.R)pgBake();GLR.terrDirty=true;repaintAllWeb();try{buildMenu();}catch(_){}}
   qualityUI();}
 function qualityUI(){for(const b of document.querySelectorAll('.qbar button[data-q]')){const on=b.dataset.q===SET.q;b.classList.toggle('on',on);b.setAttribute('aria-checked',on?'true':'false');}
   $('qdesc').textContent=QDESC[SET.q]||'';const n=$('qgpu');

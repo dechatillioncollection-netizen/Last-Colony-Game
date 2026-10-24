@@ -6,7 +6,7 @@ const URL=process.env.URL||'http://localhost:8123/index.html',IDS=(process.env.I
  const rep={};
  for(const id of IDS){
   const r=await p.evaluate(async id=>{startMission(id);await new Promise(r=>setTimeout(r,300));skipDlg();await new Promise(r=>setTimeout(r,300));skipDlg();
-    const m=MIS[id],sc=id==='last'?7:10,cv=document.createElement('canvas');cv.width=MW*sc;cv.height=MH*sc;const c=cv.getContext('2d');c.imageSmoothingEnabled=true;c.drawImage(hdCanvas,0,0,cv.width,cv.height);
+    const m=MIS[id],sc=id==='last'?7:10,cv=document.createElement('canvas');cv.width=MW*sc;cv.height=MH*sc;const c=cv.getContext('2d');c.imageSmoothingEnabled=true;pgBlit(c,0,0,MW*T,MH*T,0,0,cv.width,cv.height);
     // the Bloom's starting Rootweb
     c.fillStyle='rgba(180,90,230,.35)';for(let i=0;i<N;i++)if(G.web[i])c.fillRect((i%MW)*sc,((i/MW)|0)*sc,sc,sc);
     c.strokeStyle='rgba(220,150,255,.9)';c.setLineDash([6,5]);c.lineWidth=2;c.beginPath();c.arc((G.core.x+1.5)*sc,(G.core.y+1.5)*sc,webRadius(G.core)*sc,0,7);c.stroke();c.setLineDash([]);
